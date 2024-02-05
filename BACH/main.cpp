@@ -327,13 +327,7 @@ int main(int argc, char* argv[]) {
 
   err = writeImage(outImg);
   checkError(err);
-
-  for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
-    for(int x = args.hKernelWidth; x < w - args.hKernelWidth; x++) {
-      outImg.data[x + y * w] *= kernSum;
-    }
-  }
-
+  
   err = writeImage(diffImg);
   checkError(err);
 
