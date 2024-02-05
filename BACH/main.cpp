@@ -317,11 +317,13 @@ int main(int argc, char* argv[]) {
   std::cout << "\nWriting output..." << std::endl;
 
   // Scale by kernel sum for output of convoluted image.
-  for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
+  /*for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
     for(int x = args.hKernelWidth; x < w - args.hKernelWidth; x++) {
       outImg.data[x + y * w] *= invKernSum;
     }
-  }
+  }*/
+
+  std::cout << "Inv kernel sum: " << invKernSum << std::endl;
 
   err = writeImage(outImg);
   checkError(err);

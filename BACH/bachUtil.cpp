@@ -15,8 +15,8 @@ void maskInput(Image& tImg, Image& sImg) {
       long index = x + y * tImg.axis.first;
       int borderSize = args.hSStampWidth + args.hKernelWidth;
 
-      if(x < borderSize || x > tImg.axis.first - borderSize || y < borderSize ||
-         y > tImg.axis.second - borderSize) {
+      if(x < borderSize || x >= tImg.axis.first - borderSize || y < borderSize ||
+         y >= tImg.axis.second - borderSize) {
         tImg.maskPix(x, y, Image::edge);
         sImg.maskPix(x, y, Image::edge);
       }
@@ -36,6 +36,8 @@ void maskInput(Image& tImg, Image& sImg) {
       }
     }
   }
+
+  // spreadMask does absolutely nothing
 }
 
 bool inImage(Image& image, int x, int y) {
@@ -98,6 +100,49 @@ void sigmaClip(std::vector<double>& data, double& mean, double& stdDev,
   }
 }
 
+#define M1 259200
+#define IA1 7141
+#define IC1 54773
+#define RM1 (1.0/M1)
+#define M2 134456
+#define IA2 8121
+#define IC2 28411
+#define RM2 (1.0/M2)
+#define M3 243000
+#define IA3 4561
+#define IC3 51349
+double ran1(int *idum) {
+    static long ix1,ix2,ix3;
+    static double r[98];
+    double temp;
+    static int iff=0;
+    int j;
+    /* void nrerror(char *error_text); */
+    
+    if (*idum < 0 || iff == 0) {
+        iff=1;
+        ix1=(IC1-(*idum)) % M1;
+        ix1=(IA1*ix1+IC1) % M1;
+        ix2=ix1 % M2;
+        ix1=(IA1*ix1+IC1) % M1;
+        ix3=ix1 % M3;
+        for (j=1;j<=97;j++) {
+            ix1=(IA1*ix1+IC1) % M1;
+            ix2=(IA2*ix2+IC2) % M2;
+            r[j]=(ix1+ix2*RM2)*RM1;
+        }
+        *idum=1;
+    }
+    ix1=(IA1*ix1+IC1) % M1;
+    ix2=(IA2*ix2+IC2) % M2;
+    ix3=(IA3*ix3+IC3) % M3;
+    j=1 + ((97*ix3)/M3);
+    /* if (j > 97 || j < 1) nrerror("RAN1: This cannot happen."); */
+    temp=r[j];
+    r[j]=(ix1+ix2*RM2)*RM1;
+    return temp;
+}
+
 void calcStats(Stamp& stamp, Image& image) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
@@ -124,12 +169,17 @@ void calcStats(Stamp& stamp, Image& image) {
   std::mt19937 gen(rd());
   std::uniform_int_distribution<cl_int> randGenX(0, stamp.size.first - 1);
   std::uniform_int_distribution<cl_int> randGenY(0, stamp.size.second - 1);
+  
+  int idum   = -666;  /* initialize random number generator with the devil's seed */
 
   // Stop after randomly having selected a pixel numPix times.
   for(int i = 0; (i < numPix) && (values.size() < size_t(nValues)); i++) {
-    int randX = randGenX(gen);
-    int randY = randGenY(gen);
+    //int randX = randGenX(gen);
+    //int randY = randGenY(gen);
 
+    int randX = std::floor(ran1(&idum) * stamp.size.first);
+    int randY = std::floor(ran1(&idum) * stamp.size.second);
+    
     // Random pixel in stamp in stamp coords.
     cl_int indexS = randX + randY * stamp.size.first;
 
@@ -219,7 +269,8 @@ void calcStats(Stamp& stamp, Image& image) {
         if((std::abs(stamp[indexS] - mean) * invStdDev) > args.sigClipAlpha) {
           continue;
         }
-
+        
+        // + 1?
         int index = std::clamp(
             (int)std::floor((stamp[indexS] - lowerBinVal) / binSize), 0, 255);
 

@@ -91,6 +91,7 @@ struct Kernel {
     sumY = 1. / sumY;
 
     // UNSURE: Why the two different calculations?
+    // It checks if deg x and y are even/odd
     if(dx == 0 && dy == 0) {
       for(int uv = 0; uv < args.fKernelWidth; uv++) {
         filterX[n][uv] *= sumX;

@@ -74,6 +74,7 @@ double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg) {
   }
   double meritMean, meritStdDev;
   sigmaClip(merit, meritMean, meritStdDev, 10);
+  //TODO: Add other merits before 666
   meritMean /= kernelMean;
   if(merit.size() > 0) return meritMean;
   return 666;
