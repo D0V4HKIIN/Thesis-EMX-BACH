@@ -1,17 +1,5 @@
-# Ignore Everything
-*
-
-# Don't ignore these files
-!Makefile
-!.vsls.json
-!*.cpp
-!*.h
-!*.cl
-!BACH/res/*.fits
-!.clang-format
-!CMakeLists.txt
-!LICENSE
-
-# Don't ignore all subfolders
-!*/
-*/build/*
+/BACH/build
+/BACH/CMakeLists.txt
+*.exe
+*.dll
+*.pdb
