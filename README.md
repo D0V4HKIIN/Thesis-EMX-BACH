@@ -1,3 +1,8 @@
+
+Start original BACH README:
+
+---
+
 BACH was created as a part of a master thesis conducted at Linköping University during the spring of 2023 by [Annie Wång](https://github.com/th3tard1sparadox) and [Victor Lells](https://github.com/vollells). It is a PSF-alignment and image subtraction tool based on [HOTPANTS](https://github.com/acbecker/hotpants).
 
 BACH is currently capable at aligning the PSFs of two FITS images, but has trouble with the subtraction. It cannot handle too large images, but in our general testing up to around 5K x 5K should work fine.
