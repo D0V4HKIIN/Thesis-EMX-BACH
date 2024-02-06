@@ -26,14 +26,6 @@ void maskInput(Image& tImg, Image& sImg) {
         tImg.maskPix(x, y, Image::badInput);
         sImg.maskPix(x, y, Image::badInput);
       }
-
-      if(std::isnan(tImg[index])) {
-        tImg.maskPix(x, y, Image::nan, Image::badInput);
-      }
-
-      if(std::isnan(sImg[index])) {
-        sImg.maskPix(x, y, Image::nan, Image::badInput);
-      }
     }
   }
 
@@ -198,8 +190,8 @@ void calcStats(Stamp& stamp, Image& image) {
 
   // Contains all good Pixels in the stamp, aka not masked.
   std::vector<double> maskedStamp{};
-  for(int x = 0; x < stamp.size.first; x++) {
-    for(int y = 0; y < stamp.size.second; y++) {
+  for(int y = 0; y < stamp.size.second; y++) {
+    for(int x = 0; x < stamp.size.first; x++) {
       // Pixel in stamp in stamp coords.
       cl_int indexS = x + y * stamp.size.first;
 
@@ -208,9 +200,12 @@ void calcStats(Stamp& stamp, Image& image) {
       cl_int yI = y + stamp.coords.second;
       int indexI = xI + yI * image.axis.first;
 
-      if(image.badInputMask[indexI] || image.badPixelMask[indexI] ||
-         image.nanMask[indexI] || image.edgeMask[indexI] ||
-         image[indexI] <= 1e-10) {
+      if(image.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
+        continue;
+      }
+
+      if (std::isnan(image[indexI])) {
+        image.maskPix(x, y, Image::nan, Image::badInput);
         continue;
       }
 
@@ -259,9 +254,8 @@ void calcStats(Stamp& stamp, Image& image) {
           continue;
         }
         
-        // + 1?
         int index = std::clamp(
-            (int)std::floor((stamp[indexS] - lowerBinVal) / binSize), 0, 255);
+            (int)std::floor((stamp[indexS] - lowerBinVal) / binSize) + 1, 0, 255);
 
         bins[index]++;
         sum += abs(stamp[indexS]);
