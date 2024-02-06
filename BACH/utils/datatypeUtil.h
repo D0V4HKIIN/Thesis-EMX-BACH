@@ -234,6 +234,11 @@ struct Image {
         psfMask(this->size(), false),
         edgeMask(this->size(), false) {}
 
+  bool isMaskedAny(int index) const {
+    return nanMask[index] || badInputMask[index] ||
+      badPixelMask[index] || psfMask[index] || edgeMask[index];
+  }
+
   double* operator&() { return &data[0]; }
 
   double operator[](size_t index) { return float(data[index]); }

@@ -146,8 +146,6 @@ double ran1(int *idum) {
 void calcStats(Stamp& stamp, Image& image) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
-   * TODO: Fix Masking, very not correct. Also mask bad pixels found in here.
-   * TODO: Compare results on same stamp on this and old version.
    */
 
   double median, sum;
@@ -164,19 +162,10 @@ void calcStats(Stamp& stamp, Image& image) {
     std::cout << "Not enough pixels in a stamp" << std::endl;
     exit(1);
   }
-
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<cl_int> randGenX(0, stamp.size.first - 1);
-  std::uniform_int_distribution<cl_int> randGenY(0, stamp.size.second - 1);
-  
   int idum   = -666;  /* initialize random number generator with the devil's seed */
 
   // Stop after randomly having selected a pixel numPix times.
-  for(int i = 0; (i < numPix) && (values.size() < size_t(nValues)); i++) {
-    //int randX = randGenX(gen);
-    //int randY = randGenY(gen);
-
+  for(int i = 0; (values.size() < numPix) && (i < size_t(nValues)); i++) {
     int randX = std::floor(ran1(&idum) * stamp.size.first);
     int randY = std::floor(ran1(&idum) * stamp.size.second);
     
@@ -188,15 +177,15 @@ void calcStats(Stamp& stamp, Image& image) {
     cl_int yI = randY + stamp.coords.second;
     int indexI = xI + yI * image.axis.first;
 
-    if(image.badInputMask[indexI] || image.nanMask[indexI] ||
-       image[indexI] <= 1e-10 || std::isnan(stamp[indexS])) {
+    if(image.isMaskedAny(indexI) || std::abs(image[indexI]) <= 1e-10) {
+      i--;
       continue;
     }
 
     values.push_back(stamp[indexS]);
   }
 
-  std::sort(begin(values), end(values));
+  std::sort(std::begin(values), std::end(values));
 
   // Width of a histogram bin.
   double binSize = (values[(int)(upProc * values.size())] -
