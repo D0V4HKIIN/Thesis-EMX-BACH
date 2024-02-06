@@ -109,7 +109,7 @@ void cutSStamp(SubStamp& ss, Image& img) {
 
 int fillStamp(Stamp& s, Image& tImg, Image& sImg, Kernel& k) {
   /* Fills Substamp with gaussian basis convolved images around said substamp
-   * and claculates CMV.
+   * and calculates CMV.
    */
 
   if(s.subStamps.empty()) {

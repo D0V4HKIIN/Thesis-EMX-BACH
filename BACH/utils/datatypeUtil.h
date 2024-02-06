@@ -200,7 +200,14 @@ struct Image {
   std::string path;
   std::pair<cl_long, cl_long> axis;
 
-  enum masks { nan, badInput, badPixel, psf, edge };
+  enum masks
+  {
+    nan, // FLAG_ISNAN
+    badInput, // FLAG_INPUT_ISBAD
+    badPixel, // FLAG_T_BAD, FLAG_I_BAD
+    psf,
+    edge
+  };
   std::vector<double> data{};
 
   std::vector<bool> nanMask{};

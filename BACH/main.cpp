@@ -29,6 +29,7 @@ int main(int argc, char* argv[]) {
 
   Image templateImg{args.templateName};
   Image scienceImg{args.scienceName};
+  templateImg.path = scienceImg.path = args.inputPath + "/";
 
   if(args.verbose)
     std::cout << "template image name: " << args.templateName

@@ -15,7 +15,7 @@ inline cl_int readImage(Image& input) {
   try {
     pIn = new CCfits::FITS(input.getFile(), CCfits::RWmode::Read, true);
   } catch(CCfits::FITS::CantOpen err) {
-    std::cout << err.message() << std::endl;
+    std::cout << "Unable to open file '" << input.getFile() << "'" << std::endl << err.message() << std::endl;
     return -1;
   }
   CCfits::PHDU& img = pIn->pHDU();

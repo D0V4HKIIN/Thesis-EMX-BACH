@@ -34,8 +34,8 @@ void createStamps(Image& img, std::vector<Stamp>& stamps, int w, int h) {
       int stampw = stopx - startx;
       int stamph = stopy - starty;
 
-      int centerx = stampw / 2;
-      int centery = stamph / 2;
+      int centerx = startx + stampw / 2;
+      int centery = starty + stamph / 2;
 
       Stamp tmpS{};
       for(int y = 0; y < stamph; y++) {
@@ -87,16 +87,15 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
 
   double dfrac = 0.9;
   while(stamp.subStamps.size() < size_t(args.maxSStamps)) {
-    long absx, absy, coords, absCoords;
     double lowestPSFLim =
         std::max(floor, stamp.stats.skyEst +
                             (args.threshHigh - stamp.stats.skyEst) * dfrac);
     for(long y = 0; y < args.fStampWidth; y++) {
-      absy = y + stamp.coords.second;
+      long absy = y + stamp.coords.second;
       for(long x = 0; x < args.fStampWidth; x++) {
-        absx = x + stamp.coords.first;
-        coords = x + (y * stamp.size.first);
-        absCoords = absx + (absy * image.axis.first);
+        long absx = x + stamp.coords.first;
+        long coords = x + (y * stamp.size.first);
+        long absCoords = absx + (absy * image.axis.first);
 
         if(image.badInputMask[absCoords] || image.badPixelMask[absCoords] ||
            image.edgeMask[absCoords] || image.nanMask[absCoords] ||
@@ -119,7 +118,7 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
                      std::make_pair(absx, absy),
                      std::make_pair(x, y),
                      stamp[coords]};
-          long kCoords;
+          
           for(long ky = absy - args.hSStampWidth;
               ky <= absy + args.hSStampWidth; ky++) {
             if(ky < stamp.coords.second ||
@@ -130,7 +129,7 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
               if(kx < stamp.coords.first ||
                  kx >= stamp.coords.first + args.fStampWidth)
                 continue;
-              kCoords = kx + (ky * image.axis.first);
+              long kCoords = kx + (ky * image.axis.first);
 
               if(image.badInputMask[kCoords] || image.badPixelMask[kCoords] ||
                  image.edgeMask[kCoords] || image.nanMask[kCoords] ||
