@@ -15,6 +15,7 @@
 /* Utils */
 void checkError(cl_int err);
 void maskInput(Image& tImg, Image& sImg);
+void spreadMask(Image& image, int width);
 void sigmaClip(std::vector<double>& data, double& mean, double& stdDev,
                int iter);
 bool inImage(Image&, int x, int y);

@@ -65,13 +65,11 @@ double checkSStamp(SubStamp& sstamp, Image& image, Stamp& stamp) {
         continue;
 
       int absCoords = x + y * image.axis.first;
-      if(image.badInputMask[absCoords] || image.badPixelMask[absCoords] ||
-         image.edgeMask[absCoords] || image.nanMask[absCoords] ||
-         image.psfMask[absCoords])
+      if(image.isMasked(absCoords, ~Image::OK_CONV))
         return 0.0;
 
       if(image[absCoords] >= args.threshHigh) {
-        image.maskPix(x, y, Image::badPixel);
+        image.maskPix(x, y, Image::BAD_PIXEL);
         return 0.0;
       }
       if((image[absCoords] - stamp.stats.skyEst) / stamp.stats.fwhm >
@@ -97,13 +95,12 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
         long coords = x + (y * stamp.size.first);
         long absCoords = absx + (absy * image.axis.first);
 
-        if(image.badInputMask[absCoords] || image.badPixelMask[absCoords] ||
-           image.edgeMask[absCoords] || image.nanMask[absCoords] ||
-           image.psfMask[absCoords])
+        if (image.isMasked(absCoords, ~Image::OK_CONV)) {
           continue;
+        }
 
         if(stamp[coords] > args.threshHigh) {
-          image.maskPix(absx, absy, Image::badPixel);
+          image.maskPix(absx, absy, Image::BAD_PIXEL);
           continue;
         }
 
@@ -131,16 +128,12 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
                 continue;
               long kCoords = kx + (ky * image.axis.first);
 
-              if(image.badInputMask[kCoords] || image.badPixelMask[kCoords] ||
-                 image.edgeMask[kCoords] || image.nanMask[kCoords] ||
-                 image.psfMask[kCoords])
+              if (image.isMasked(absCoords, ~Image::OK_CONV)) {
                 continue;
-              // if(image.anyBadMasked(kx, ky)) {
-              //   continue;
-              // }
+              }
 
               if(image[kCoords] >= args.threshHigh) {
-                image.maskPix(kx, ky, Image::badPixel);
+                image.maskPix(kx, ky, Image::BAD_PIXEL);
                 continue;
               }
 
@@ -161,7 +154,7 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
           s.val = checkSStamp(s, image, stamp);
           if(s.val == 0.0) continue;
           stamp.subStamps.push_back(s);
-          image.maskSStamp(s, Image::psf);
+          image.maskSStamp(s, Image::SKIP);
         }
         if(stamp.subStamps.size() >= size_t(args.maxSStamps)) break;
       }

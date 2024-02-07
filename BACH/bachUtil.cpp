@@ -17,19 +17,49 @@ void maskInput(Image& tImg, Image& sImg) {
 
       if(x < borderSize || x >= tImg.axis.first - borderSize || y < borderSize ||
          y >= tImg.axis.second - borderSize) {
-        tImg.maskPix(x, y, Image::edge);
-        sImg.maskPix(x, y, Image::edge);
+        tImg.maskPix(x, y, Image::BAD_PIXEL);
+        sImg.maskPix(x, y, Image::BAD_PIXEL);
       }
 
-      if(std::max(tImg[index], sImg[index]) >= args.threshHigh ||
-         std::min(tImg[index], sImg[index]) <= args.threshLow) {
-        tImg.maskPix(x, y, Image::badInput);
-        sImg.maskPix(x, y, Image::badInput);
+      if (std::max(tImg[index], sImg[index]) >= args.threshHigh) {
+        tImg.maskPix(x, y, Image::BAD_INPUT | Image::SAT_PIXEL);
+        sImg.maskPix(x, y, Image::BAD_INPUT | Image::SAT_PIXEL);
+      }
+
+      if(std::min(tImg[index], sImg[index]) <= args.threshLow) {
+        tImg.maskPix(x, y, Image::BAD_INPUT | Image::LOW_PIXEL);
+        sImg.maskPix(x, y, Image::BAD_INPUT | Image::LOW_PIXEL);
       }
     }
   }
 
-  // spreadMask does absolutely nothing
+  spreadMask(tImg, args.hKernelWidth * 1);
+  spreadMask(sImg, args.hKernelWidth * 1);
+}
+
+void spreadMask(Image& image, int width) {
+    int w2 = width / 2;
+    for (int y = 0; y < image.axis.second; y++) {
+        for (int x = 0; x < image.axis.first; x++) {
+            if (image.isMasked(x + image.axis.first * y, Image::BAD_INPUT)) {
+                for (int x2 = -w2; x2 <= w2; x2++) {
+                    int xx = x + x2;
+                    if (xx < 0 || xx >= image.axis.first)
+                        continue;
+                    
+                    for (int y2 = -w2; y2 <= w2; y2++) {
+                        int yy = y + y2;
+                        if (yy < 0 || yy >= image.axis.second)
+                            continue;
+                        
+                        if (!image.isMasked(xx + image.axis.first * yy, Image::BAD_INPUT)) {
+                          image.maskPix(xx, yy, Image::OK_CONV);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 bool inImage(Image& image, int x, int y) {
@@ -205,7 +235,7 @@ void calcStats(Stamp& stamp, Image& image) {
       }
 
       if (std::isnan(image[indexI])) {
-        image.maskPix(x, y, Image::nan, Image::badInput);
+        image.maskPix(x, y, Image::NAN_PIXEL | Image::BAD_INPUT);
         continue;
       }
 
@@ -244,9 +274,7 @@ void calcStats(Stamp& stamp, Image& image) {
         cl_int yI = y + stamp.coords.second;
         int indexI = xI + yI * image.axis.first;
 
-        if(image.badInputMask[indexI] || image.badPixelMask[indexI] ||
-           image.nanMask[indexI] || image.edgeMask[indexI] ||
-           image[indexI] <= 1e-10) {
+        if(image.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
           continue;
         }
 

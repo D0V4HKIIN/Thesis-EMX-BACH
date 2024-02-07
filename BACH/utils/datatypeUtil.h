@@ -202,19 +202,25 @@ struct Image {
 
   enum masks
   {
-    nan, // FLAG_ISNAN
-    badInput, // FLAG_INPUT_ISBAD
-    badPixel, // FLAG_T_BAD, FLAG_I_BAD
-    psf,
-    edge
+    NONE = 0,
+    BAD_PIX_VAL = 1 << 0, // FLAG_BAD_PIXVAL
+    SAT_PIXEL = 1 << 1, // FLAG_SAT_PIXEL
+    LOW_PIXEL = 1 << 2, // FLAG_LOW_PIXEL
+    NAN_PIXEL = 1 << 3, // FLAG_ISNAN
+    BAD_CONV = 1 << 4, // FLAG_BAD_CONV
+    INPUT_MASK = 1 << 5, // FLAG_INPUT_MASK
+    OK_CONV = 1 << 6, // FLAG_OK_CONV    
+    BAD_INPUT = 1 << 7, // FLAG_INPUT_ISBAD
+    BAD_PIXEL = 1 << 8, // FLAG_T_BAD, FLAG_I_BAD
+    SKIP = 1 << 9, // FLAG_T_SKIP, FLAG_I_SKIP
+    BAD_OUTPUT = 1 << 10, // FLAG_OUTPUT_ISBAD,
+    ALL = (1 << 11) - 1
   };
+
   std::vector<double> data{};
 
-  std::vector<bool> nanMask{};
-  std::vector<bool> badInputMask{};
-  std::vector<bool> badPixelMask{};
-  std::vector<bool> psfMask{};
-  std::vector<bool> edgeMask{};
+private:
+  std::vector<uint16_t> dataMask;
 
  public:
   Image(const std::string n, std::pair<cl_long, cl_long> a = {0L, 0L},
@@ -223,11 +229,7 @@ struct Image {
         path{p},
         axis{a},
         data(this->size()),
-        nanMask(this->size(), false),
-        badInputMask(this->size(), false),
-        badPixelMask(this->size(), false),
-        psfMask(this->size(), false),
-        edgeMask(this->size(), false) {}
+        dataMask(this->size(), NONE) {}
 
   Image(const std::string n, std::vector<double> d,
         std::pair<cl_long, cl_long> a, const std::string p = "res/")
@@ -235,15 +237,14 @@ struct Image {
         path{p},
         axis{a},
         data{d},
-        nanMask(this->size(), false),
-        badInputMask(this->size(), false),
-        badPixelMask(this->size(), false),
-        psfMask(this->size(), false),
-        edgeMask(this->size(), false) {}
+        dataMask(this->size(), NONE) {}
 
   bool isMaskedAny(int index) const {
-    return nanMask[index] || badInputMask[index] ||
-      badPixelMask[index] || psfMask[index] || edgeMask[index];
+    return dataMask[index] != NONE;
+  }
+
+  bool isMasked(int index, masks mask) const {
+    return (dataMask[index] & mask) != NONE;
   }
 
   double* operator&() { return &data[0]; }
@@ -269,42 +270,36 @@ struct Image {
     return ptr;
   }
 
-  void maskPix(int x, int y, std::same_as<Image::masks> auto... mI) {
-    std::vector<Image::masks> mL{mI...};
-    for(Image::masks m : mL) {
-      switch(m) {
-        case nan:
-          nanMask[x + (y * axis.first)] = true;
-          break;
-        case badInput:
-          badInputMask[x + (y * axis.first)] = true;
-          break;
-        case badPixel:
-          badPixelMask[x + (y * axis.first)] = true;
-          break;
-        case psf:
-          psfMask[x + (y * axis.first)] = true;
-          break;
-        case edge:
-          edgeMask[x + (y * axis.first)] = true;
-          break;
-        default:
-          std::cout << "Error: Not caught by the switch case" << std::endl;
-          exit(1);
-      }
-    }
+  void maskPix(int x, int y, masks mask) {
+    int index = x + (y * axis.first);
+    dataMask[index] |= mask;
   }
 
-  void maskSStamp(SubStamp& sstamp, std::same_as<Image::masks> auto... mI) {
+  void maskSStamp(SubStamp& sstamp, masks mask) {
     for(int x = sstamp.imageCoords.first - args.hSStampWidth;
         x <= sstamp.imageCoords.first + args.hSStampWidth; x++) {
       if(x < 0 || x >= axis.first) continue;
       for(int y = sstamp.imageCoords.second - args.hSStampWidth;
           y <= sstamp.imageCoords.second + args.hSStampWidth; y++) {
         if(y < 0 || y >= axis.second) continue;
-        this->maskPix(x, y, mI...);
+        this->maskPix(x, y, mask);
       }
     }
   }
 };
+
+inline Image::masks operator~(Image::masks a)
+{
+    return static_cast<Image::masks>(~static_cast<int>(a));
+}
+
+inline Image::masks operator&(Image::masks a, Image::masks b)
+{
+    return static_cast<Image::masks>(static_cast<int>(a) & static_cast<int>(b));
+}
+
+inline Image::masks operator|(Image::masks a, Image::masks b)
+{
+    return static_cast<Image::masks>(static_cast<int>(a) | static_cast<int>(b));
+}
 #endif
