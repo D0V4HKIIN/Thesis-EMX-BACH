@@ -102,35 +102,22 @@ int main(int argc, char* argv[]) {
   }
 
   /* == Check Template Stamps  ==*/
-  int numTemplSStamps = identifySStamps(templateStamps, templateImg);
-  if(double(numTemplSStamps) / templateStamps.size() < 0.1) {
-    if(args.verbose)
+  double filledTempl{};
+  double filledScience{};
+  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, &filledTempl, &filledScience);
+  if(filledTempl < 0.1 || filledScience < 0.1) {
+    std::cout << "ERROR" << std::endl;
+    std::exit(1);
+
+    /*if(args.verbose)
       std::cout << "Not enough substamps found in " << templateImg.name
                 << " trying again with lower thresholds..." << std::endl;
     args.threshLow *= 0.5;
     numTemplSStamps = identifySStamps(templateStamps, templateImg);
-    args.threshLow /= 0.5;
-  }
-  if(args.verbose) {
-    std::cout << "Substamps found in " << templateImg.name << std::endl;
+    args.threshLow /= 0.5;*/
   }
 
-  /* == Check Science Stamps  ==*/
-  int numSciSStamps = identifySStamps(sciStamps, scienceImg);
-  if(double(numSciSStamps) / sciStamps.size() < 0.1) {
-    if(args.verbose) {
-      std::cout << "Not enough substamps found in " << scienceImg.name
-                << " trying again with lower thresholds..." << std::endl;
-    }
-    args.threshLow *= 0.5;
-    numSciSStamps = identifySStamps(sciStamps, scienceImg);
-    args.threshLow /= 0.5;
-  }
-  if(args.verbose) {
-    std::cout << "Substamps found in " << scienceImg.name << std::endl;
-  }
-
-  if(numTemplSStamps == 0 && numSciSStamps == 0) {
+  if(templateStamps.size() == 0 && sciStamps.size() == 0) {
     std::cout << "No substamps found" << std::endl;
     exit(1);
   }

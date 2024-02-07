@@ -1,9 +1,49 @@
 #define CL_HPP_TARGET_OPENCL_VERSION 300
 
 #include "utils/bachUtil.h"
+#include <cassert>
+
+void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::vector<Stamp>& scienceStamps, Image& scienceImage, double* filledTempl, double* filledScience) {
+  std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
+
+  assert(templStamps.size() == scienceStamps.size());
+
+  for (int i = 0; i < templStamps.size(); i++) {
+    calcStats(templStamps[i], templImage);
+    calcStats(scienceStamps[i], scienceImage);
+
+    findSStamps(templStamps[i], templImage, i);
+    findSStamps(scienceStamps[i], scienceImage, i);
+  }
+
+  int oldCount = templStamps.size();
+
+  templStamps.erase(std::remove_if(templStamps.begin(), templStamps.end(),
+                              [](Stamp& s) { return s.subStamps.empty(); }),
+               templStamps.end());
+  scienceStamps.erase(std::remove_if(scienceStamps.begin(), scienceStamps.end(),
+                              [](Stamp& s) { return s.subStamps.empty(); }),
+               scienceStamps.end());
+
+  if (filledTempl != nullptr) {
+    *filledTempl = static_cast<double>(templStamps.size()) / oldCount;
+  }
+
+  if (filledScience != nullptr) {
+    *filledScience = static_cast<double>(scienceStamps.size()) / oldCount;
+  }
+
+  if(args.verbose) {
+    std::cout << "Non-Empty template stamps: " << templStamps.size() << std::endl;
+    std::cout << "Non-Empty science stamps: " << scienceStamps.size() << std::endl;
+  }
+}
+
+void identifySStampsInStamp(std::vector<Stamp>& stamps, Image& image) {
+
+}
 
 int identifySStamps(std::vector<Stamp>& stamps, Image& image) {
-  std::cout << "Identifying sub-stamps in " << image.name << "..." << std::endl;
 
   int index = 0, hasSStamps = 0;
   for(auto& s : stamps) {
@@ -154,7 +194,18 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
           s.val = checkSStamp(s, image, stamp);
           if(s.val == 0.0) continue;
           stamp.subStamps.push_back(s);
-          image.maskSStamp(s, Image::SKIP);
+
+          for(int y = s.stampCoords.second - args.hSStampWidth;
+              y <= s.stampCoords.second + args.hSStampWidth; y++) {
+            int y2 = y + stamp.coords.second;
+            for(int x = s.stampCoords.first - args.hSStampWidth;
+                x <= s.stampCoords.first + args.hSStampWidth; x++) {
+              int x2 = x + stamp.coords.first;
+              if (x > 0 && x < stamp.size.first && y > 0 && y < stamp.size.second) {
+                image.maskPix(x2, y2, Image::SKIP);
+              }
+            }
+          }
         }
         if(stamp.subStamps.size() >= size_t(args.maxSStamps)) break;
       }

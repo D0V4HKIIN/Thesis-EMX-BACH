@@ -274,18 +274,6 @@ private:
     int index = x + (y * axis.first);
     dataMask[index] |= mask;
   }
-
-  void maskSStamp(SubStamp& sstamp, masks mask) {
-    for(int x = sstamp.imageCoords.first - args.hSStampWidth;
-        x <= sstamp.imageCoords.first + args.hSStampWidth; x++) {
-      if(x < 0 || x >= axis.first) continue;
-      for(int y = sstamp.imageCoords.second - args.hSStampWidth;
-          y <= sstamp.imageCoords.second + args.hSStampWidth; y++) {
-        if(y < 0 || y >= axis.second) continue;
-        this->maskPix(x, y, mask);
-      }
-    }
-  }
 };
 
 inline Image::masks operator~(Image::masks a)

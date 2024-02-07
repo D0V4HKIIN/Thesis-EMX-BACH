@@ -184,7 +184,7 @@ void calcStats(Stamp& stamp, Image& image) {
     std::cout << "Not enough pixels in a stamp" << std::endl;
     exit(1);
   }
-  int idum   = -666;  /* initialize random number generator with the devil's seed */
+  int idum = -666;
 
   // Stop after randomly having selected a pixel numPix times.
   for(int i = 0; (values.size() < numPix) && (i < size_t(nValues)); i++) {
