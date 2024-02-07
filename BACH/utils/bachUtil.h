@@ -32,7 +32,6 @@ void createStamps(Image&, std::vector<Stamp>& stamps, int w, int h);
 double checkSStamp(SubStamp&, Image&, Stamp&);
 cl_int findSStamps(Stamp&, Image&, int index);
 void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::vector<Stamp>& scienceStamps, Image& scienceImage, double* filledTempl, double* filledScience);
-void identifySStampsInStamp(std::vector<Stamp>& stamps, Image& image);
 
 /* CMV */
 void createB(Stamp&, Image&);

@@ -28,7 +28,7 @@ struct Arguments {
   double sigClipAlpha = 3.0;
   double iqRange = 1.35;  // interquartile range
 
-  cl_int maxSStamps = 6;
+  cl_int maxKSStamps = 3;
 
   cl_int nPSF = 49;  // nPSF
 

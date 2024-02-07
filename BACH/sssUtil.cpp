@@ -38,32 +38,6 @@ void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::ve
     std::cout << "Non-Empty science stamps: " << scienceStamps.size() << std::endl;
   }
 }
-
-void identifySStampsInStamp(std::vector<Stamp>& stamps, Image& image) {
-
-}
-
-int identifySStamps(std::vector<Stamp>& stamps, Image& image) {
-
-  int index = 0, hasSStamps = 0;
-  for(auto& s : stamps) {
-    calcStats(s, image);
-    findSStamps(s, image, index);
-    if(!s.subStamps.empty()) hasSStamps++;
-    index++;
-  }
-
-  stamps.erase(std::remove_if(stamps.begin(), stamps.end(),
-                              [](Stamp& s) { return s.subStamps.empty(); }),
-               stamps.end());
-
-  if(args.verbose) {
-    std::cout << "Non-Empty stamps: " << stamps.size() << std::endl;
-  }
-
-  return hasSStamps;
-}
-
 void createStamps(Image& img, std::vector<Stamp>& stamps, int w, int h) {
   for(int j = 0; j < args.stampsy; j++) {
     for(int i = 0; i < args.stampsx; i++) {
@@ -124,7 +98,9 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
   double floor = stamp.stats.skyEst + args.threshKernFit * stamp.stats.fwhm;
 
   double dfrac = 0.9;
-  while(stamp.subStamps.size() < size_t(args.maxSStamps)) {
+  int maxSStamps = 2 * args.maxKSStamps;
+
+  while(stamp.subStamps.size() < size_t(maxSStamps)) {
     double lowestPSFLim =
         std::max(floor, stamp.stats.skyEst +
                             (args.threshHigh - stamp.stats.skyEst) * dfrac);
@@ -207,9 +183,9 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
             }
           }
         }
-        if(stamp.subStamps.size() >= size_t(args.maxSStamps)) break;
+        if(stamp.subStamps.size() >= size_t(maxSStamps)) break;
       }
-      if(stamp.subStamps.size() >= size_t(args.maxSStamps)) break;
+      if(stamp.subStamps.size() >= size_t(maxSStamps)) break;
     }
     if(lowestPSFLim == floor) break;
     dfrac -= 0.2;
@@ -221,8 +197,18 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
                 << std::endl;
     return 1;
   }
-  std::sort(stamp.subStamps.begin(), stamp.subStamps.end(),
-            std::greater<SubStamp>());
+  int keepSStampCount = std::min<int>(stamp.subStamps.size(), args.maxKSStamps);
+  std::partial_sort(
+    stamp.subStamps.begin(),
+    stamp.subStamps.begin() + keepSStampCount,
+    stamp.subStamps.end(),
+    std::greater<SubStamp>()
+    );
+
+  if (stamp.subStamps.size() > keepSStampCount) {
+    stamp.subStamps.erase(stamp.subStamps.begin() + keepSStampCount, stamp.subStamps.end());
+  }
+
   if(args.verbose)
     std::cout << "Added " << stamp.subStamps.size() << " substamps to stamp "
               << index << std::endl;
