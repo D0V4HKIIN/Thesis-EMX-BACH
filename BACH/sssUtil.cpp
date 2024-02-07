@@ -168,7 +168,7 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
                 continue;
               long kCoords = kx + (ky * image.axis.first);
 
-              if (image.isMasked(absCoords, ~Image::OK_CONV)) {
+              if (image.isMasked(kCoords, ~Image::OK_CONV)) {
                 continue;
               }
 
