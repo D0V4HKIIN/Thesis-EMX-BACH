@@ -242,12 +242,12 @@ int main(int argc, char* argv[]) {
                                  &templateImg);
   checkError(err);
 
-  cl::KernelFunctor<cl::Buffer, cl_long, cl::Buffer, cl::Buffer, cl_long,
+  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer, cl_long,
                     cl_long>
       conv{program, "conv"};
   cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h),
                         cl::NullRange};
-  conv(eargs, kernBuf, args.fKernelWidth, tImgBuf, outImgBuf, w, h);
+  conv(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, outImgBuf, w, h);
 
   // Read data from convolution
   Image outImg{args.outName, templateImg.axis, args.outPath};
@@ -255,6 +255,9 @@ int main(int argc, char* argv[]) {
   err = queue.enqueueReadBuffer(outImgBuf, CL_TRUE, 0,
                                 sizeof(cl_double) * w * h, &outImg);
   checkError(err);
+
+  queue.finish();
+  queue.flush();
 
   // Add background and scale by kernel sum for output of convoluted image.
   for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {

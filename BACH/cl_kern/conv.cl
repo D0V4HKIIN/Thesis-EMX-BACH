@@ -1,4 +1,4 @@
-void kernel conv(global const double *convKern, const long convWidth,
+void kernel conv(global const double *convKern, const long convWidth, const long xSteps,
                  global const double *image, global double *outimg,
                  const long w, const long h) {
   int id = get_global_id(0);
@@ -6,19 +6,20 @@ void kernel conv(global const double *convKern, const long convWidth,
   long x = id % w;
   long y = id / w;
 
-  if(x >= convWidth / 2 && x < w - convWidth / 2 && y >= convWidth / 2 &&
-     y < h - convWidth / 2) {
-    int xSteps = ceil((double)w / (double)convWidth);
+  long halfConvWidth = convWidth / 2;
 
-    int xS = (x - convWidth / 2) / convWidth;
-    int yS = (y - convWidth / 2) / convWidth;
+  if(x >= halfConvWidth && x < w - halfConvWidth && y >= halfConvWidth &&
+     y < h - halfConvWidth) {
+
+    int xS = (x - halfConvWidth) / convWidth;
+    int yS = (y - halfConvWidth) / convWidth;
 
     int convOffset = (xS + yS * xSteps) * convWidth * convWidth;
 
-    for(long j = y - (convWidth / 2); j <= y + convWidth / 2; j++) {
-      int jk = y - j + (convWidth / 2);
-      for(long i = x - (convWidth / 2); i <= x + convWidth / 2; i++) {
-        int ik = x - i + (convWidth / 2);
+    for(long j = y - (halfConvWidth); j <= y + halfConvWidth; j++) {
+      int jk = y - j + (halfConvWidth);
+      for(long i = x - (halfConvWidth); i <= x + halfConvWidth; i++) {
+        int ik = x - i + (halfConvWidth);
         long convIndex = ik + jk * convWidth;
         convIndex += convOffset;
         long imgIndex = i + w * j;
