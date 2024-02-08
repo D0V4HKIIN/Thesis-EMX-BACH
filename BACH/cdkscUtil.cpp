@@ -47,7 +47,7 @@ double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg) {
   std::vector<Stamp> testStamps{};
   int c = 0;
   for(auto& s : stamps) {
-    if(s.stats.diff < args.threshKernFit && !s.subStamps.empty()) {
+    if(s.stats.diff < args.sigKernFit && !s.subStamps.empty()) {
       testStamps.push_back(s);
       c++;
     }
