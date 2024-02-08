@@ -16,10 +16,10 @@ void kernel conv(global const double *convKern, const long convWidth, const long
 
     int convOffset = (xS + yS * xSteps) * convWidth * convWidth;
 
-    for(long j = y - (halfConvWidth); j <= y + halfConvWidth; j++) {
-      int jk = y - j + (halfConvWidth);
-      for(long i = x - (halfConvWidth); i <= x + halfConvWidth; i++) {
-        int ik = x - i + (halfConvWidth);
+    for(long j = y - halfConvWidth; j <= y + halfConvWidth; j++) {
+      int jk = y - j + halfConvWidth;
+      for(long i = x - halfConvWidth; i <= x + halfConvWidth; i++) {
+        int ik = x - i + halfConvWidth;
         long convIndex = ik + jk * convWidth;
         convIndex += convOffset;
         long imgIndex = i + w * j;

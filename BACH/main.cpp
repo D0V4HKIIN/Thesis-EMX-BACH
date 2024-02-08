@@ -256,8 +256,10 @@ int main(int argc, char* argv[]) {
                                 sizeof(cl_double) * w * h, &outImg);
   checkError(err);
 
-  queue.finish();
-  queue.flush();
+  if (queue.finish() != CL_SUCCESS) {
+    std::cout << "Could not finish executing the queue" << std::endl;
+    std::exit(1);
+  }
 
   // Add background and scale by kernel sum for output of convoluted image.
   for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
