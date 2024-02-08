@@ -283,9 +283,9 @@ int main(int argc, char* argv[]) {
                                  &scienceImg);
   checkError(err);
 
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_double> sub{program,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long> sub{program,
                                                                        "sub"};
-  sub(eargs, sImgBuf, convImgBuf, diffImgBuf, invKernSum);
+  sub(eargs, sImgBuf, convImgBuf, diffImgBuf, args.fKernelWidth, w, h);
 
   // Read data from subtraction
   Image diffImg{"sub.fits", templateImg.axis, args.outPath};
@@ -303,13 +303,6 @@ int main(int argc, char* argv[]) {
 
   clock_t p15 = clock();
   std::cout << "\nWriting output..." << std::endl;
-
-  // Scale by kernel sum for output of convoluted image.
-  /*for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
-    for(int x = args.hKernelWidth; x < w - args.hKernelWidth; x++) {
-      outImg.data[x + y * w] *= invKernSum;
-    }
-  }*/
 
   std::cout << "Inv kernel sum: " << invKernSum << std::endl;
 

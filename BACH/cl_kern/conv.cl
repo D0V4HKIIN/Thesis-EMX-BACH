@@ -28,6 +28,6 @@ void kernel conv(global const double *convKern, const long convWidth,
 
     outimg[id] = acc;
   } else {
-    outimg[id] = 1e-10;
+    outimg[id] = 1e-30;
   }
 }
