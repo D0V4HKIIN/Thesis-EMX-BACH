@@ -14,12 +14,12 @@ void maskInput(Image& tImg, Image& sImg) {
     for(long x = 0; x < tImg.axis.first; x++) {
       long index = x + y * tImg.axis.first;
 
-      if (std::max(tImg[index], sImg[index]) >= args.threshHigh) {
+      if (tImg[index] >= args.threshHigh || sImg[index] >= args.threshHigh) {
         tImg.maskPix(x, y, Image::BAD_INPUT | Image::SAT_PIXEL);
         sImg.maskPix(x, y, Image::BAD_INPUT | Image::SAT_PIXEL);
       }
 
-      if(std::min(tImg[index], sImg[index]) <= args.threshLow) {
+      if(tImg[index] <= args.threshLow || sImg[index] <= args.threshLow) {
         tImg.maskPix(x, y, Image::BAD_INPUT | Image::LOW_PIXEL);
         sImg.maskPix(x, y, Image::BAD_INPUT | Image::LOW_PIXEL);
       }
