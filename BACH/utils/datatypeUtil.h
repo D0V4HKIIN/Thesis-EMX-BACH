@@ -247,6 +247,10 @@ private:
     return (dataMask[index] & mask) != NONE;
   }
 
+  void unmask(int index, masks mask) {
+    dataMask[index] &= ~mask;
+  }
+
   double* operator&() { return &data[0]; }
 
   double operator[](size_t index) { return float(data[index]); }

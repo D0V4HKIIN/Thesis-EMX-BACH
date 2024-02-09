@@ -106,15 +106,28 @@ int main(int argc, char* argv[]) {
   double filledScience{};
   identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, &filledTempl, &filledScience);
   if(filledTempl < 0.1 || filledScience < 0.1) {
-    std::cout << "ERROR" << std::endl;
-    std::exit(1);
-
-    /*if(args.verbose)
+    if(args.verbose)
       std::cout << "Not enough substamps found in " << templateImg.name
                 << " trying again with lower thresholds..." << std::endl;
     args.threshLow *= 0.5;
-    numTemplSStamps = identifySStamps(templateStamps, templateImg);
-    args.threshLow /= 0.5;*/
+    
+    templateStamps.clear();
+    sciStamps.clear();
+
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        int index = y * w + x;
+        templateImg.unmask(index, Image::SKIP);
+        scienceImg.unmask(index, Image::SKIP);
+      }
+    }
+
+    createStamps(templateImg, templateStamps, w, h);
+
+    createStamps(scienceImg, sciStamps, w, h);
+
+    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, &filledTempl, &filledScience);
+    args.threshLow /= 0.5;
   }
 
   if(templateStamps.size() == 0 && sciStamps.size() == 0) {
