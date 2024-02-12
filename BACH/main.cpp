@@ -42,7 +42,9 @@ int main(int argc, char* argv[]) {
   err = readImage(scienceImg);
   checkError(err);
 
-  maskInput(templateImg, scienceImg);
+  ImageMask mask(templateImg.axis);
+
+  maskInput(templateImg, scienceImg, mask);
 
   auto [w, h] = templateImg.axis;
   if(w != scienceImg.axis.first || h != scienceImg.axis.second) {
@@ -104,7 +106,7 @@ int main(int argc, char* argv[]) {
   /* == Check Template Stamps  ==*/
   double filledTempl{};
   double filledScience{};
-  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, &filledTempl, &filledScience);
+  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience);
   if(filledTempl < 0.1 || filledScience < 0.1) {
     if(args.verbose)
       std::cout << "Not enough substamps found in " << templateImg.name
@@ -117,8 +119,7 @@ int main(int argc, char* argv[]) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         int index = y * w + x;
-        templateImg.unmask(index, Image::SKIP);
-        scienceImg.unmask(index, Image::SKIP);
+        mask.unmask(index, ImageMask::SKIP_S | ImageMask::SKIP_T);
       }
     }
 
@@ -126,7 +127,7 @@ int main(int argc, char* argv[]) {
 
     createStamps(scienceImg, sciStamps, w, h);
 
-    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, &filledTempl, &filledScience);
+    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience);
     args.threshLow /= 0.5;
   }
 
@@ -151,10 +152,10 @@ int main(int argc, char* argv[]) {
 
   Kernel convolutionKernel{};
   for(auto& s : templateStamps) {
-    fillStamp(s, templateImg, scienceImg, convolutionKernel);
+    fillStamp(s, templateImg, scienceImg, mask, convolutionKernel);
   }
   for(auto& s : sciStamps) {
-    fillStamp(s, scienceImg, templateImg, convolutionKernel);
+    fillStamp(s, scienceImg, templateImg, mask, convolutionKernel);
   }
 
   clock_t p6 = clock();
@@ -169,8 +170,8 @@ int main(int argc, char* argv[]) {
 
   std::cout << "\nChoosing convolution direction..." << std::endl;
 
-  double templateMerit = testFit(templateStamps, templateImg, scienceImg);
-  double scienceMerit = testFit(sciStamps, scienceImg, templateImg);
+  double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask);
+  double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask);
   if(args.verbose)
     std::cout << "template merit value = " << templateMerit
               << ", science merit value = " << scienceMerit << std::endl;
@@ -193,7 +194,7 @@ int main(int argc, char* argv[]) {
 
   std::cout << "\nFitting kernel..." << std::endl;
 
-  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg);
+  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask);
 
   clock_t p10 = clock();
   if(args.verboseTime) {

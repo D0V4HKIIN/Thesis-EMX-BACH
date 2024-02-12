@@ -200,27 +200,7 @@ struct Image {
   std::string path;
   std::pair<cl_long, cl_long> axis;
 
-  enum masks
-  {
-    NONE = 0,
-    BAD_PIX_VAL = 1 << 0, // FLAG_BAD_PIXVAL
-    SAT_PIXEL = 1 << 1, // FLAG_SAT_PIXEL
-    LOW_PIXEL = 1 << 2, // FLAG_LOW_PIXEL
-    NAN_PIXEL = 1 << 3, // FLAG_ISNAN
-    BAD_CONV = 1 << 4, // FLAG_BAD_CONV
-    INPUT_MASK = 1 << 5, // FLAG_INPUT_MASK
-    OK_CONV = 1 << 6, // FLAG_OK_CONV    
-    BAD_INPUT = 1 << 7, // FLAG_INPUT_ISBAD
-    BAD_PIXEL = 1 << 8, // FLAG_T_BAD, FLAG_I_BAD
-    SKIP = 1 << 9, // FLAG_T_SKIP, FLAG_I_SKIP
-    BAD_OUTPUT = 1 << 10, // FLAG_OUTPUT_ISBAD,
-    ALL = (1 << 11) - 1
-  };
-
   std::vector<double> data{};
-
-private:
-  std::vector<uint16_t> dataMask;
 
  public:
   Image(const std::string n, std::pair<cl_long, cl_long> a = {0L, 0L},
@@ -228,28 +208,14 @@ private:
       : name{n},
         path{p},
         axis{a},
-        data(this->size()),
-        dataMask(this->size(), NONE) {}
+        data(this->size()) {}
 
   Image(const std::string n, std::vector<double> d,
         std::pair<cl_long, cl_long> a, const std::string p = "res/")
       : name{n},
         path{p},
         axis{a},
-        data{d},
-        dataMask(this->size(), NONE) {}
-
-  bool isMaskedAny(int index) const {
-    return dataMask[index] != NONE;
-  }
-
-  bool isMasked(int index, masks mask) const {
-    return (dataMask[index] & mask) != NONE;
-  }
-
-  void unmask(int index, masks mask) {
-    dataMask[index] &= ~mask;
-  }
+        data{d} {}
 
   double* operator&() { return &data[0]; }
 
@@ -273,25 +239,78 @@ private:
     long* ptr = tmpAx;
     return ptr;
   }
+};
+
+class ImageMask {
+public:
+  enum masks
+  {
+    NONE = 0,
+    BAD_PIX_VAL = 1 << 0, // FLAG_BAD_PIXVAL
+    SAT_PIXEL = 1 << 1, // FLAG_SAT_PIXEL
+    LOW_PIXEL = 1 << 2, // FLAG_LOW_PIXEL
+    NAN_PIXEL = 1 << 3, // FLAG_ISNAN
+    BAD_CONV = 1 << 4, // FLAG_BAD_CONV
+    INPUT_MASK = 1 << 5, // FLAG_INPUT_MASK
+    OK_CONV = 1 << 6, // FLAG_OK_CONV    
+    BAD_INPUT = 1 << 7, // FLAG_INPUT_ISBAD
+    BAD_PIXEL_T = 1 << 8, // FLAG_T_BAD
+    SKIP_T = 1 << 9, // FLAG_T_SKIP
+    BAD_PIXEL_S = 1 << 10, // FLAG_I_BAD
+    SKIP_S = 1 << 11, // FLAG_I_SKIP
+    BAD_OUTPUT = 1 << 12, // FLAG_OUTPUT_ISBAD
+    ALL = (1 << 13) - 1
+  };
+
+  ImageMask(const std::pair<int, int>& axis) :
+    axis(axis),
+    dataMask(axis.first * axis.second, NONE) {
+
+  }
+
+  bool isMaskedAny(int index) const {
+    return dataMask[index] != NONE;
+  }
+
+  bool isMasked(int index, masks mask) const {
+    return (dataMask[index] & mask) != NONE;
+  }
+
+  void unmask(int index, masks mask) {
+    dataMask[index] &= ~mask;
+  }
 
   void maskPix(int x, int y, masks mask) {
     int index = x + (y * axis.first);
     dataMask[index] |= mask;
   }
+
+public:
+  std::pair<int, int> axis;
+
+private:
+  std::vector<uint16_t> dataMask;
 };
 
-inline Image::masks operator~(Image::masks a)
+inline ImageMask::masks operator~(ImageMask::masks a)
 {
-    return static_cast<Image::masks>(~static_cast<int>(a));
+    return static_cast<ImageMask::masks>(~static_cast<int>(a));
 }
 
-inline Image::masks operator&(Image::masks a, Image::masks b)
+inline ImageMask::masks operator&(ImageMask::masks a, ImageMask::masks b)
 {
-    return static_cast<Image::masks>(static_cast<int>(a) & static_cast<int>(b));
+    return static_cast<ImageMask::masks>(static_cast<int>(a) & static_cast<int>(b));
 }
 
-inline Image::masks operator|(Image::masks a, Image::masks b)
+inline ImageMask::masks& operator&=(ImageMask::masks& a, ImageMask::masks b)
 {
-    return static_cast<Image::masks>(static_cast<int>(a) | static_cast<int>(b));
+    a = static_cast<ImageMask::masks>(static_cast<int>(a) & static_cast<int>(b));
+
+    return a;
+}
+
+inline ImageMask::masks operator|(ImageMask::masks a, ImageMask::masks b)
+{
+    return static_cast<ImageMask::masks>(static_cast<int>(a) | static_cast<int>(b));
 }
 #endif

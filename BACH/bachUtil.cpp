@@ -9,25 +9,22 @@ void checkError(cl_int err) {
   }
 }
 
-void maskInput(Image& tImg, Image& sImg) {
+void maskInput(Image& tImg, Image& sImg, ImageMask& mask) {
   for(long y = 0; y < tImg.axis.second; y++) {
     for(long x = 0; x < tImg.axis.first; x++) {
       long index = x + y * tImg.axis.first;
 
       if (tImg[index] >= args.threshHigh || sImg[index] >= args.threshHigh) {
-        tImg.maskPix(x, y, Image::BAD_INPUT | Image::SAT_PIXEL);
-        sImg.maskPix(x, y, Image::BAD_INPUT | Image::SAT_PIXEL);
+        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
       }
 
       if(tImg[index] <= args.threshLow || sImg[index] <= args.threshLow) {
-        tImg.maskPix(x, y, Image::BAD_INPUT | Image::LOW_PIXEL);
-        sImg.maskPix(x, y, Image::BAD_INPUT | Image::LOW_PIXEL);
+        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
       }
     }
   }
 
-  spreadMask(tImg, args.hKernelWidth * 1);
-  spreadMask(sImg, args.hKernelWidth * 1);
+  spreadMask(mask, args.hKernelWidth * 1);
   
   for(long y = 0; y < tImg.axis.second; y++) {
     for(long x = 0; x < tImg.axis.first; x++) {
@@ -36,30 +33,29 @@ void maskInput(Image& tImg, Image& sImg) {
 
       if(x < borderSize || x >= tImg.axis.first - borderSize || y < borderSize ||
          y >= tImg.axis.second - borderSize) {
-        tImg.maskPix(x, y, Image::BAD_PIXEL);
-        sImg.maskPix(x, y, Image::BAD_PIXEL);
+        mask.maskPix(x, y, ImageMask::BAD_PIXEL_S | ImageMask::BAD_PIXEL_T);
       }
     }
   }
 }
 
-void spreadMask(Image& image, int width) {
+void spreadMask(ImageMask& mask, int width) {
     int w2 = width / 2;
-    for (int y = 0; y < image.axis.second; y++) {
-        for (int x = 0; x < image.axis.first; x++) {
-            if (image.isMasked(x + image.axis.first * y, Image::BAD_INPUT)) {
+    for (int y = 0; y < mask.axis.second; y++) {
+        for (int x = 0; x < mask.axis.first; x++) {
+            if (mask.isMasked(x + mask.axis.first * y, ImageMask::BAD_INPUT)) {
                 for (int x2 = -w2; x2 <= w2; x2++) {
                     int xx = x + x2;
-                    if (xx < 0 || xx >= image.axis.first)
+                    if (xx < 0 || xx >= mask.axis.first)
                         continue;
                     
                     for (int y2 = -w2; y2 <= w2; y2++) {
                         int yy = y + y2;
-                        if (yy < 0 || yy >= image.axis.second)
+                        if (yy < 0 || yy >= mask.axis.second)
                             continue;
                         
-                        if (!image.isMasked(xx + image.axis.first * yy, Image::BAD_INPUT)) {
-                          image.maskPix(xx, yy, Image::OK_CONV);
+                        if (!mask.isMasked(xx + mask.axis.first * yy, ImageMask::BAD_INPUT)) {
+                          mask.maskPix(xx, yy, ImageMask::OK_CONV);
                         }
                     }
                 }
@@ -171,7 +167,7 @@ double ran1(int *idum) {
     return temp;
 }
 
-void calcStats(Stamp& stamp, Image& image) {
+void calcStats(Stamp& stamp, Image& image, ImageMask& mask) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
@@ -207,7 +203,7 @@ void calcStats(Stamp& stamp, Image& image) {
     cl_int yI = randY + stamp.coords.second;
     int indexI = xI + yI * image.axis.first;
 
-    if(image.isMaskedAny(indexI) || std::abs(image[indexI]) <= 1e-10) {
+    if(mask.isMaskedAny(indexI) || std::abs(image[indexI]) <= 1e-10) {
       continue;
     }
 
@@ -237,12 +233,12 @@ void calcStats(Stamp& stamp, Image& image) {
       cl_int yI = y + stamp.coords.second;
       int indexI = xI + yI * image.axis.first;
 
-      if(image.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
+      if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
         continue;
       }
 
       if (std::isnan(image[indexI])) {
-        image.maskPix(x, y, Image::NAN_PIXEL | Image::BAD_INPUT);
+        mask.maskPix(xI, yI, ImageMask::NAN_PIXEL | ImageMask::BAD_INPUT);
         continue;
       }
 
@@ -281,7 +277,7 @@ void calcStats(Stamp& stamp, Image& image) {
         cl_int yI = y + stamp.coords.second;
         int indexI = xI + yI * image.axis.first;
 
-        if(image.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
+        if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
           continue;
         }
 

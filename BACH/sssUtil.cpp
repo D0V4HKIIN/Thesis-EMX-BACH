@@ -3,17 +3,17 @@
 #include "utils/bachUtil.h"
 #include <cassert>
 
-void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::vector<Stamp>& scienceStamps, Image& scienceImage, double* filledTempl, double* filledScience) {
+void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::vector<Stamp>& scienceStamps, Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience) {
   std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
 
   assert(templStamps.size() == scienceStamps.size());
 
   for (int i = 0; i < templStamps.size(); i++) {
-    calcStats(templStamps[i], templImage);
-    calcStats(scienceStamps[i], scienceImage);
+    calcStats(templStamps[i], templImage, mask);
+    calcStats(scienceStamps[i], scienceImage, mask);
 
-    findSStamps(templStamps[i], templImage, i);
-    findSStamps(scienceStamps[i], scienceImage, i);
+    findSStamps(templStamps[i], templImage, mask, i, true);
+    findSStamps(scienceStamps[i], scienceImage, mask, i, false);
   }
 
   int oldCount = templStamps.size();
@@ -67,7 +67,7 @@ void createStamps(Image& img, std::vector<Stamp>& stamps, int w, int h) {
   }
 }
 
-double checkSStamp(SubStamp& sstamp, Image& image, Stamp& stamp) {
+double checkSStamp(SubStamp& sstamp, Image& image, ImageMask& mask, Stamp& stamp, ImageMask::masks badMask, bool isTemplate) {
   double retVal = 0.0;
   for(int y = sstamp.imageCoords.second - args.hSStampWidth;
       y <= sstamp.imageCoords.second + args.hSStampWidth; y++) {
@@ -79,11 +79,11 @@ double checkSStamp(SubStamp& sstamp, Image& image, Stamp& stamp) {
         continue;
 
       int absCoords = x + y * image.axis.first;
-      if(image.isMasked(absCoords, ~Image::OK_CONV))
+      if(mask.isMasked(absCoords, badMask))
         return 0.0;
 
       if(image[absCoords] >= args.threshHigh) {
-        image.maskPix(x, y, Image::BAD_PIXEL);
+        mask.maskPix(x, y, isTemplate ? ImageMask::BAD_PIXEL_T : ImageMask::BAD_PIXEL_S);
         return 0.0;
       }
       if((image[absCoords] - stamp.stats.skyEst) / stamp.stats.fwhm >
@@ -94,11 +94,20 @@ double checkSStamp(SubStamp& sstamp, Image& image, Stamp& stamp) {
   return retVal;
 }
 
-cl_int findSStamps(Stamp& stamp, Image& image, int index) {
+cl_int findSStamps(Stamp& stamp, Image& image, ImageMask& mask, int index, bool isTemplate) {
   double floor = stamp.stats.skyEst + args.threshKernFit * stamp.stats.fwhm;
 
   double dfrac = 0.9;
   int maxSStamps = 2 * args.maxKSStamps;
+
+  ImageMask::masks badMask = ImageMask::ALL & ~ImageMask::OK_CONV;
+
+  if (isTemplate) {
+    badMask &= ~(ImageMask::BAD_PIXEL_S | ImageMask::SKIP_S);
+  }
+  else {
+    badMask &= ~(ImageMask::BAD_PIXEL_T | ImageMask::SKIP_T);
+  }
 
   while(stamp.subStamps.size() < size_t(maxSStamps)) {
     double lowestPSFLim =
@@ -111,12 +120,12 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
         long coords = x + (y * stamp.size.first);
         long absCoords = absx + (absy * image.axis.first);
 
-        if (image.isMasked(absCoords, ~Image::OK_CONV)) {
+        if (mask.isMasked(absCoords, badMask)) {
           continue;
         }
 
         if(stamp[coords] > args.threshHigh) {
-          image.maskPix(absx, absy, Image::BAD_PIXEL);
+          mask.maskPix(absx, absy, isTemplate ? ImageMask::BAD_PIXEL_T : ImageMask::BAD_PIXEL_S);
           continue;
         }
 
@@ -144,12 +153,12 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
                 continue;
               long kCoords = kx + (ky * image.axis.first);
 
-              if (image.isMasked(kCoords, ~Image::OK_CONV)) {
+              if (mask.isMasked(kCoords, badMask)) {
                 continue;
               }
 
               if(image[kCoords] >= args.threshHigh) {
-                image.maskPix(kx, ky, Image::BAD_PIXEL);
+                mask.maskPix(kx, ky, isTemplate ? ImageMask::BAD_PIXEL_T : ImageMask::BAD_PIXEL_S);
                 continue;
               }
 
@@ -167,7 +176,7 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
               }
             }
           }
-          s.val = checkSStamp(s, image, stamp);
+          s.val = checkSStamp(s, image, mask, stamp, badMask, isTemplate);
           if(s.val == 0.0) continue;
           stamp.subStamps.push_back(s);
 
@@ -178,7 +187,7 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
                 x <= s.stampCoords.first + args.hSStampWidth; x++) {
               int x2 = x + stamp.coords.first;
               if (x > 0 && x < stamp.size.first && y > 0 && y < stamp.size.second) {
-                image.maskPix(x2, y2, Image::SKIP);
+                mask.maskPix(x2, y2, isTemplate ? ImageMask::SKIP_T : ImageMask::SKIP_S);
               }
             }
           }
