@@ -261,8 +261,8 @@ int main(int argc, char* argv[]) {
       conv{program, "conv"};
   cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h),
                         cl::NullRange};
-  conv(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, outImgBuf, w, h);
-  queue.finish();
+  cl::Event convEvent = conv(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, outImgBuf, w, h);
+  convEvent.wait();
 
   // Read data from convolution
   Image outImg{args.outName, templateImg.axis, args.outPath};
@@ -300,8 +300,8 @@ int main(int argc, char* argv[]) {
 
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long> sub{program,
                                                                        "sub"};
-  sub(eargs, sImgBuf, convImgBuf, diffImgBuf, args.fKernelWidth, w, h);
-  queue.finish();
+  cl::Event subEvent = sub(eargs, sImgBuf, convImgBuf, diffImgBuf, args.fKernelWidth, w, h);
+  subEvent.wait();
 
   // Read data from subtraction
   Image diffImg{"sub.fits", templateImg.axis, args.outPath};
