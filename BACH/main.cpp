@@ -262,6 +262,7 @@ int main(int argc, char* argv[]) {
   cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h),
                         cl::NullRange};
   conv(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, outImgBuf, w, h);
+  queue.finish();
 
   // Read data from convolution
   Image outImg{args.outName, templateImg.axis, args.outPath};
@@ -269,11 +270,6 @@ int main(int argc, char* argv[]) {
   err = queue.enqueueReadBuffer(outImgBuf, CL_TRUE, 0,
                                 sizeof(cl_double) * w * h, &outImg);
   checkError(err);
-
-  if (queue.finish() != CL_SUCCESS) {
-    std::cout << "Could not finish executing the queue" << std::endl;
-    std::exit(1);
-  }
 
   // Add background and scale by kernel sum for output of convoluted image.
   for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
@@ -305,6 +301,7 @@ int main(int argc, char* argv[]) {
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long> sub{program,
                                                                        "sub"};
   sub(eargs, sImgBuf, convImgBuf, diffImgBuf, args.fKernelWidth, w, h);
+  queue.finish();
 
   // Read data from subtraction
   Image diffImg{"sub.fits", templateImg.axis, args.outPath};
