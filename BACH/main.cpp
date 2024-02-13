@@ -247,11 +247,11 @@ int main(int argc, char* argv[]) {
         convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
       }
 
-      if (templateImg[index] >= args.threshLow) {
+      if (templateImg[index] >= args.threshHigh) {
         convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
       }
 
-      if (templateImg[index] <= args.threshHigh) {
+      if (templateImg[index] <= args.threshLow) {
         convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
       }
     }
@@ -356,12 +356,12 @@ int main(int argc, char* argv[]) {
                                 sizeof(cl_double) * w * h, &diffImg);
   checkError(err);
 
-  for (int y = args.hKernelWidth; y < outImg.axis.second - args.hKernelWidth; y++) {
-    for (int x = args.hKernelWidth; x < outImg.axis.first - args.hKernelWidth; x++) {
-      int index = y * outImg.axis.first + x;
+  for (int y = args.hKernelWidth; y < diffImg.axis.second - args.hKernelWidth; y++) {
+    for (int x = args.hKernelWidth; x < diffImg.axis.first - args.hKernelWidth; x++) {
+      int index = y * diffImg.axis.first + x;
 
       if (mask.isMasked(index, ImageMask::BAD_OUTPUT)) {
-        outImg.data[index] = 0.0f;
+        diffImg.data[index] = 1e-30f;
       }
     }
   }
