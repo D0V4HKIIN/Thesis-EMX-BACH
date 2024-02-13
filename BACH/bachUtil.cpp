@@ -14,6 +14,10 @@ void maskInput(Image& tImg, Image& sImg, ImageMask& mask) {
     for(long x = 0; x < tImg.axis.first; x++) {
       long index = x + y * tImg.axis.first;
 
+      if (tImg[index] == 0.0 || sImg[index] == 0.0) {
+        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
+      }
+
       if (tImg[index] >= args.threshHigh || sImg[index] >= args.threshHigh) {
         mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
       }

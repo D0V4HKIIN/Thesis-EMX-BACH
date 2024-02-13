@@ -236,6 +236,27 @@ int main(int argc, char* argv[]) {
               << templateImg.axis.second / 2 << "): " << kernSum << std::endl;
   }
 
+  mask.clear();
+  ImageMask convMask(scienceImg.axis);
+
+  for (int y = 0; y < convMask.axis.second; y++) {
+    for (int x = 0; x < convMask.axis.first; x++) {
+      int index = y * convMask.axis.first + x;
+
+      if (templateImg[index] == 0.0) {
+        convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
+      }
+
+      if (templateImg[index] >= args.threshLow) {
+        convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
+      }
+
+      if (templateImg[index] <= args.threshHigh) {
+        convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
+      }
+    }
+  }
+
   // Declare all the buffers which will be need in opencl operations.
   cl::Buffer tImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
   cl::Buffer sImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
@@ -279,6 +300,24 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  for (int y = 0; y < convMask.axis.second; y++) {
+    for (int x = 0; x < convMask.axis.first; x++) {
+      int index = y * convMask.axis.first + x;
+
+      if (scienceImg[index] == 0.0) {
+        mask.maskPix(x, y, ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
+      }
+
+      if (scienceImg[index] >= args.threshHigh) {
+        mask.maskPix(x, y, ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
+      }
+
+      if (scienceImg[index] <= args.threshLow) {
+        mask.maskPix(x, y,ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
+      }
+    }
+  }
+
   clock_t p12 = clock();
   if(args.verboseTime) {
     printf("Conv took %lds %ldms\n", (p12 - p11) / CLOCKS_PER_SEC,
@@ -308,6 +347,16 @@ int main(int argc, char* argv[]) {
   err = queue.enqueueReadBuffer(diffImgBuf, CL_TRUE, 0,
                                 sizeof(cl_double) * w * h, &diffImg);
   checkError(err);
+
+  for (int y = args.hKernelWidth; y < outImg.axis.second - args.hKernelWidth; y++) {
+    for (int x = args.hKernelWidth; x < outImg.axis.first - args.hKernelWidth; x++) {
+      int index = y * outImg.axis.first + x;
+
+      if (mask.isMasked(index, ImageMask::BAD_OUTPUT)) {
+        outImg.data[index] = 0.0f;
+      }
+    }
+  }
 
   clock_t p14 = clock();
   if(args.verboseTime) {

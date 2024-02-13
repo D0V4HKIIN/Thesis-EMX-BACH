@@ -252,7 +252,7 @@ public:
     NAN_PIXEL = 1 << 3, // FLAG_ISNAN
     BAD_CONV = 1 << 4, // FLAG_BAD_CONV
     INPUT_MASK = 1 << 5, // FLAG_INPUT_MASK
-    OK_CONV = 1 << 6, // FLAG_OK_CONV    
+    OK_CONV = 1 << 6, // FLAG_OK_CONV
     BAD_INPUT = 1 << 7, // FLAG_INPUT_ISBAD
     BAD_PIXEL_T = 1 << 8, // FLAG_T_BAD
     SKIP_T = 1 << 9, // FLAG_T_SKIP
@@ -266,6 +266,15 @@ public:
     axis(axis),
     dataMask(axis.first * axis.second, NONE) {
 
+  }
+
+  void clear() {
+    for (int y = 0; y < axis.second; y++) {
+      for (int x = 0; x < axis.first; x++) {
+        int index = x + (y * axis.first);
+        dataMask[index] = NONE;
+      }
+    }
   }
 
   bool isMaskedAny(int index) const {
