@@ -267,6 +267,8 @@ public:
     dataMask(axis.first * axis.second, NONE) {
 
   }
+  
+  uint16_t* operator&() { return &dataMask[0]; }
 
   void clear() {
     for (int y = 0; y < axis.second; y++) {

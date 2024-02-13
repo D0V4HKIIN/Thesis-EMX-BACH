@@ -238,7 +238,7 @@ int main(int argc, char* argv[]) {
 
   mask.clear();
   ImageMask convMask(scienceImg.axis);
-
+  
   for (int y = 0; y < convMask.axis.second; y++) {
     for (int x = 0; x < convMask.axis.first; x++) {
       int index = y * convMask.axis.first + x;
@@ -261,10 +261,12 @@ int main(int argc, char* argv[]) {
   cl::Buffer tImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
   cl::Buffer sImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
   cl::Buffer convImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
+  cl::Buffer convMaskBuf(context, CL_MEM_READ_ONLY, sizeof(cl_ushort) * w * h);
   cl::Buffer kernBuf(context, CL_MEM_READ_ONLY,
                      sizeof(cl_double) * convKernels.size());
   cl::Buffer outImgBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
   cl::Buffer diffImgBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
+  cl::Buffer outMaskBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_ushort) * w * h);
 
   cl::CommandQueue queue(context, default_device);
 
@@ -276,13 +278,16 @@ int main(int argc, char* argv[]) {
   err = queue.enqueueWriteBuffer(tImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h,
                                  &templateImg);
   checkError(err);
+  err = queue.enqueueWriteBuffer(convMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h,
+                                 &convMask);
+  checkError(err);
 
-  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer, cl_long,
+  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long,
                     cl_long>
       conv{program, "conv"};
   cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h),
                         cl::NullRange};
-  cl::Event convEvent = conv(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, outImgBuf, w, h);
+  cl::Event convEvent = conv(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, outImgBuf, convMaskBuf, outMaskBuf, w, h);
   convEvent.wait();
 
   // Read data from convolution
@@ -290,6 +295,9 @@ int main(int argc, char* argv[]) {
 
   err = queue.enqueueReadBuffer(outImgBuf, CL_TRUE, 0,
                                 sizeof(cl_double) * w * h, &outImg);
+  checkError(err);
+  err = queue.enqueueReadBuffer(outMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h,
+                                 &mask);
   checkError(err);
 
   // Add background and scale by kernel sum for output of convoluted image.

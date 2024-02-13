@@ -1,5 +1,6 @@
 void kernel conv(global const double *convKern, const long convWidth, const long xSteps,
                  global const double *image, global double *outimg,
+                 global const ushort *convMask, global ushort *outMask,
                  const long w, const long h) {
   int id = get_global_id(0);
   double acc = 0.0;
@@ -26,7 +27,7 @@ void kernel conv(global const double *convKern, const long convWidth, const long
         acc += convKern[convIndex] * image[imgIndex];
       }
     }
-
+    outMask[id] = convMask[id];
     outimg[id] = acc;
   } else {
     outimg[id] = 1e-30;
