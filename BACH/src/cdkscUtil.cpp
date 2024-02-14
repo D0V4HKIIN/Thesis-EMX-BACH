@@ -1,5 +1,3 @@
-#define CL_HPP_TARGET_OPENCL_VERSION 300
-
 #include "bachUtil.h"
 
 double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg, ImageMask& mask) {

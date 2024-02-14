@@ -1,5 +1,3 @@
-#define CL_HPP_TARGET_OPENCL_VERSION 300
-
 #include "bachUtil.h"
 
 void createB(Stamp& s, Image& img) {
