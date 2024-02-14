@@ -100,16 +100,16 @@ def main(args):
 
         print(f"{INFO_COLOR}Running test {id}...")
 
-        args = [str(exe_path)]
-        args += ["-ip", str(RES_PATH)]
-        args += ["-s", f"{science_name}.fits"]
-        args += ["-t", f"{template_name}.fits"]
-        args += ["-op", str(OUTPUT_PATH / f"test{id}_")]
+        exe_args = [str(exe_path)]
+        exe_args += ["-ip", str(RES_PATH)]
+        exe_args += ["-s", f"{science_name}.fits"]
+        exe_args += ["-t", f"{template_name}.fits"]
+        exe_args += ["-op", str(OUTPUT_PATH / f"test{id}_")]
 
         start_time = time.time()
 
         with open(OUTPUT_PATH / f"test{id}_out.txt", "w") as out_stream:
-            if not subprocess.run(args=args, stdout=out_stream, stderr=out_stream):
+            if not subprocess.run(args=exe_args, stdout=out_stream, stderr=out_stream):
                 failed_tests += 1
                 print(f"{ERROR_COLOR}X-BACH exited with an error code!")
                 print()
