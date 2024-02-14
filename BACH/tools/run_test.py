@@ -23,9 +23,9 @@ except ModuleNotFoundError:
 
 TEST_TABLE = [
     # ID | Science       | Template        | HOTPANTS conv   | HOTPANTS sub   | Max abs error S,T | Max rel error S,T
-    ( 1,   "test0",        "test1",          "test01_conv",    "test01_sub",    (0.0002, 0.0005),   (0.0005, 0.004 )),
-    ( 2,   "testScience",  "testTemplate",   "testST_conv",    "testST_sub",    (0.008,  0.002 ),   (5e-6  , 0.9   )),
-    ( 3,   "sparse0",      "sparse1",        "sparse01_conv",  "sparse01_sub",  (20,     5     ),   (0.0003, 0.0005))
+    ( 1,   "test0",        "test1",          "test01_conv",    "test01_sub",    (2e-4, 5e-4),       (5e-3, 4e-3)),
+    ( 2,   "testScience",  "testTemplate",   "testST_conv",    "testST_sub",    (8e-3, 2e-3),       (5e-6, 9e-1)),
+    ( 3,   "sparse0",      "sparse1",        "sparse01_conv",  "sparse01_sub",  (2e1,  5e0),        (3e-4, 5e-4))
 ]
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
@@ -49,6 +49,7 @@ def diff_fits(h_path, b_path):
 
     max_error_abs = -10000000
     max_error_rel = -10000000
+    wrong_nans = 0
     
     for i in range(len(h_data)):
         for j in range(len(h_data[i])):
@@ -75,7 +76,7 @@ def diff_fits(h_path, b_path):
     h_file.close()
     b_file.close()
 
-    return max_error_abs, max_error_rel
+    return max_error_abs, max_error_rel, wrong_nans
 
 def main(args):
     exe_path = BUILD_PATH / "BACH.exe"
@@ -117,15 +118,16 @@ def main(args):
         end_time = time.time()
         test_time = end_time - start_time
 
-        conv_abs_err, conv_rel_err = diff_fits(TEST_PATH / f"{conv_name}.fits", OUTPUT_PATH / f"test{id}_diff.fits")
-        sub_abs_err, sub_rel_err = diff_fits(TEST_PATH / f"{sub_name}.fits", OUTPUT_PATH / f"test{id}_sub.fits")
+        conv_abs_err, conv_rel_err, conv_wrong_nans = diff_fits(TEST_PATH / f"{conv_name}.fits", OUTPUT_PATH / f"test{id}_diff.fits")
+        sub_abs_err, sub_rel_err, sub_wrong_nans = diff_fits(TEST_PATH / f"{sub_name}.fits", OUTPUT_PATH / f"test{id}_sub.fits")
 
         print(f"Test took {test_time:.2f} seconds")
-        print(f"Convolution errors: {conv_abs_err} (abs) and {conv_rel_err} (rel)")
-        print(f"Subtraction errors: {sub_abs_err} (abs) and {sub_rel_err} (rel)")
+        print(f"Convolution errors: {conv_abs_err:.2e} (abs), {conv_rel_err:.2e} (rel) and {conv_wrong_nans} (NaN)")
+        print(f"Subtraction errors: {sub_abs_err:.2e} (abs), {sub_rel_err:.2e} (rel) and {sub_wrong_nans} (NaN)")
 
         test_fail = conv_abs_err > max_abs_error[0] or conv_rel_err > max_rel_error[0] or\
-            sub_abs_err > max_abs_error[1] or sub_rel_err > max_rel_error[1]
+            sub_abs_err > max_abs_error[1] or sub_rel_err > max_rel_error[1] or\
+            conv_wrong_nans > 0 or sub_wrong_nans > 0
         
         if test_fail:
             failed_tests += 1
