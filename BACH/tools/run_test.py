@@ -3,11 +3,14 @@ import os
 import pathlib
 import subprocess
 import sys
+import time
 from astropy.io import fits
 
 TEST_TABLE = [
-    # ID | Science | Template | HOTPANTS conv | HOTPANTS sub | Max abs error   | Max rel error
-    ( 1,   "test0",  "test1",   "test01_conv",  "test01_sub",  (0.0002, 0.0005), (0.0005, 0.004))
+    # ID | Science       | Template        | HOTPANTS conv   | HOTPANTS sub   | Max abs error S,T | Max rel error S,T
+    ( 1,   "test0",        "test1",          "test01_conv",    "test01_sub",    (0.0002, 0.0005),   (0.0005, 0.004 )),
+    ( 2,   "testScience",  "testTemplate",   "testST_conv",    "testST_sub",    (0.008,  0.002 ),   (5e-6  , 0.9   )),
+    ( 3,   "sparse0",      "sparse1",        "sparse01_conv",  "sparse01_sub",  (20,     5     ),   (0.0003, 0.0005))
 ]
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
@@ -62,6 +65,7 @@ def diff_fits(h_path, b_path):
 def main(args):
     exe_path = BUILD_PATH / "BACH.exe"
 
+    print(f"There are a total of {len(TEST_TABLE)} tests to run")
     print(f"NOTE: running X-BACH from \"{BUILD_PATH.resolve()}\"")
     print()
 
@@ -80,13 +84,22 @@ def main(args):
         args += ["-t", f"{template_name}.fits"]
         args += ["-op", str(OUTPUT_PATH / f"test{id}_")]
 
+        start_time = time.time()
+
         with open(OUTPUT_PATH / f"test{id}_out.txt", "w") as out_stream:
             if not subprocess.run(args=args, stdout=out_stream, stderr=out_stream):
                 failed_tests += 1
+                print("X-BACH exited with an error code")
+                print()
+                continue
+
+        end_time = time.time()
+        test_time = end_time - start_time
 
         conv_abs_err, conv_rel_err = diff_fits(TEST_PATH / f"{conv_name}.fits", OUTPUT_PATH / f"test{id}_diff.fits")
         sub_abs_err, sub_rel_err = diff_fits(TEST_PATH / f"{sub_name}.fits", OUTPUT_PATH / f"test{id}_sub.fits")
 
+        print(f"Test took {test_time:.2f} seconds")
         print(f"Convolution errors: {conv_abs_err} (abs) and {conv_rel_err} (rel)")
         print(f"Subtraction errors: {sub_abs_err} (abs) and {sub_rel_err} (rel)")
 
@@ -94,6 +107,7 @@ def main(args):
             sub_abs_err > max_abs_error[1] or sub_rel_err > max_rel_error[1]
         
         if test_fail:
+            failed_tests += 1
             print(f"Test {id} failed on science image {science_name} and template image {template_name}")
         else:
             print(f"Test {id} succeeded")
