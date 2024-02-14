@@ -6,6 +6,21 @@ import sys
 import time
 from astropy.io import fits
 
+# Try import colorama, if not, create a 'dummy' environment
+USE_COLORAMA = False
+try:
+    import colorama
+
+    USE_COLORAMA = True
+
+    INFO_COLOR = colorama.Fore.CYAN
+    ERROR_COLOR = colorama.Fore.RED
+    PASS_COLOR = colorama.Fore.GREEN
+except ModuleNotFoundError:
+    INFO_COLOR = ""
+    ERROR_COLOR = ""
+    PASS_COLOR= ""
+
 TEST_TABLE = [
     # ID | Science       | Template        | HOTPANTS conv   | HOTPANTS sub   | Max abs error S,T | Max rel error S,T
     ( 1,   "test0",        "test1",          "test01_conv",    "test01_sub",    (0.0002, 0.0005),   (0.0005, 0.004 )),
@@ -66,7 +81,13 @@ def main(args):
     exe_path = BUILD_PATH / "BACH.exe"
 
     print(f"There are a total of {len(TEST_TABLE)} tests to run")
-    print(f"NOTE: running X-BACH from \"{BUILD_PATH.resolve()}\"")
+    print(f"{INFO_COLOR}NOTE: running X-BACH from \"{BUILD_PATH.resolve()}\"")
+
+    if USE_COLORAMA:
+        colorama.init(autoreset=True)
+    else:
+        print("NOTE: colorama is not installed. Print will not be colored.")
+
     print()
 
     os.makedirs(OUTPUT_PATH, exist_ok=True)
@@ -76,7 +97,7 @@ def main(args):
     for test_case in TEST_TABLE:
         (id, science_name, template_name, conv_name, sub_name, max_abs_error, max_rel_error) = test_case
 
-        print(f"Running test {id}...")
+        print(f"{INFO_COLOR}Running test {id}...")
 
         args = [str(exe_path)]
         args += ["-ip", str(RES_PATH)]
@@ -89,7 +110,7 @@ def main(args):
         with open(OUTPUT_PATH / f"test{id}_out.txt", "w") as out_stream:
             if not subprocess.run(args=args, stdout=out_stream, stderr=out_stream):
                 failed_tests += 1
-                print("X-BACH exited with an error code")
+                print(f"{ERROR_COLOR}X-BACH exited with an error code!")
                 print()
                 continue
 
@@ -108,18 +129,18 @@ def main(args):
         
         if test_fail:
             failed_tests += 1
-            print(f"Test {id} failed on science image {science_name} and template image {template_name}")
+            print(f"{ERROR_COLOR}Test {id} failed on science image {science_name} and template image {template_name}!")
         else:
-            print(f"Test {id} succeeded")
+            print(f"{PASS_COLOR}Test {id} succeeded!")
 
         print()
 
     if failed_tests > 0:
-        print(f"{failed_tests} tests failed.")
+        print(f"{ERROR_COLOR}{failed_tests} tests failed!")
 
         sys.exit(1)
     else:
-        print("All tests were successful.")
+        print(f"{PASS_COLOR}All tests were successful!")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
