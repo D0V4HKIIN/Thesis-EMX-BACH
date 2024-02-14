@@ -1,6 +1,6 @@
 #define CL_HPP_TARGET_OPENCL_VERSION 300
 
-#include "utils/bachUtil.h"
+#include "bachUtil.h"
 
 double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg, ImageMask& mask) {
   int nComp1 = args.nPSF - 1;

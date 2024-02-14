@@ -8,10 +8,10 @@
 #include <iterator>
 #include <vector>
 
-#include "utils/argsUtil.h"
-#include "utils/bachUtil.h"
-#include "utils/clUtil.h"
-#include "utils/fitsUtil.h"
+#include "argsUtil.h"
+#include "bachUtil.h"
+#include "clUtil.h"
+#include "fitsUtil.h"
 
 int main(int argc, char* argv[]) {
   clock_t p1 = clock();

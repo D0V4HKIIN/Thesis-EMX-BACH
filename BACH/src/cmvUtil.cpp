@@ -1,6 +1,6 @@
 #define CL_HPP_TARGET_OPENCL_VERSION 300
 
-#include "utils/bachUtil.h"
+#include "bachUtil.h"
 
 void createB(Stamp& s, Image& img) {
   /* Does Equation 2.13 which create the right side of the Equation Ma=B */

@@ -1,6 +1,6 @@
 #define CL_HPP_TARGET_OPENCL_VERSION 300
 
-#include "utils/bachUtil.h"
+#include "bachUtil.h"
 #include <cassert>
 
 void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::vector<Stamp>& scienceStamps, Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience) {
