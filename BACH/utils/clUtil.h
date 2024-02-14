@@ -3,6 +3,7 @@
 
 #include <CL/opencl.hpp>
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 
@@ -32,9 +33,9 @@ inline cl::Device get_default_device() {
   return default_device;
 }
 
-inline std::string get_kernel_func(std::string &&file_name,
+inline std::string get_kernel_func(std::string &&file_name, const std::filesystem::path& rootPath,
                                    std::string &&path = "cl_kern/") {
-  std::ifstream t(path + file_name);
+  std::ifstream t((rootPath / (path + file_name)).c_str());
   std::string tmp{std::istreambuf_iterator<char>{t},
                   std::istreambuf_iterator<char>{}};
 
@@ -57,10 +58,10 @@ inline void print_time(std::ostream &os, timePoint start, timePoint stop) {
 
 template <typename... Args>
 cl::Program load_build_programs(cl::Context context, cl::Device default_device,
-                                Args... names) {
+                                const std::filesystem::path& rootPath, Args... names) {
   cl::Program::Sources sources;
   for(auto n : {names...}) {
-    std::string code = get_kernel_func(n);
+    std::string code = get_kernel_func(n, rootPath);
 
     sources.push_back({code.c_str(), code.length()});
   }

@@ -3,6 +3,7 @@
 #include <time.h>
 
 #include <CL/opencl.hpp>
+#include <filesystem>
 #include <iostream>
 #include <iterator>
 #include <vector>
@@ -60,7 +61,8 @@ int main(int argc, char* argv[]) {
   cl::Context context{default_device};
 
   cl::Program program =
-      load_build_programs(context, default_device, "conv.cl", "sub.cl");
+      load_build_programs(context, default_device, std::filesystem::path(argv[0]).parent_path(),
+      "conv.cl", "sub.cl");
 
   clock_t p2 = clock();
   if(args.verboseTime) {
