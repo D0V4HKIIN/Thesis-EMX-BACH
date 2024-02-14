@@ -2,7 +2,7 @@
 
 #include "utils/bachUtil.h"
 
-double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg) {
+double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg, ImageMask& mask) {
   int nComp1 = args.nPSF - 1;
   int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
   int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
@@ -47,7 +47,7 @@ double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg) {
   std::vector<Stamp> testStamps{};
   int c = 0;
   for(auto& s : stamps) {
-    if(s.stats.diff < args.threshKernFit && !s.subStamps.empty()) {
+    if(s.stats.diff < args.sigKernFit && !s.subStamps.empty()) {
       testStamps.push_back(s);
       c++;
     }
@@ -69,7 +69,7 @@ double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg) {
   std::vector<double> merit{};
   double sig{};
   for(auto& ts : testStamps) {
-    sig = calcSig(ts, testKern.solution, tImg, sImg);
+    sig = calcSig(ts, testKern.solution, tImg, sImg, mask);
     if(sig != -1 && sig <= 1e10) merit.push_back(sig);
   }
   double meritMean, meritStdDev;
@@ -223,7 +223,7 @@ std::vector<double> createScProd(std::vector<Stamp>& stamps, Image& img,
 }
 
 double calcSig(Stamp& s, std::vector<double>& kernSol, Image& tImg,
-               Image& sImg) {
+               Image& sImg, ImageMask& mask) {
   if(s.subStamps.empty()) return -1.0;
   auto [ssx, ssy] = s.subStamps[0].imageCoords;
 
@@ -242,14 +242,14 @@ double calcSig(Stamp& s, std::vector<double>& kernSol, Image& tImg,
       double tDat = tmp[intIndex];
 
       double diff = tDat - sImg[absIndex] + background;
-      if(sImg.badInputMask[absIndex] || sImg.nanMask[absIndex] ||
+      if(mask.isMasked(absIndex, ImageMask::BAD_INPUT) ||
          std::abs(sImg[absIndex]) <= 1e-10) {
         continue;
       } else {
         tmp[intIndex] = diff;
       }
       if(std::isnan(tDat) || std::isnan(sImg[absIndex])) {
-        tImg.maskPix(absX, absY, Image::nan);
+        mask.maskPix(absX, absY, ImageMask::NAN_PIXEL);
         continue;
       }
 
@@ -320,7 +320,7 @@ std::vector<float> makeModel(Stamp& s, std::vector<double>& kernSol,
 }
 
 void fitKernel(Kernel& k, std::vector<Stamp>& stamps, Image& tImg,
-               Image& sImg) {
+               Image& sImg, ImageMask& mask) {
   int nComp1 = args.nPSF - 1;
   int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
   int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
@@ -335,7 +335,7 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, Image& tImg,
   lubksb(fittingMatrix, matSize, index, solution);
 
   k.solution = solution;
-  bool check = checkFitSolution(k, stamps, tImg, sImg);
+  bool check = checkFitSolution(k, stamps, tImg, sImg, mask);
   while(check) {
     if(args.verbose) std::cout << "Re-expanding matrix..." << std::endl;
     auto [fittingMatrix, weight] = createMatrix(stamps, tImg.axis);
@@ -345,23 +345,23 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, Image& tImg,
     lubksb(fittingMatrix, matSize, index, solution);
 
     k.solution = solution;
-    check = checkFitSolution(k, stamps, tImg, sImg);
+    check = checkFitSolution(k, stamps, tImg, sImg, mask);
   }
 }
 
 bool checkFitSolution(Kernel& k, std::vector<Stamp>& stamps, Image& tImg,
-                      Image& sImg) {
+                      Image& sImg, ImageMask& mask) {
   std::vector<double> ssValues{};
 
   bool check = false;
 
   for(Stamp& s : stamps) {
     if(!s.subStamps.empty()) {
-      double sig = calcSig(s, k.solution, tImg, sImg);
+      double sig = calcSig(s, k.solution, tImg, sImg, mask);
 
       if(sig == -1) {
         s.subStamps.erase(s.subStamps.begin(), next(s.subStamps.begin()));
-        fillStamp(s, tImg, sImg, k);
+        fillStamp(s, tImg, sImg, mask, k);
         check = true;
       } else {
         s.stats.chi2 = sig;
@@ -383,7 +383,7 @@ bool checkFitSolution(Kernel& k, std::vector<Stamp>& stamps, Image& tImg,
     if(!s.subStamps.empty()) {
       if((s.stats.chi2 - mean) > args.sigKernFit * stdDev) {
         s.subStamps.erase(s.subStamps.begin(), next(s.subStamps.begin()));
-        fillStamp(s, tImg, sImg, k);
+        fillStamp(s, tImg, sImg, mask, k);
         check = true;
       }
     }

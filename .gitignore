@@ -1,5 +1,3 @@
-/BACH/build
-/BACH/CMakeLists.txt
 *.exe
 *.dll
 *.pdb

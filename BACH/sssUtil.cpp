@@ -1,29 +1,43 @@
 #define CL_HPP_TARGET_OPENCL_VERSION 300
 
 #include "utils/bachUtil.h"
+#include <cassert>
 
-int identifySStamps(std::vector<Stamp>& stamps, Image& image) {
-  std::cout << "Identifying sub-stamps in " << image.name << "..." << std::endl;
+void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::vector<Stamp>& scienceStamps, Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience) {
+  std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
 
-  int index = 0, hasSStamps = 0;
-  for(auto& s : stamps) {
-    calcStats(s, image);
-    findSStamps(s, image, index);
-    if(!s.subStamps.empty()) hasSStamps++;
-    index++;
+  assert(templStamps.size() == scienceStamps.size());
+
+  for (int i = 0; i < templStamps.size(); i++) {
+    calcStats(templStamps[i], templImage, mask);
+    calcStats(scienceStamps[i], scienceImage, mask);
+
+    findSStamps(templStamps[i], templImage, mask, i, true);
+    findSStamps(scienceStamps[i], scienceImage, mask, i, false);
   }
 
-  stamps.erase(std::remove_if(stamps.begin(), stamps.end(),
+  int oldCount = templStamps.size();
+
+  templStamps.erase(std::remove_if(templStamps.begin(), templStamps.end(),
                               [](Stamp& s) { return s.subStamps.empty(); }),
-               stamps.end());
+               templStamps.end());
+  scienceStamps.erase(std::remove_if(scienceStamps.begin(), scienceStamps.end(),
+                              [](Stamp& s) { return s.subStamps.empty(); }),
+               scienceStamps.end());
+
+  if (filledTempl != nullptr) {
+    *filledTempl = static_cast<double>(templStamps.size()) / oldCount;
+  }
+
+  if (filledScience != nullptr) {
+    *filledScience = static_cast<double>(scienceStamps.size()) / oldCount;
+  }
 
   if(args.verbose) {
-    std::cout << "Non-Empty stamps: " << stamps.size() << std::endl;
+    std::cout << "Non-Empty template stamps: " << templStamps.size() << std::endl;
+    std::cout << "Non-Empty science stamps: " << scienceStamps.size() << std::endl;
   }
-
-  return hasSStamps;
 }
-
 void createStamps(Image& img, std::vector<Stamp>& stamps, int w, int h) {
   for(int j = 0; j < args.stampsy; j++) {
     for(int i = 0; i < args.stampsx; i++) {
@@ -53,7 +67,7 @@ void createStamps(Image& img, std::vector<Stamp>& stamps, int w, int h) {
   }
 }
 
-double checkSStamp(SubStamp& sstamp, Image& image, Stamp& stamp) {
+double checkSStamp(SubStamp& sstamp, Image& image, ImageMask& mask, Stamp& stamp, ImageMask::masks badMask, bool isTemplate) {
   double retVal = 0.0;
   for(int y = sstamp.imageCoords.second - args.hSStampWidth;
       y <= sstamp.imageCoords.second + args.hSStampWidth; y++) {
@@ -65,13 +79,11 @@ double checkSStamp(SubStamp& sstamp, Image& image, Stamp& stamp) {
         continue;
 
       int absCoords = x + y * image.axis.first;
-      if(image.badInputMask[absCoords] || image.badPixelMask[absCoords] ||
-         image.edgeMask[absCoords] || image.nanMask[absCoords] ||
-         image.psfMask[absCoords])
+      if(mask.isMasked(absCoords, badMask))
         return 0.0;
 
       if(image[absCoords] >= args.threshHigh) {
-        image.maskPix(x, y, Image::badPixel);
+        mask.maskPix(x, y, isTemplate ? ImageMask::BAD_PIXEL_T : ImageMask::BAD_PIXEL_S);
         return 0.0;
       }
       if((image[absCoords] - stamp.stats.skyEst) / stamp.stats.fwhm >
@@ -82,11 +94,22 @@ double checkSStamp(SubStamp& sstamp, Image& image, Stamp& stamp) {
   return retVal;
 }
 
-cl_int findSStamps(Stamp& stamp, Image& image, int index) {
+cl_int findSStamps(Stamp& stamp, Image& image, ImageMask& mask, int index, bool isTemplate) {
   double floor = stamp.stats.skyEst + args.threshKernFit * stamp.stats.fwhm;
 
   double dfrac = 0.9;
-  while(stamp.subStamps.size() < size_t(args.maxSStamps)) {
+  int maxSStamps = 2 * args.maxKSStamps;
+
+  ImageMask::masks badMask = ImageMask::ALL & ~ImageMask::OK_CONV;
+
+  if (isTemplate) {
+    badMask &= ~(ImageMask::BAD_PIXEL_S | ImageMask::SKIP_S);
+  }
+  else {
+    badMask &= ~(ImageMask::BAD_PIXEL_T | ImageMask::SKIP_T);
+  }
+
+  while(stamp.subStamps.size() < size_t(maxSStamps)) {
     double lowestPSFLim =
         std::max(floor, stamp.stats.skyEst +
                             (args.threshHigh - stamp.stats.skyEst) * dfrac);
@@ -97,13 +120,12 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
         long coords = x + (y * stamp.size.first);
         long absCoords = absx + (absy * image.axis.first);
 
-        if(image.badInputMask[absCoords] || image.badPixelMask[absCoords] ||
-           image.edgeMask[absCoords] || image.nanMask[absCoords] ||
-           image.psfMask[absCoords])
+        if (mask.isMasked(absCoords, badMask)) {
           continue;
+        }
 
         if(stamp[coords] > args.threshHigh) {
-          image.maskPix(absx, absy, Image::badPixel);
+          mask.maskPix(absx, absy, isTemplate ? ImageMask::BAD_PIXEL_T : ImageMask::BAD_PIXEL_S);
           continue;
         }
 
@@ -131,16 +153,12 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
                 continue;
               long kCoords = kx + (ky * image.axis.first);
 
-              if(image.badInputMask[kCoords] || image.badPixelMask[kCoords] ||
-                 image.edgeMask[kCoords] || image.nanMask[kCoords] ||
-                 image.psfMask[kCoords])
+              if (mask.isMasked(kCoords, badMask)) {
                 continue;
-              // if(image.anyBadMasked(kx, ky)) {
-              //   continue;
-              // }
+              }
 
               if(image[kCoords] >= args.threshHigh) {
-                image.maskPix(kx, ky, Image::badPixel);
+                mask.maskPix(kx, ky, isTemplate ? ImageMask::BAD_PIXEL_T : ImageMask::BAD_PIXEL_S);
                 continue;
               }
 
@@ -158,14 +176,25 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
               }
             }
           }
-          s.val = checkSStamp(s, image, stamp);
+          s.val = checkSStamp(s, image, mask, stamp, badMask, isTemplate);
           if(s.val == 0.0) continue;
           stamp.subStamps.push_back(s);
-          image.maskSStamp(s, Image::psf);
+
+          for(int y = s.stampCoords.second - args.hSStampWidth;
+              y <= s.stampCoords.second + args.hSStampWidth; y++) {
+            int y2 = y + stamp.coords.second;
+            for(int x = s.stampCoords.first - args.hSStampWidth;
+                x <= s.stampCoords.first + args.hSStampWidth; x++) {
+              int x2 = x + stamp.coords.first;
+              if (x > 0 && x < stamp.size.first && y > 0 && y < stamp.size.second) {
+                mask.maskPix(x2, y2, isTemplate ? ImageMask::SKIP_T : ImageMask::SKIP_S);
+              }
+            }
+          }
         }
-        if(stamp.subStamps.size() >= size_t(args.maxSStamps)) break;
+        if(stamp.subStamps.size() >= size_t(maxSStamps)) break;
       }
-      if(stamp.subStamps.size() >= size_t(args.maxSStamps)) break;
+      if(stamp.subStamps.size() >= size_t(maxSStamps)) break;
     }
     if(lowestPSFLim == floor) break;
     dfrac -= 0.2;
@@ -177,8 +206,18 @@ cl_int findSStamps(Stamp& stamp, Image& image, int index) {
                 << std::endl;
     return 1;
   }
-  std::sort(stamp.subStamps.begin(), stamp.subStamps.end(),
-            std::greater<SubStamp>());
+  int keepSStampCount = std::min<int>(stamp.subStamps.size(), args.maxKSStamps);
+  std::partial_sort(
+    stamp.subStamps.begin(),
+    stamp.subStamps.begin() + keepSStampCount,
+    stamp.subStamps.end(),
+    std::greater<SubStamp>()
+    );
+
+  if (stamp.subStamps.size() > keepSStampCount) {
+    stamp.subStamps.erase(stamp.subStamps.begin() + keepSStampCount, stamp.subStamps.end());
+  }
+
   if(args.verbose)
     std::cout << "Added " << stamp.subStamps.size() << " substamps to stamp "
               << index << std::endl;

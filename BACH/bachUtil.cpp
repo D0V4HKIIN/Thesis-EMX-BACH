@@ -9,7 +9,27 @@ void checkError(cl_int err) {
   }
 }
 
-void maskInput(Image& tImg, Image& sImg) {
+void maskInput(Image& tImg, Image& sImg, ImageMask& mask) {
+  for(long y = 0; y < tImg.axis.second; y++) {
+    for(long x = 0; x < tImg.axis.first; x++) {
+      long index = x + y * tImg.axis.first;
+
+      if (tImg[index] == 0.0 || sImg[index] == 0.0) {
+        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
+      }
+
+      if (tImg[index] >= args.threshHigh || sImg[index] >= args.threshHigh) {
+        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
+      }
+
+      if(tImg[index] <= args.threshLow || sImg[index] <= args.threshLow) {
+        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
+      }
+    }
+  }
+
+  spreadMask(mask, args.hKernelWidth * 1);
+  
   for(long y = 0; y < tImg.axis.second; y++) {
     for(long x = 0; x < tImg.axis.first; x++) {
       long index = x + y * tImg.axis.first;
@@ -17,19 +37,35 @@ void maskInput(Image& tImg, Image& sImg) {
 
       if(x < borderSize || x >= tImg.axis.first - borderSize || y < borderSize ||
          y >= tImg.axis.second - borderSize) {
-        tImg.maskPix(x, y, Image::edge);
-        sImg.maskPix(x, y, Image::edge);
-      }
-
-      if(std::max(tImg[index], sImg[index]) >= args.threshHigh ||
-         std::min(tImg[index], sImg[index]) <= args.threshLow) {
-        tImg.maskPix(x, y, Image::badInput);
-        sImg.maskPix(x, y, Image::badInput);
+        mask.maskPix(x, y, ImageMask::BAD_PIXEL_S | ImageMask::BAD_PIXEL_T);
       }
     }
   }
+}
 
-  // spreadMask does absolutely nothing
+void spreadMask(ImageMask& mask, int width) {
+    int w2 = width / 2;
+    for (int y = 0; y < mask.axis.second; y++) {
+        for (int x = 0; x < mask.axis.first; x++) {
+            if (mask.isMasked(x + mask.axis.first * y, ImageMask::BAD_INPUT)) {
+                for (int x2 = -w2; x2 <= w2; x2++) {
+                    int xx = x + x2;
+                    if (xx < 0 || xx >= mask.axis.first)
+                        continue;
+                    
+                    for (int y2 = -w2; y2 <= w2; y2++) {
+                        int yy = y + y2;
+                        if (yy < 0 || yy >= mask.axis.second)
+                            continue;
+                        
+                        if (!mask.isMasked(xx + mask.axis.first * yy, ImageMask::BAD_INPUT)) {
+                          mask.maskPix(xx, yy, ImageMask::OK_CONV);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 bool inImage(Image& image, int x, int y) {
@@ -135,17 +171,16 @@ double ran1(int *idum) {
     return temp;
 }
 
-void calcStats(Stamp& stamp, Image& image) {
+void calcStats(Stamp& stamp, Image& image, ImageMask& mask) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
 
   double median, sum;
 
-  std::vector<double> values{};
   std::vector<cl_int> bins(256, 0);
 
-  cl_int nValues = 100;
+  constexpr cl_int nValues = 100;
   double upProc = 0.9;
   double midProc = 0.5;
   cl_int numPix = stamp.size.first * stamp.size.second;
@@ -154,10 +189,13 @@ void calcStats(Stamp& stamp, Image& image) {
     std::cout << "Not enough pixels in a stamp" << std::endl;
     exit(1);
   }
-  int idum   = -666;  /* initialize random number generator with the devil's seed */
+  int idum = -666;
+
+  std::array<double, nValues> values{};
+  int valuesCount = 0;
 
   // Stop after randomly having selected a pixel numPix times.
-  for(int i = 0; (values.size() < numPix) && (i < size_t(nValues)); i++) {
+  for(int iter = 0; valuesCount < nValues && iter < numPix; iter++) {
     int randX = std::floor(ran1(&idum) * stamp.size.first);
     int randY = std::floor(ran1(&idum) * stamp.size.second);
     
@@ -169,24 +207,23 @@ void calcStats(Stamp& stamp, Image& image) {
     cl_int yI = randY + stamp.coords.second;
     int indexI = xI + yI * image.axis.first;
 
-    if(image.isMaskedAny(indexI) || std::abs(image[indexI]) <= 1e-10) {
-      i--;
+    if(mask.isMaskedAny(indexI) || std::abs(image[indexI]) <= 1e-10) {
       continue;
     }
 
-    values.push_back(stamp[indexS]);
+    values[valuesCount++] = stamp[indexS];
   }
 
   std::sort(std::begin(values), std::end(values));
 
   // Width of a histogram bin.
-  double binSize = (values[(int)(upProc * values.size())] -
-                    values[(int)(midProc * values.size())]) /
+  double binSize = (values[(int)(upProc * valuesCount)] -
+                    values[(int)(midProc * valuesCount)]) /
                    (double)nValues;
 
   // Value of lowest bin.
   double lowerBinVal =
-      values[(int)(midProc * values.size())] - (128.0 * binSize);
+      values[(int)(midProc * valuesCount)] - (128.0 * binSize);
 
   // Contains all good Pixels in the stamp, aka not masked.
   std::vector<double> maskedStamp{};
@@ -200,12 +237,12 @@ void calcStats(Stamp& stamp, Image& image) {
       cl_int yI = y + stamp.coords.second;
       int indexI = xI + yI * image.axis.first;
 
-      if(image.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
+      if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
         continue;
       }
 
       if (std::isnan(image[indexI])) {
-        image.maskPix(x, y, Image::nan, Image::badInput);
+        mask.maskPix(xI, yI, ImageMask::NAN_PIXEL | ImageMask::BAD_INPUT);
         continue;
       }
 
@@ -244,9 +281,7 @@ void calcStats(Stamp& stamp, Image& image) {
         cl_int yI = y + stamp.coords.second;
         int indexI = xI + yI * image.axis.first;
 
-        if(image.badInputMask[indexI] || image.badPixelMask[indexI] ||
-           image.nanMask[indexI] || image.edgeMask[indexI] ||
-           image[indexI] <= 1e-10) {
+        if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
           continue;
         }
 
