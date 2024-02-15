@@ -53,22 +53,22 @@ struct Arguments {
   bool verboseTime = false;
 };
 
-inline char* getCmdOption(char** begin, char** end, const std::string& option) {
-  char** itr = std::find(begin, end, option);
+inline const char* getCmdOption(const char** begin, const char** end, const std::string& option) {
+  const char** itr = std::find(begin, end, option);
   if(itr != end && ++itr != end) {
     return *itr;
   }
   return 0;
 }
 
-inline bool cmdOptionExists(char** begin, char** end,
+inline bool cmdOptionExists(const char** begin, const char** end,
                             const std::string& option) {
   return std::find(begin, end, option) != end;
 }
 
 inline Arguments args{};
 
-inline void getArguments(int argc, char* argv[]) {
+inline void getArguments(int argc, const char* argv[]) {
   if(cmdOptionExists(argv, argv + argc, "-o")) {
     args.outName = getCmdOption(argv, argv + argc, "-o");
   }

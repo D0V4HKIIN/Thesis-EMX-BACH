@@ -2,20 +2,20 @@
 
 #include <CL/opencl.hpp>
 #include <filesystem>
-#include <iostream>
 #include <iterator>
 #include <vector>
+#include <iostream>
 
-#include "argsUtil.h"
-#include "bachUtil.h"
 #include "clUtil.h"
 #include "fitsUtil.h"
+#include "bachUtil.h"
+#include "datatypeUtil.h"
+#include "bach.h"
 
-int main(int argc, char* argv[]) {
+int main(int argc, const char* argv[]) {
   clock_t p1 = clock();
 
   CCfits::FITS::setVerboseMode(true);
-
   try {
     std::cout << "Reading in arguments..." << std::endl;
     getArguments(argc, argv);
@@ -23,44 +23,27 @@ int main(int argc, char* argv[]) {
     std::cout << err.what() << '\n';
     return 1;
   }
-
+  
   std::cout << "\nReading in images..." << std::endl;
-
   Image templateImg{args.templateName};
   Image scienceImg{args.scienceName};
   templateImg.path = scienceImg.path = args.inputPath + "/";
-
+  auto [w, h] = templateImg.axis;
+  
   if(args.verbose)
     std::cout << "template image name: " << args.templateName
               << ", science image name: " << args.scienceName << std::endl;
 
-  cl_int err{};
-
-  err = readImage(templateImg);
-  checkError(err);
-  err = readImage(scienceImg);
-  checkError(err);
-
   ImageMask mask(templateImg.axis);
 
-  maskInput(templateImg, scienceImg, mask);
-
-  auto [w, h] = templateImg.axis;
-  if(w != scienceImg.axis.first || h != scienceImg.axis.second) {
-    std::cout << "Template image and science image must be the same size!"
-              << std::endl;
-
-    exit(1);
-  }
-
   std::cout << "\nSetting up openCL..." << std::endl;
-
-  cl::Device default_device{get_default_device()};
-  cl::Context context{default_device};
-
+  cl::Device defaultDevice{getDefaultDevice()};
+  cl::Context context{defaultDevice};
   cl::Program program =
-      load_build_programs(context, default_device, std::filesystem::path(argv[0]).parent_path(),
+      loadBuildPrograms(context, defaultDevice, std::filesystem::path(argv[0]).parent_path(),
       "conv.cl", "sub.cl");
+
+  init(templateImg, scienceImg, mask);
 
   clock_t p2 = clock();
   if(args.verboseTime) {
@@ -268,8 +251,9 @@ int main(int argc, char* argv[]) {
   cl::Buffer diffImgBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
   cl::Buffer outMaskBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_ushort) * w * h);
 
-  cl::CommandQueue queue(context, default_device);
+  cl::CommandQueue queue(context, defaultDevice);
 
+  cl_int err{};
   // Write necessary data for convolution
   err = queue.enqueueWriteBuffer(kernBuf, CL_TRUE, 0,
                                  sizeof(cl_double) * convKernels.size(),
