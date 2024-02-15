@@ -212,7 +212,7 @@ void conv(Image &templateImg, Image &scienceImg, ImageMask &mask, Image &convImg
                     cl_long>
       conv{program, "conv"};
   cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange};
-  cl::Event convEvent = conv(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, convImgBuf, convMaskBuf, convMaskBuf, w, h);
+  cl::Event convEvent = conv(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, w, h);
   convEvent.wait();
 
   err = queue.enqueueReadBuffer(convImgBuf, CL_TRUE, 0,
