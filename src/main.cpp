@@ -134,14 +134,8 @@ int main(int argc, const char* argv[]) {
   /* ===== Fin ===== */
 
   clock_t p15 = clock();
-  std::cout << "\nWriting output..." << std::endl;
 
-  cl_int err{};
-  err = writeImage(convImg);
-  checkError(err);
-  
-  err = writeImage(diffImg);
-  checkError(err);
+  fin(convImg, diffImg);
 
   clock_t p16 = clock();
   if(args.verboseTime) {

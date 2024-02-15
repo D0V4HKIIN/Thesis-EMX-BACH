@@ -287,3 +287,14 @@ void sub(Image &convImg, Image &scienceImg, ImageMask &mask, Image &diffImg,
     }
   }
 } 
+
+void fin(Image &convImg, Image &diffImg) {
+  std::cout << "\nWriting output..." << std::endl;
+
+  cl_int err{};
+  err = writeImage(convImg);
+  checkError(err);
+  
+  err = writeImage(diffImg);
+  checkError(err);
+}
