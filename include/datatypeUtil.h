@@ -1,5 +1,4 @@
-#ifndef DATATYPE_UTIL
-#define DATATYPE_UTIL
+#pragma once
 
 #include <CL/opencl.h>
 
@@ -324,4 +323,3 @@ inline ImageMask::masks operator|(ImageMask::masks a, ImageMask::masks b)
 {
     return static_cast<ImageMask::masks>(static_cast<int>(a) | static_cast<int>(b));
 }
-#endif

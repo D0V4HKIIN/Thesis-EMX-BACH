@@ -50,7 +50,6 @@ void sss(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Sta
                 << args.stampsy << " stamps instead." << std::endl;
   }
 
-  
   createStamps(templateImg, templateStamps, w, h);
   if(args.verbose) {
     std::cout << "Stamps created for " << templateImg.name << std::endl;
@@ -123,11 +122,9 @@ void cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
 }
 
 void ksc(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel) {
-
   std::cout << "\nFitting kernel..." << std::endl;
 
   fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask);
-
 }
 
 void conv(Image &templateImg, Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel,
@@ -194,7 +191,6 @@ void conv(Image &templateImg, Image &scienceImg, ImageMask &mask, Image &convImg
   cl::Buffer convImgBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
   cl::Buffer outMaskBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_ushort) * w * h);
 
-
   cl_int err{};
   // Write necessary data for convolution
   err = queue.enqueueWriteBuffer(kernBuf, CL_TRUE, 0,
@@ -243,7 +239,7 @@ void conv(Image &templateImg, Image &scienceImg, ImageMask &mask, Image &convImg
       }
 
       if (scienceImg[index] <= args.threshLow) {
-        mask.maskPix(x, y,ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
+        mask.maskPix(x, y, ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
       }
     }
   }

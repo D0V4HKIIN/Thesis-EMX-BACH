@@ -1,5 +1,4 @@
-#ifndef FITS_UTIL
-#define FITS_UTIL
+#pragma once
 
 #include <CCfits/CCfits>
 #include <CL/opencl.hpp>
@@ -71,5 +70,3 @@ inline cl_int writeImage(Image& img) {
   delete pFits;
   return 0;
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef BACH_UTIL
-#define BACH_UTIL
+#pragma once
 
 #include <CL/opencl.hpp>
 #include <algorithm>
@@ -53,4 +52,3 @@ std::vector<float> makeModel(Stamp&, std::vector<double>& kernSol,
 void fitKernel(Kernel&, std::vector<Stamp>& stamps, Image& tImg, Image& sImg, ImageMask& mask);
 bool checkFitSolution(Kernel&, std::vector<Stamp>& stamps, Image& tImg,
                       Image& sImg, ImageMask& mask);
-#endif

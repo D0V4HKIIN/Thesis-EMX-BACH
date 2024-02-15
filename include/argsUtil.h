@@ -1,5 +1,4 @@
-#ifndef ARG_UTIL
-#define ARG_UTIL
+#pragma once
 
 #include <CL/opencl.hpp>
 #include <algorithm>
@@ -103,5 +102,3 @@ inline void getArguments(int argc, const char* argv[]) {
     return;
   }
 }
-
-#endif
