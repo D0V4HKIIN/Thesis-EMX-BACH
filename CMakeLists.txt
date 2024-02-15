@@ -27,12 +27,17 @@ set(CMAKE_CONFIGURATION_TYPES
 ################################################################################
 # Global compiler options
 ################################################################################
+set(CMAKE_CXX_STANDARD 20)
+
 if(MSVC)
     # remove default flags provided with CMake for MSVC
     set(CMAKE_CXX_FLAGS "/EHsc /DCL_HPP_ENABLE_EXCEPTIONS /DCL_HPP_TARGET_OPENCL_VERSION=300")
     set(CMAKE_CXX_FLAGS_DEBUG "/Od /Zi")
     set(CMAKE_CXX_FLAGS_RELEASE "/O2")
-    set(CMAKE_CXX_STANDARD 20)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "-DCL_HPP_ENABLE_EXCEPTIONS -DCL_HPP_TARGET_OPENCL_VERSION=300")
+    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 endif()
 
 ################################################################################
@@ -44,15 +49,21 @@ if(MSVC)
     set(CMAKE_MODULE_LINKER_FLAGS "")
     set(CMAKE_SHARED_LINKER_FLAGS "")
     set(CMAKE_STATIC_LINKER_FLAGS "")
-    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS}")
-    set(CMAKE_MODULE_LINKER_FLAGS_DEBUG "${CMAKE_MODULE_LINKER_FLAGS}")
-    set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS}")
-    set(CMAKE_STATIC_LINKER_FLAGS_DEBUG "${CMAKE_STATIC_LINKER_FLAGS}")
-    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS}")
-    set(CMAKE_MODULE_LINKER_FLAGS_RELEASE "${CMAKE_MODULE_LINKER_FLAGS}")
-    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS}")
-    set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "${CMAKE_STATIC_LINKER_FLAGS}")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_EXE_LINKER_FLAGS "")
+    set(CMAKE_MODULE_LINKER_FLAGS "")
+    set(CMAKE_SHARED_LINKER_FLAGS "")
+    set(CMAKE_STATIC_LINKER_FLAGS "")
 endif()
+
+set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS}")
+set(CMAKE_MODULE_LINKER_FLAGS_DEBUG "${CMAKE_MODULE_LINKER_FLAGS}")
+set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS}")
+set(CMAKE_STATIC_LINKER_FLAGS_DEBUG "${CMAKE_STATIC_LINKER_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS}")
+set(CMAKE_MODULE_LINKER_FLAGS_RELEASE "${CMAKE_MODULE_LINKER_FLAGS}")
+set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS}")
+set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "${CMAKE_STATIC_LINKER_FLAGS}")
 
 ################################################################################
 # Nuget packages function stub.
@@ -125,26 +136,28 @@ add_executable(${PROJECT_NAME} ${ALL_FILES})
 ################################################################################
 # MSVC runtime library
 ################################################################################
-get_property(MSVC_RUNTIME_LIBRARY_DEFAULT TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY)
-if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
-    string(CONCAT "MSVC_RUNTIME_LIBRARY_STR"
-        $<$<CONFIG:Debug>:
-            MultiThreadedDLL
-        >
-        $<$<NOT:$<OR:$<CONFIG:Debug>>>:${MSVC_RUNTIME_LIBRARY_DEFAULT}>
-    )
-elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
-    string(CONCAT "MSVC_RUNTIME_LIBRARY_STR"
-        $<$<CONFIG:Debug>:
-            MultiThreadedDebugDLL
-        >
-        $<$<CONFIG:Release>:
-            MultiThreadedDLL
-        >
-        $<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:Release>>>:${MSVC_RUNTIME_LIBRARY_DEFAULT}>
-    )
+if(MSVC)
+    get_property(MSVC_RUNTIME_LIBRARY_DEFAULT TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY)
+    if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+        string(CONCAT "MSVC_RUNTIME_LIBRARY_STR"
+            $<$<CONFIG:Debug>:
+                MultiThreadedDLL
+            >
+            $<$<NOT:$<OR:$<CONFIG:Debug>>>:${MSVC_RUNTIME_LIBRARY_DEFAULT}>
+        )
+    elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
+        string(CONCAT "MSVC_RUNTIME_LIBRARY_STR"
+            $<$<CONFIG:Debug>:
+                MultiThreadedDebugDLL
+            >
+            $<$<CONFIG:Release>:
+                MultiThreadedDLL
+            >
+            $<$<NOT:$<OR:$<CONFIG:Debug>,$<CONFIG:Release>>>:${MSVC_RUNTIME_LIBRARY_DEFAULT}>
+        )
+    endif()
+    set_target_properties(${PROJECT_NAME} PROPERTIES MSVC_RUNTIME_LIBRARY ${MSVC_RUNTIME_LIBRARY_STR})
 endif()
-set_target_properties(${PROJECT_NAME} PROPERTIES MSVC_RUNTIME_LIBRARY ${MSVC_RUNTIME_LIBRARY_STR})
 
 ################################################################################
 # Include directories
@@ -214,13 +227,18 @@ endif()
 ################################################################################
 # Dependencies
 ################################################################################
-if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+if(MSVC)
     set(ADDITIONAL_LIBRARY_DEPENDENCIES
         "${BACH_CFITSIO_PATH}/lib/cfitsio.lib;"
         "${BACH_CCFITS_PATH}/lib/CCfits.lib;"
         "${BACH_OPENCL_PATH}/lib/OpenCL.lib"
     )
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(ADDITIONAL_LIBRARY_DEPENDENCIES
+        "-lstdc++ -lccfits -lcfitsio -lopencl"
+    )
 endif()
+
 target_link_libraries(${PROJECT_NAME} PRIVATE "${ADDITIONAL_LIBRARY_DEPENDENCIES}")
 
 ################################################################################
