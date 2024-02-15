@@ -168,6 +168,17 @@ double ran1(int *idum) {
     r[j]=(ix1+ix2*RM2)*RM1;
     return temp;
 }
+#undef M1
+#undef IA1
+#undef IC1
+#undef RM1
+#undef M2
+#undef IA2
+#undef IC2
+#undef RM2
+#undef M3
+#undef IA3
+#undef IC3
 
 void calcStats(Stamp& stamp, Image& image, ImageMask& mask) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein

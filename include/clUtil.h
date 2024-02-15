@@ -7,7 +7,7 @@
 #include <fstream>
 #include <iostream>
 
-inline cl::Device get_default_device() {
+inline cl::Device getDefaultDevice() {
   // get all platforms (drivers)
   std::vector<cl::Platform> all_platforms;
   cl::Platform::get(&all_platforms);
@@ -33,7 +33,7 @@ inline cl::Device get_default_device() {
   return default_device;
 }
 
-inline std::string get_kernel_func(std::string &&file_name, const std::filesystem::path& rootPath,
+inline std::string getKernelFunc(std::string &&file_name, const std::filesystem::path& rootPath,
                                    std::string &&path = "cl_kern/") {
   std::ifstream t((rootPath / (path + file_name)).c_str());
   std::string tmp{std::istreambuf_iterator<char>{t},
@@ -42,14 +42,14 @@ inline std::string get_kernel_func(std::string &&file_name, const std::filesyste
   return tmp;
 }
 
-inline auto get_time() -> decltype(std::chrono::high_resolution_clock::now()) {
+inline auto getTime() -> decltype(std::chrono::high_resolution_clock::now()) {
   auto tmp{std::chrono::high_resolution_clock::now()};
   return tmp;
 }
 
 using timePoint = std::chrono::high_resolution_clock::time_point;
 
-inline void print_time(std::ostream &os, timePoint start, timePoint stop) {
+inline void printTime(std::ostream &os, timePoint start, timePoint stop) {
   os << "Time in ms: "
      << std::chrono::duration_cast<std::chrono::microseconds>(stop - start)
             .count()
@@ -57,11 +57,11 @@ inline void print_time(std::ostream &os, timePoint start, timePoint stop) {
 }
 
 template <typename... Args>
-cl::Program load_build_programs(cl::Context context, cl::Device default_device,
+cl::Program loadBuildPrograms(cl::Context context, cl::Device default_device,
                                 const std::filesystem::path& rootPath, Args... names) {
   cl::Program::Sources sources;
   for(auto n : {names...}) {
-    std::string code = get_kernel_func(n, rootPath);
+    std::string code = getKernelFunc(n, rootPath);
 
     sources.push_back({code.c_str(), code.length()});
   }

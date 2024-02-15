@@ -89,6 +89,7 @@ set(PROJECT_NAME BACH)
 # Source groups
 ################################################################################
 set(Header_Files
+    "include/bach.h"
     "include/argsUtil.h"
     "include/clUtil.h"
     "include/fitsUtil.h"
@@ -98,6 +99,7 @@ set(Header_Files
 source_group("Header Files" FILES ${Header_Files})
 
 set(Source_Files
+    "src/bach.cpp"
     "src/bachUtil.cpp"
     "src/cdkscUtil.cpp"
     "src/cmvUtil.cpp"
