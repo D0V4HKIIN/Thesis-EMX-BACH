@@ -152,8 +152,6 @@ if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
         "${BACH_CFITSIO_PATH}/include;"
         "${BACH_CCFITS_PATH}/include;"
         "${BACH_OPENCL_PATH}/include;"
-        "${BACH_OPENCL_PATH}/external/OpenCL-CLHPP/include;"
-        "${BACH_OPENCL_PATH}/external/OpenCL-Headers;"
         "${CMAKE_SOURCE_DIR}/include"
     )
 endif()
