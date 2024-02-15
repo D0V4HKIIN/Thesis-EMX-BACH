@@ -28,13 +28,13 @@ int main(int argc, const char* argv[]) {
   Image templateImg{args.templateName};
   Image scienceImg{args.scienceName};
   templateImg.path = scienceImg.path = args.inputPath + "/";
-  auto [w, h] = templateImg.axis;
+  
   
   if(args.verbose)
     std::cout << "template image name: " << args.templateName
               << ", science image name: " << args.scienceName << std::endl;
 
-  ImageMask mask(templateImg.axis);
+  ImageMask mask(std::make_pair(0, 0));
 
   std::cout << "\nSetting up openCL..." << std::endl;
   cl::Device defaultDevice{getDefaultDevice()};
@@ -44,6 +44,7 @@ int main(int argc, const char* argv[]) {
       "conv.cl", "sub.cl");
 
   init(templateImg, scienceImg, mask);
+  auto [w, h] = templateImg.axis;
 
   clock_t p2 = clock();
   if(args.verboseTime) {
@@ -54,70 +55,9 @@ int main(int argc, const char* argv[]) {
   /* ===== SSS ===== */
 
   clock_t p3 = clock();
-
-  std::cout << "\nCreating stamps..." << std::endl;
-
-  args.fStampWidth = std::min(int(templateImg.axis.first / args.stampsx),
-                              int(templateImg.axis.second / args.stampsy));
-  args.fStampWidth -= args.fKernelWidth;
-  args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
-
-  if(args.fStampWidth < args.fSStampWidth) {
-    args.fStampWidth = args.fSStampWidth + args.fKernelWidth;
-    args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
-
-    args.stampsx = int(templateImg.axis.first / args.fStampWidth);
-    args.stampsy = int(templateImg.axis.second / args.fStampWidth);
-
-    if(args.verbose)
-      std::cout << "Too many stamps requested, using " << args.stampsx << "x"
-                << args.stampsy << " stamps instead." << std::endl;
-  }
-
   std::vector<Stamp> templateStamps{};
-  createStamps(templateImg, templateStamps, w, h);
-  if(args.verbose) {
-    std::cout << "Stamps created for " << templateImg.name << std::endl;
-  }
-
   std::vector<Stamp> sciStamps{};
-  createStamps(scienceImg, sciStamps, w, h);
-  if(args.verbose) {
-    std::cout << "Stamps created for " << scienceImg.name << std::endl;
-  }
-
-  /* == Check Template Stamps  ==*/
-  double filledTempl{};
-  double filledScience{};
-  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience);
-  if(filledTempl < 0.1 || filledScience < 0.1) {
-    if(args.verbose)
-      std::cout << "Not enough substamps found in " << templateImg.name
-                << " trying again with lower thresholds..." << std::endl;
-    args.threshLow *= 0.5;
-    
-    templateStamps.clear();
-    sciStamps.clear();
-
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        int index = y * w + x;
-        mask.unmask(index, ImageMask::SKIP_S | ImageMask::SKIP_T);
-      }
-    }
-
-    createStamps(templateImg, templateStamps, w, h);
-
-    createStamps(scienceImg, sciStamps, w, h);
-
-    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience);
-    args.threshLow /= 0.5;
-  }
-
-  if(templateStamps.size() == 0 && sciStamps.size() == 0) {
-    std::cout << "No substamps found" << std::endl;
-    exit(1);
-  }
+  sss(templateImg, scienceImg, mask, templateStamps, sciStamps);
 
   clock_t p4 = clock();
   if(args.verboseTime) {
