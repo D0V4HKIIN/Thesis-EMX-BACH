@@ -84,19 +84,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p7 = clock();
 
-  std::cout << "\nChoosing convolution direction..." << std::endl;
-
-  double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask);
-  double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask);
-  if(args.verbose)
-    std::cout << "template merit value = " << templateMerit
-              << ", science merit value = " << scienceMerit << std::endl;
-  if(scienceMerit <= templateMerit) {
-    std::swap(scienceImg, templateImg);
-    std::swap(sciStamps, templateStamps);
-  }
-  if(args.verbose)
-    std::cout << templateImg.name << " chosen to be convolved." << std::endl;
+  cd(templateImg, scienceImg, mask, templateStamps, sciStamps);
 
   clock_t p8 = clock();
   if(args.verboseTime) {
@@ -108,9 +96,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p9 = clock();
 
-  std::cout << "\nFitting kernel..." << std::endl;
-
-  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask);
+  ksc(templateImg, scienceImg, mask, templateStamps, convolutionKernel);
 
   clock_t p10 = clock();
   if(args.verboseTime) {

@@ -105,3 +105,27 @@ void cmv(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Sta
     fillStamp(s, scienceImg, templateImg, mask, convolutionKernel);
   }
 }
+
+void cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps) {
+  std::cout << "\nChoosing convolution direction..." << std::endl;
+
+  double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask);
+  double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask);
+  if(args.verbose)
+    std::cout << "template merit value = " << templateMerit
+              << ", science merit value = " << scienceMerit << std::endl;
+  if(scienceMerit <= templateMerit) {
+    std::swap(scienceImg, templateImg);
+    std::swap(sciStamps, templateStamps);
+  }
+  if(args.verbose)
+    std::cout << templateImg.name << " chosen to be convolved." << std::endl;
+}
+
+void ksc(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel) {
+
+  std::cout << "\nFitting kernel..." << std::endl;
+
+  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask);
+
+}
