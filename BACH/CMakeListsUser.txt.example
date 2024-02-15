@@ -1,0 +1,8 @@
+# Set the CFITSIO path here. Must contain the folders 'include' and 'lib'
+set(BACH_CFITSIO_PATH "<path here>")
+
+# Set the CCFITS path here. Must contain the folders 'include' and 'lib'
+set(BACH_CCFITS_PATH "<path here>")
+
+# Set the OpenCL path here. Must contain the folders 'include', 'lib' and 'external'
+set(BACH_OPENCL_PATH "<path here>")

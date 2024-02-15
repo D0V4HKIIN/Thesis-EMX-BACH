@@ -29,8 +29,8 @@ set(CMAKE_CONFIGURATION_TYPES
 ################################################################################
 if(MSVC)
     # remove default flags provided with CMake for MSVC
-    set(CMAKE_CXX_FLAGS "/O2")
-    set(CMAKE_CXX_FLAGS_DEBUG "/O2")
+    set(CMAKE_CXX_FLAGS "/EHsc /DCL_HPP_ENABLE_EXCEPTIONS /DCL_HPP_TARGET_OPENCL_VERSION=300")
+    set(CMAKE_CXX_FLAGS_DEBUG "/Od /Zi")
     set(CMAKE_CXX_FLAGS_RELEASE "/O2")
     set(CMAKE_CXX_STANDARD 20)
 endif()
@@ -72,6 +72,7 @@ endfunction()
 # Additional Global Settings(add specific info there)
 ################################################################################
 include(CMake/GlobalSettingsInclude.cmake OPTIONAL)
+include(CMakeListsUser.txt)
 
 ################################################################################
 # Use solution folders feature
@@ -88,20 +89,20 @@ set(PROJECT_NAME BACH)
 # Source groups
 ################################################################################
 set(Header_Files
-    "utils/argsUtil.h"
-    "utils/clUtil.h"
-    "utils/fitsUtil.h"
-    "utils/bachUtil.h"
-    "utils/datatypeUtil.h"
+    "include/argsUtil.h"
+    "include/clUtil.h"
+    "include/fitsUtil.h"
+    "include/bachUtil.h"
+    "include/datatypeUtil.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
 set(Source_Files
-    "bachUtil.cpp"
-    "cdkscUtil.cpp"
-    "cmvUtil.cpp"
-    "sssUtil.cpp"
-    "main.cpp"
+    "src/bachUtil.cpp"
+    "src/cdkscUtil.cpp"
+    "src/cmvUtil.cpp"
+    "src/sssUtil.cpp"
+    "src/main.cpp"
 )
 source_group("Source Files" FILES ${Source_Files})
 
@@ -148,13 +149,12 @@ set_target_properties(${PROJECT_NAME} PROPERTIES MSVC_RUNTIME_LIBRARY ${MSVC_RUN
 ################################################################################
 if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
     target_include_directories(${PROJECT_NAME} PUBLIC
-        "$<$<CONFIG:Debug>:"
-            "C:/Program Files %28x86%29/CFITSIO/include;"
-            "C:/Program Files %28x86%29/CCfits/include;"
-            "C:/dev/OpenCL-SDK/include;"
-            "C:/dev/OpenCL-SDK/external/OpenCL-CLHPP/include;"
-            "C:/dev/OpenCL-SDK/external/OpenCL-Headers"
-        ">"
+        "${BACH_CFITSIO_PATH}/include;"
+        "${BACH_CCFITS_PATH}/include;"
+        "${BACH_OPENCL_PATH}/include;"
+        "${BACH_OPENCL_PATH}/external/OpenCL-CLHPP/include;"
+        "${BACH_OPENCL_PATH}/external/OpenCL-Headers;"
+        "${CMAKE_SOURCE_DIR}/include"
     )
 endif()
 
@@ -216,20 +216,16 @@ endif()
 ################################################################################
 if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
     set(ADDITIONAL_LIBRARY_DEPENDENCIES
-        "$<$<CONFIG:Debug>:"
-            "C:/Program Files (x86)/CFITSIO/lib/cfitsio.lib;"
-            "C:/Program Files (x86)/CCfits/lib/CCfits.lib;"
-            "C:/dev/OpenCL-SDK/external/OpenCL-ICD-Loader/install/lib/OpenCL.lib"
-        ">"
+        "${BACH_CFITSIO_PATH}/lib/cfitsio.lib;"
+        "${BACH_CCFITS_PATH}/lib/CCfits.lib;"
+        "${BACH_OPENCL_PATH}/lib/OpenCL.lib"
     )
 endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE "${ADDITIONAL_LIBRARY_DEPENDENCIES}")
 
-if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
-    target_link_directories(${PROJECT_NAME} PRIVATE
-        "$<$<CONFIG:Debug>:"
-            "${CMAKE_CURRENT_SOURCE_DIR}/"C:/dev/OpenCL-SDK/lib""
-        ">"
-    )
-endif()
-
+################################################################################
+# Post-build
+################################################################################
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
+                       ${CMAKE_SOURCE_DIR}/cl_kern/ $<TARGET_FILE_DIR:${PROJECT_NAME}>/cl_kern/)
