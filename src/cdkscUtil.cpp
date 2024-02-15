@@ -1,6 +1,6 @@
 #include "bachUtil.h"
 
-double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg, ImageMask& mask) {
+double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask) {
   int nComp1 = args.nPSF - 1;
   int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
   int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
@@ -79,7 +79,7 @@ double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg, ImageMask& 
 }
 
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
-createMatrix(std::vector<Stamp>& stamps, std::pair<cl_long, cl_long>& imgSize) {
+createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize) {
   int nComp1 = args.nPSF - 1;
   int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;  // = 6
   int nComp = nComp1 * nComp2;
@@ -96,7 +96,7 @@ createMatrix(std::vector<Stamp>& stamps, std::pair<cl_long, cl_long>& imgSize) {
                                           std::vector<double>(nComp2, 0.0));
 
   for(size_t st = 0; st < stamps.size(); st++) {
-    Stamp& s = stamps[st];
+    const Stamp& s = stamps[st];
     if(s.subStamps.empty()) continue;
 
     auto [ssx, ssy] = s.subStamps[0].imageCoords;
@@ -174,8 +174,8 @@ createMatrix(std::vector<Stamp>& stamps, std::pair<cl_long, cl_long>& imgSize) {
   return std::make_pair(matrix, weight);
 }
 
-std::vector<double> createScProd(std::vector<Stamp>& stamps, Image& img,
-                                 std::vector<std::vector<double>>& weight) {
+std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& img,
+                                 const std::vector<std::vector<double>>& weight) {
   int nComp1 = args.nPSF - 1;
   int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
   int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
@@ -220,8 +220,8 @@ std::vector<double> createScProd(std::vector<Stamp>& stamps, Image& img,
   return res;
 }
 
-double calcSig(Stamp& s, std::vector<double>& kernSol, Image& tImg,
-               Image& sImg, ImageMask& mask) {
+double calcSig(Stamp& s, const std::vector<double>& kernSol, const Image& tImg,
+               const Image& sImg, ImageMask& mask) {
   if(s.subStamps.empty()) return -1.0;
   auto [ssx, ssy] = s.subStamps[0].imageCoords;
 
@@ -265,8 +265,8 @@ double calcSig(Stamp& s, std::vector<double>& kernSol, Image& tImg,
   return signal;
 }
 
-double getBackground(int x, int y, std::vector<double>& kernSol,
-                     std::pair<cl_long, cl_long> imgSize) {
+double getBackground(const int x, const int y, const std::vector<double>& kernSol,
+                     const std::pair<cl_long, cl_long> imgSize) {
   int BGComp = (args.nPSF - 1) *
                    (((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2) +
                1;
@@ -286,8 +286,8 @@ double getBackground(int x, int y, std::vector<double>& kernSol,
   return bg;
 }
 
-std::vector<float> makeModel(Stamp& s, std::vector<double>& kernSol,
-                             std::pair<cl_long, cl_long> imgSize) {
+std::vector<float> makeModel(const Stamp& s, const std::vector<double>& kernSol,
+                             const std::pair<cl_long, cl_long> imgSize) {
   std::vector<float> model(args.fSStampWidth * args.fSStampWidth, 0.0);
 
   std::pair<float, float> hImgAxis =
@@ -317,8 +317,8 @@ std::vector<float> makeModel(Stamp& s, std::vector<double>& kernSol,
   return model;
 }
 
-void fitKernel(Kernel& k, std::vector<Stamp>& stamps, Image& tImg,
-               Image& sImg, ImageMask& mask) {
+void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
+               const Image& sImg, ImageMask& mask) {
   int nComp1 = args.nPSF - 1;
   int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
   int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
@@ -347,8 +347,8 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, Image& tImg,
   }
 }
 
-bool checkFitSolution(Kernel& k, std::vector<Stamp>& stamps, Image& tImg,
-                      Image& sImg, ImageMask& mask) {
+bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
+                      const Image& sImg, ImageMask& mask) {
   std::vector<double> ssValues{};
 
   bool check = false;

@@ -160,9 +160,9 @@ struct Stamp {
         subStamps{subStamps},
         data{stampData} {}
 
-  double operator[](size_t index) { return data[index]; }
+  double operator[](size_t index) const { return data[index]; }
 
-  double pixels() { return size.first * size.second; }
+  double pixels() const { return size.first * size.second; }
 
   void createQ() {
     /* Does Equation 2.12 which create the left side of the Equation Ma=B */
@@ -218,26 +218,18 @@ struct Image {
 
   double* operator&() { return &data[0]; }
 
-  double operator[](size_t index) { return float(data[index]); }
+  double operator[](size_t index) const { return float(data[index]); }
 
-  std::string getFile() { return path + name; }
+  std::string getFile() const { return path + name; }
 
-  std::string getFileName() {
+  std::string getFileName() const {
     size_t lastI = name.find_last_of(".");
     return name.substr(0, lastI);
   }
 
-  size_t size() { return (size_t)axis.first * axis.second; }
+  size_t size() const { return (size_t)axis.first * axis.second; }
 
-  std::string getOutFile() { return "!" + path + name; }
-
-  long* axis_to_array() {
-    static long tmpAx[2];
-    tmpAx[0] = axis.first;
-    tmpAx[1] = axis.second;
-    long* ptr = tmpAx;
-    return ptr;
-  }
+  std::string getOutFile() const { return "!" + path + name; }
 };
 
 class ImageMask {

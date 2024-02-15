@@ -1,6 +1,6 @@
 #include "bachUtil.h"
 
-void createB(Stamp& s, Image& img) {
+void createB(Stamp& s, const Image& img) {
   /* Does Equation 2.13 which create the right side of the Equation Ma=B */
 
   s.B = {};
@@ -15,7 +15,7 @@ void createB(Stamp& s, Image& img) {
             x + args.hSStampWidth + args.fSStampWidth * (y + args.hSStampWidth);
         int imgIndex = x + ssx + (y + ssy) * img.axis.first;
         p0 += s.W[i][k] * img[imgIndex];
-      }
+      } 
     }
     s.B.push_back(p0);
   }
@@ -32,7 +32,7 @@ void createB(Stamp& s, Image& img) {
   s.B.push_back(q);
 }
 
-void convStamp(Stamp& s, Image& img, Kernel& k, int n, int odd) {
+void convStamp(Stamp& s, const Image& img, const Kernel& k, const int n, const int odd) {
   /*
    * Fills a Stamp with a convolved version (using only gaussian basis functions
    * without amlitude) of the area around its selected substamp.
@@ -81,7 +81,7 @@ void convStamp(Stamp& s, Image& img, Kernel& k, int n, int odd) {
   }
 }
 
-void cutSStamp(SubStamp& ss, Image& img, ImageMask& mask) {
+void cutSStamp(SubStamp& ss, const  Image& img, const ImageMask& mask) {
   /* Store the original image data around the substamp in said substamp */
 
   for(int y = 0; y < args.fSStampWidth; y++) {
@@ -99,7 +99,7 @@ void cutSStamp(SubStamp& ss, Image& img, ImageMask& mask) {
   }
 }
 
-int fillStamp(Stamp& s, Image& tImg, Image& sImg, ImageMask& mask, Kernel& k) {
+int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k) {
   /* Fills Substamp with gaussian basis convolved images around said substamp
    * and calculates CMV.
    */

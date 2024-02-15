@@ -7,7 +7,7 @@ void checkError(cl_int err) {
   }
 }
 
-void maskInput(Image& tImg, Image& sImg, ImageMask& mask) {
+void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask) {
   for(long y = 0; y < tImg.axis.second; y++) {
     for(long x = 0; x < tImg.axis.first; x++) {
       long index = x + y * tImg.axis.first;
@@ -41,7 +41,7 @@ void maskInput(Image& tImg, Image& sImg, ImageMask& mask) {
   }
 }
 
-void spreadMask(ImageMask& mask, int width) {
+void spreadMask(ImageMask& mask, const int width) {
     int w2 = width / 2;
     for (int y = 0; y < mask.axis.second; y++) {
         for (int x = 0; x < mask.axis.first; x++) {
@@ -66,8 +66,8 @@ void spreadMask(ImageMask& mask, int width) {
     }
 }
 
-void sigmaClip(std::vector<double>& data, double& mean, double& stdDev,
-               int iter) {
+void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
+               const int iter) {
   /* Does sigma clipping on data to provide the mean and stdDev of said
    * data
    */
@@ -176,7 +176,7 @@ double ran1(int *idum) {
 #undef IA3
 #undef IC3
 
-void calcStats(Stamp& stamp, Image& image, ImageMask& mask) {
+void calcStats(Stamp& stamp, const Image& image, ImageMask& mask) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
@@ -434,8 +434,8 @@ int ludcmp(std::vector<std::vector<double>>& matrix, int matrixSize,
   return 0;
 }
 
-void lubksb(std::vector<std::vector<double>>& matrix, int matrixSize,
-            std::vector<int>& index, std::vector<double>& result) {
+void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
+            const std::vector<int>& index, std::vector<double>& result) {
   int ii{};
 
   for(int i = 1; i <= matrixSize; i++) {
@@ -461,8 +461,8 @@ void lubksb(std::vector<std::vector<double>>& matrix, int matrixSize,
   }
 }
 
-double makeKernel(Kernel& kern, std::pair<cl_long, cl_long> imgSize, int x,
-                  int y) {
+double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> imgSize, const int x,
+                  const int y) {
   /*
    * Calculates the kernel for a certain pixel, need finished kernelSol.
    */

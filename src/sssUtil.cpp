@@ -1,7 +1,7 @@
 #include "bachUtil.h"
 #include <cassert>
 
-void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::vector<Stamp>& scienceStamps, Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience) {
+void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience) {
   std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
 
   assert(templStamps.size() == scienceStamps.size());
@@ -36,7 +36,7 @@ void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::ve
     std::cout << "Non-Empty science stamps: " << scienceStamps.size() << std::endl;
   }
 }
-void createStamps(Image& img, std::vector<Stamp>& stamps, int w, int h) {
+void createStamps(const Image& img, std::vector<Stamp>& stamps, const int w, const int h) {
   for(int j = 0; j < args.stampsy; j++) {
     for(int i = 0; i < args.stampsx; i++) {
       int startx = i * (double(w) / double(args.stampsx));
@@ -65,7 +65,7 @@ void createStamps(Image& img, std::vector<Stamp>& stamps, int w, int h) {
   }
 }
 
-double checkSStamp(SubStamp& sstamp, Image& image, ImageMask& mask, Stamp& stamp, ImageMask::masks badMask, bool isTemplate) {
+double checkSStamp(const SubStamp& sstamp, const Image& image, ImageMask& mask, const Stamp& stamp, const ImageMask::masks badMask, const bool isTemplate) {
   double retVal = 0.0;
   for(int y = sstamp.imageCoords.second - args.hSStampWidth;
       y <= sstamp.imageCoords.second + args.hSStampWidth; y++) {
@@ -92,7 +92,7 @@ double checkSStamp(SubStamp& sstamp, Image& image, ImageMask& mask, Stamp& stamp
   return retVal;
 }
 
-cl_int findSStamps(Stamp& stamp, Image& image, ImageMask& mask, int index, bool isTemplate) {
+cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int index, const bool isTemplate) {
   double floor = stamp.stats.skyEst + args.threshKernFit * stamp.stats.fwhm;
 
   double dfrac = 0.9;

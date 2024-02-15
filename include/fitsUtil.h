@@ -45,12 +45,13 @@ inline cl_int readImage(Image& input) {
 }
 
 inline cl_int writeImage(Image& img) {
-  cl_long nAxis = 2;
+  constexpr cl_long nAxis = 2;
   CCfits::FITS* pFits{};
 
   try {
-    pFits = new CCfits::FITS(img.getOutFile(), FLOAT_IMG, nAxis,
-                             img.axis_to_array());
+    long axisArr[nAxis]{img.axis.first, img.axis.second};
+
+    pFits = new CCfits::FITS(img.getOutFile(), FLOAT_IMG, nAxis, axisArr);
   } catch(CCfits::FITS::CantCreate) {
     delete pFits;
     return -1;

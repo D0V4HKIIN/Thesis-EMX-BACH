@@ -14,41 +14,41 @@
 /* Utils */
 void checkError(const cl_int err);
 void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask);
-void spreadMask(ImageMask& mask, int width);
-void sigmaClip(std::vector<double>& data, double& mean, double& stdDev,
-               int iter);
-void calcStats(Stamp& stamp, Image& image, ImageMask& mask);
+void spreadMask(ImageMask& mask, const int width);
+void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
+               const int iter);
+void calcStats(Stamp& stamp, const Image& image, ImageMask& mask);
 
 int ludcmp(std::vector<std::vector<double>>& matrix, const int matrixSize,
            std::vector<int>& index, double& rowInter);
 void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
-            std::vector<int>& index, std::vector<double>& result);
-double makeKernel(Kernel& kern, const std::pair<const cl_long, const cl_long> imgSize, const int x,
+            const std::vector<int>& index, std::vector<double>& result);
+double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> imgSize, const int x,
                   const int y);
 
 /* SSS */
 void createStamps(const Image&, std::vector<Stamp>& stamps, const int w, const int h);
 double checkSStamp(const SubStamp& sstamp, const Image& image, ImageMask& mask, const Stamp&, const ImageMask::masks badMask, const bool isTemplate);
 cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int index, const bool isTemplate);
-void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::vector<Stamp>& scienceStamps, Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience);
+void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience);
 
 /* CMV */
-void createB(Stamp&, Image&);
-void convStamp(Stamp&, Image&, Kernel&, int n, int odd);
-void cutSStamp(SubStamp&, Image&, ImageMask&);
-int fillStamp(Stamp&, Image& tImg, Image& sImg, ImageMask&, Kernel&);
+void createB(Stamp& s, const Image& img);
+void convStamp(Stamp&s , const Image& img, const Kernel& k, const int n, const int odd);
+void cutSStamp(SubStamp& ss, const Image& img, const ImageMask& mask);
+int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k);
 
 /* CD && KSC */
-double testFit(std::vector<Stamp>& stamps, Image& tImg, Image& sImg, ImageMask& mask);
+double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask);
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
-createMatrix(std::vector<Stamp>& stamps, std::pair<cl_long, cl_long>& imgSize);
-std::vector<double> createScProd(std::vector<Stamp>& stamps, Image&,
-                                 std::vector<std::vector<double>>& weight);
-double calcSig(Stamp&, std::vector<double>& kernSol, const Image& tImg, const Image& sImg, ImageMask& mask);
-double getBackground(int x, int y, const std::vector<double>& kernSol,
-                     std::pair<cl_long, cl_long> imgSize);
-std::vector<float> makeModel(const Stamp&, std::vector<double>& kernSol,
-                             const std::pair<const cl_long, const cl_long> imgSize);
-void fitKernel(Kernel&, std::vector<Stamp>& stamps, Image& tImg, Image& sImg, ImageMask& mask);
-bool checkFitSolution(Kernel&, std::vector<Stamp>& stamps, Image& tImg,
-                      Image& sImg, ImageMask& mask);
+createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize);
+std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& img,
+                                 const std::vector<std::vector<double>>& weight);
+double calcSig(Stamp& s, const std::vector<double>& kernSol, const Image& tImg, const Image& sImg, ImageMask& mask);
+double getBackground(const int x, const int y, const std::vector<double>& kernSol,
+                     const std::pair<cl_long, cl_long> imgSize);
+std::vector<float> makeModel(const Stamp& s, const std::vector<double>& kernSol,
+                             const std::pair<cl_long, cl_long> imgSize);
+void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask);
+bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
+                      const Image& sImg, ImageMask& mask);
