@@ -29,7 +29,7 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask) {
   maskInput(templateImg, scienceImg, mask);
 }
 
-void sss(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps){
+void sss(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps) {
   std::cout << "\nCreating stamps..." << std::endl;
     
   auto [w, h] = templateImg.axis;
@@ -92,5 +92,16 @@ void sss(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Sta
   if(templateStamps.size() == 0 && sciStamps.size() == 0) {
     std::cout << "No substamps found" << std::endl;
     exit(1);
+  }
+}
+
+void cmv(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Kernel &convolutionKernel) {
+  std::cout << "\nCalculating matrix variables..." << std::endl;
+
+  for(auto& s : templateStamps) {
+    fillStamp(s, templateImg, scienceImg, mask, convolutionKernel);
+  }
+  for(auto& s : sciStamps) {
+    fillStamp(s, scienceImg, templateImg, mask, convolutionKernel);
   }
 }

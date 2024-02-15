@@ -71,16 +71,9 @@ int main(int argc, const char* argv[]) {
 
   clock_t p5 = clock();
 
-  std::cout << "\nCalculating matrix variables..." << std::endl;
-
   Kernel convolutionKernel{};
-  for(auto& s : templateStamps) {
-    fillStamp(s, templateImg, scienceImg, mask, convolutionKernel);
-  }
-  for(auto& s : sciStamps) {
-    fillStamp(s, scienceImg, templateImg, mask, convolutionKernel);
-  }
-
+  cmv(templateImg, scienceImg, mask, templateStamps, sciStamps, convolutionKernel);
+  
   clock_t p6 = clock();
   if(args.verboseTime) {
     printf("CMV took %lds %ldms\n", (p6 - p5) / CLOCKS_PER_SEC,
