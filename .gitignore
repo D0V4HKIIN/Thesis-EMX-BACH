@@ -2,3 +2,7 @@
 *.dll
 *.pdb
 .vscode
+
+/build
+/CMakeListsUser.txt
+/tests/out
