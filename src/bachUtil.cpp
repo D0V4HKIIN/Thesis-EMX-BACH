@@ -66,10 +66,6 @@ void spreadMask(ImageMask& mask, int width) {
     }
 }
 
-bool inImage(Image& image, int x, int y) {
-  return !(x < 0 || x > image.axis.first || y < 0 || y > image.axis.second);
-}
-
 void sigmaClip(std::vector<double>& data, double& mean, double& stdDev,
                int iter) {
   /* Does sigma clipping on data to provide the mean and stdDev of said

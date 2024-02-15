@@ -12,24 +12,24 @@
 #include "datatypeUtil.h"
 
 /* Utils */
-void checkError(cl_int err);
-void maskInput(Image& tImg, Image& sImg, ImageMask& mask);
+void checkError(const cl_int err);
+void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask);
 void spreadMask(ImageMask& mask, int width);
 void sigmaClip(std::vector<double>& data, double& mean, double& stdDev,
                int iter);
-bool inImage(Image&, int x, int y);
-void calcStats(Stamp&, Image&, ImageMask&);
+void calcStats(Stamp& stamp, Image& image, ImageMask& mask);
 
-int ludcmp(std::vector<std::vector<double>>& matrix, int matrixSize,
+int ludcmp(std::vector<std::vector<double>>& matrix, const int matrixSize,
            std::vector<int>& index, double& rowInter);
-void lubksb(std::vector<std::vector<double>>& matrix, int matrixSize,
+void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
             std::vector<int>& index, std::vector<double>& result);
-double makeKernel(Kernel&, std::pair<cl_long, cl_long>, int x, int y);
+double makeKernel(Kernel& kern, const std::pair<const cl_long, const cl_long> imgSize, const int x,
+                  const int y);
 
 /* SSS */
-void createStamps(Image&, std::vector<Stamp>& stamps, int w, int h);
-double checkSStamp(SubStamp&, Image&, ImageMask&, Stamp&, ImageMask::masks, bool);
-cl_int findSStamps(Stamp&, Image&, ImageMask&, int index, bool isTemplate);
+void createStamps(const Image&, std::vector<Stamp>& stamps, const int w, const int h);
+double checkSStamp(const SubStamp& sstamp, const Image& image, ImageMask& mask, const Stamp&, const ImageMask::masks badMask, const bool isTemplate);
+cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int index, const bool isTemplate);
 void identifySStamps(std::vector<Stamp>& templStamps, Image& templImage, std::vector<Stamp>& scienceStamps, Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience);
 
 /* CMV */
@@ -44,11 +44,11 @@ std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
 createMatrix(std::vector<Stamp>& stamps, std::pair<cl_long, cl_long>& imgSize);
 std::vector<double> createScProd(std::vector<Stamp>& stamps, Image&,
                                  std::vector<std::vector<double>>& weight);
-double calcSig(Stamp&, std::vector<double>& kernSol, Image& tImg, Image& sImg, ImageMask& mask);
-double getBackground(int x, int y, std::vector<double>& kernSol,
+double calcSig(Stamp&, std::vector<double>& kernSol, const Image& tImg, const Image& sImg, ImageMask& mask);
+double getBackground(int x, int y, const std::vector<double>& kernSol,
                      std::pair<cl_long, cl_long> imgSize);
-std::vector<float> makeModel(Stamp&, std::vector<double>& kernSol,
-                             std::pair<cl_long, cl_long> imgSize);
+std::vector<float> makeModel(const Stamp&, std::vector<double>& kernSol,
+                             const std::pair<const cl_long, const cl_long> imgSize);
 void fitKernel(Kernel&, std::vector<Stamp>& stamps, Image& tImg, Image& sImg, ImageMask& mask);
 bool checkFitSolution(Kernel&, std::vector<Stamp>& stamps, Image& tImg,
                       Image& sImg, ImageMask& mask);
