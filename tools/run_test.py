@@ -1,6 +1,7 @@
 import math
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import time
@@ -92,6 +93,14 @@ def main(args):
     print()
 
     os.makedirs(OUTPUT_PATH, exist_ok=True)
+    
+    # Clear out the output directory before running any tests
+    for root, dirs, files in os.walk(OUTPUT_PATH):
+        for f in files:
+            os.unlink(os.path.join(root, f))
+
+        for d in dirs:
+            shutil.rmtree(os.path.join(root, d))
 
     failed_tests = 0
 
@@ -115,11 +124,20 @@ def main(args):
                 print()
                 continue
 
+        CONV_OUT_PATH = OUTPUT_PATH / f"test{id}_diff.fits"
+        SUB_OUT_PATH = OUTPUT_PATH / f"test{id}_sub.fits"
+
+        if not CONV_OUT_PATH.exists() or not SUB_OUT_PATH.exists():
+            failed_tests += 1
+            print("At least one X-BACH output is missing. The program did not run correctly.")
+            print()
+            continue
+
         end_time = time.time()
         test_time = end_time - start_time
 
-        conv_abs_err, conv_rel_err, conv_wrong_nans = diff_fits(TEST_PATH / f"{conv_name}.fits", OUTPUT_PATH / f"test{id}_diff.fits")
-        sub_abs_err, sub_rel_err, sub_wrong_nans = diff_fits(TEST_PATH / f"{sub_name}.fits", OUTPUT_PATH / f"test{id}_sub.fits")
+        conv_abs_err, conv_rel_err, conv_wrong_nans = diff_fits(TEST_PATH / f"{conv_name}.fits", CONV_OUT_PATH)
+        sub_abs_err, sub_rel_err, sub_wrong_nans = diff_fits(TEST_PATH / f"{sub_name}.fits", SUB_OUT_PATH)
 
         print(f"Test took {test_time:.2f} seconds")
         print(f"Convolution errors: {conv_abs_err:.2e} (abs), {conv_rel_err:.2e} (rel) and {conv_wrong_nans} (NaN)")

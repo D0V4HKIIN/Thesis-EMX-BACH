@@ -38,7 +38,7 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
 
   err = clData.queue.enqueueWriteBuffer(clData.tImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &templateImg);
   checkError(err);
-  err = clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &clData.maskBuf);
+  err = clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &scienceImg);
   checkError(err);
 
   maskInput(templateImg, scienceImg, mask, clData);
