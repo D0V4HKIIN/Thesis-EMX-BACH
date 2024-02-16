@@ -8,7 +8,7 @@ void kernel sub(global const double *S, global const double *I,
 
   if(x >= convWidth / 2 && x < w - convWidth / 2 && y >= convWidth / 2 &&
      y < h - convWidth / 2) {
-    D[id] = (I[id] - S[id] * convFactor) * finalFactor;
+    D[id] = (I[id] * convFactor - S[id]) * finalFactor;
   } else {
     D[id] = 1e-30;
   }

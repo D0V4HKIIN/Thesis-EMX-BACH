@@ -274,10 +274,10 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
     }
   }
 
-  return invKernSum;
+  return kernSum;
 }
 
-void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg, bool convTemplate, double invKernSum,
+void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg, bool convTemplate, double kernSum,
          const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue) {
   std::cout << "\nSubtracting images..." << std::endl;
 
@@ -301,7 +301,7 @@ void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, I
                                                                        "sub");
   cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange};
   cl::Event subEvent = subFunc(eargs, sImgBuf, convImgBuf, diffImgBuf, args.fKernelWidth, w, h,
-                               scaleConv ? invKernSum : 1.0, scaleConv ? -1.0 : 1.0);
+                               scaleConv ? kernSum : 1.0, scaleConv ? -(1.0 / kernSum) : 1.0);
   subEvent.wait();
 
   // Read data from subtraction

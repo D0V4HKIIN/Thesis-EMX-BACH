@@ -112,7 +112,7 @@ int main(int argc, const char* argv[]) {
   clock_t p11 = clock();
 
   Image convImg{args.outName, templateImg.axis, args.outPath};
-  double invKernSum = conv(templateImg, scienceImg, mask, convImg, convolutionKernel, convTemplate, context, program, queue);
+  double kernSum = conv(templateImg, scienceImg, mask, convImg, convolutionKernel, convTemplate, context, program, queue);
 
   clock_t p12 = clock();
   if(args.verboseTime) {
@@ -125,7 +125,7 @@ int main(int argc, const char* argv[]) {
   clock_t p13 = clock();
 
   Image diffImg{"sub.fits", templateImg.axis, args.outPath};
-  sub(convImg, scienceImg, mask, diffImg, convTemplate, invKernSum, context, program, queue);
+  sub(convImg, scienceImg, mask, diffImg, convTemplate, kernSum, context, program, queue);
 
   clock_t p14 = clock();
   if(args.verboseTime) {
