@@ -8,45 +8,28 @@ void checkError(cl_int err) {
 }
 
 void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask, const ClData& clData) {
+  cl::EnqueueArgs eargs{clData.queue, cl::NullRange, cl::NDRange(mask.axis.first * mask.axis.second), cl::NullRange};
+
+  // Create mask from input data
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_double, cl_double>
       maskFunc(clData.program, "maskInput");
-  cl::EnqueueArgs eargs{clData.queue, cl::NullRange, cl::NDRange(mask.axis.first * mask.axis.second), cl::NullRange};
   cl::Event maskEvent = maskFunc(eargs, clData.tImgBuf, clData.sImgBuf, clData.maskBuf,
     mask.axis.first, mask.axis.second, args.hSStampWidth + args.hKernelWidth,
     args.threshHigh, args.threshLow);
   maskEvent.wait();
+
+  // Spread mask
+  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl_long>
+      spreadFunc(clData.program, "spreadMask");
+  cl::Event spreadEvent = spreadFunc(eargs, clData.maskBuf,
+    mask.axis.first, mask.axis.second,
+    static_cast<int>(args.hKernelWidth * args.inSpreadMaskFactor));
+  spreadEvent.wait();
   
   // For now, return the image mask to the CPU
   cl_int err = clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
     sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
   checkError(err);
-
-  spreadMask(mask, args.hKernelWidth * 1);
-}
-
-void spreadMask(ImageMask& mask, const int width) {
-    int w2 = width / 2;
-    for (int y = 0; y < mask.axis.second; y++) {
-        for (int x = 0; x < mask.axis.first; x++) {
-            if (mask.isMasked(x + mask.axis.first * y, ImageMask::BAD_INPUT)) {
-                for (int x2 = -w2; x2 <= w2; x2++) {
-                    int xx = x + x2;
-                    if (xx < 0 || xx >= mask.axis.first)
-                        continue;
-                    
-                    for (int y2 = -w2; y2 <= w2; y2++) {
-                        int yy = y + y2;
-                        if (yy < 0 || yy >= mask.axis.second)
-                            continue;
-                        
-                        if (!mask.isMasked(xx + mask.axis.first * yy, ImageMask::BAD_INPUT)) {
-                          mask.maskPix(xx, yy, ImageMask::OK_CONV);
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,

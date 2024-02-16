@@ -38,6 +38,8 @@ struct Arguments {
   cl_int hStampWidth = 0;    // half stamp width
   cl_int fStampWidth = 0;    // half stamp width
 
+  double inSpreadMaskFactor = 1.0;
+
   cl_int backgroundOrder = 1;
   cl_int kernelOrder = 2;
 
