@@ -51,7 +51,10 @@ def diff_fits(h_path, b_path):
 
     max_error_abs = -10000000
     max_error_rel = -10000000
+    mean_error_abs = 0
+    mean_error_rel = 0
     wrong_nans = 0
+    count = 0
     
     for i in range(len(h_data)):
         for j in range(len(h_data[i])):
@@ -63,22 +66,33 @@ def diff_fits(h_path, b_path):
                     wrong_nans += 1
                 
                 continue
-
-            error_abs = abs(h - b)
             
+            # Absolute
+            error_abs = abs(h - b)
+
+            mean_error_abs += error_abs
+
             if error_abs > max_error_abs:
                 max_error_abs = error_abs
 
+            # Relative
             if h > 0:
                 error_rel = error_abs / h
+                
+                mean_error_rel += error_rel
 
                 if error_rel > max_error_rel:
                     max_error_rel = error_rel
 
+            count += 1
+
+    mean_error_abs /= count
+    mean_error_rel /= count
+
     h_file.close()
     b_file.close()
 
-    return max_error_abs, max_error_rel, wrong_nans
+    return max_error_abs, mean_error_abs, max_error_rel, mean_error_rel, wrong_nans
 
 def run_test(test_index):
     (id, science_name, template_name, conv_name, sub_name, max_abs_error, max_rel_error) = TEST_TABLE[test_index]
@@ -110,15 +124,19 @@ def run_test(test_index):
     end_time = time.time()
     test_time = end_time - start_time
 
-    conv_abs_err, conv_rel_err, conv_wrong_nans = diff_fits(TEST_PATH / f"{conv_name}.fits", CONV_OUT_PATH)
-    sub_abs_err, sub_rel_err, sub_wrong_nans = diff_fits(TEST_PATH / f"{sub_name}.fits", SUB_OUT_PATH)
+    conv_max_abs_err, conv_mean_abs_err, conv_max_rel_err, conv_mean_rel_err, conv_wrong_nans = diff_fits(TEST_PATH / f"{conv_name}.fits", CONV_OUT_PATH)
+    sub_max_abs_err, sub_mean_abs_err, sub_max_rel_err, sub_mean_rel_err, sub_wrong_nans = diff_fits(TEST_PATH / f"{sub_name}.fits", SUB_OUT_PATH)
 
     print(f"Test took {test_time:.2f} seconds")
-    print(f"Convolution errors: {conv_abs_err:.2e} (abs), {conv_rel_err:.2e} (rel) and {conv_wrong_nans} (NaN)")
-    print(f"Subtraction errors: {sub_abs_err:.2e} (abs), {sub_rel_err:.2e} (rel) and {sub_wrong_nans} (NaN)")
+    print(f"Convolution errors: {conv_max_abs_err:.2e} (max abs)  {conv_max_rel_err:.2e} (max rel)")
+    print(f"                    {conv_mean_abs_err:.2e} (mean abs) {conv_mean_rel_err:.2e} (mean rel)")
+    print(f"                    {conv_wrong_nans} (NaN)")
+    print(f"Subtraction errors: {sub_max_abs_err:.2e} (max abs)  {sub_max_rel_err:.2e} (max rel)")
+    print(f"                    {sub_mean_abs_err:.2e} (mean abs) {sub_mean_rel_err:.2e} (mean rel)")
+    print(f"                    {sub_wrong_nans} (NaN)")
 
-    return conv_abs_err < max_abs_error[0] and conv_rel_err < max_rel_error[0] and\
-        sub_abs_err < max_abs_error[1] and sub_rel_err < max_rel_error[1] and\
+    return conv_max_abs_err < max_abs_error[0] and conv_max_rel_err < max_rel_error[0] and\
+        sub_max_abs_err < max_abs_error[1] and sub_max_rel_err < max_rel_error[1] and\
         conv_wrong_nans == 0 and sub_wrong_nans == 0
 
 def main(args):
