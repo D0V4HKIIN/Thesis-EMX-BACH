@@ -37,14 +37,14 @@ int main(int argc, const char* argv[]) {
   ImageMask mask(std::make_pair(0, 0));
 
   std::cout << "\nSetting up openCL..." << std::endl;
-  cl::Device defaultDevice{getDefaultDevice()};
-  cl::Context context{defaultDevice};
+  cl::Device device{getDefaultDevice()};
+  cl::Context context{device};
   cl::Program program =
-      loadBuildPrograms(context, defaultDevice, std::filesystem::path(argv[0]).parent_path(),
+      loadBuildPrograms(context, device, std::filesystem::path(argv[0]).parent_path(),
       "conv.cl", "ini.cl", "sub.cl");
-  cl::CommandQueue queue(context, defaultDevice);
+  cl::CommandQueue queue(context, device);
 
-  ClData clData { defaultDevice, context, program, queue };
+  ClData clData { device, context, program, queue };
 
   init(templateImg, scienceImg, mask, clData);
   const auto [w, h] = templateImg.axis;

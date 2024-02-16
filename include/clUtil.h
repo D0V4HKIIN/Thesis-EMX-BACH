@@ -8,33 +8,33 @@
 
 inline cl::Device getDefaultDevice() {
   // get all platforms (drivers)
-  std::vector<cl::Platform> all_platforms;
-  cl::Platform::get(&all_platforms);
-  if(all_platforms.size() == 0) {
+  std::vector<cl::Platform> allPlatforms;
+  cl::Platform::get(&allPlatforms);
+  if(allPlatforms.size() == 0) {
     std::cout << " No platforms found. Check OpenCL installation!\n";
     exit(1);
   }
-  cl::Platform default_platform = all_platforms[0];
+  cl::Platform defaultPlatform = allPlatforms[0];
   std::cout << "Using platform: "
-            << default_platform.getInfo<CL_PLATFORM_NAME>() << "\n";
+            << defaultPlatform.getInfo<CL_PLATFORM_NAME>() << "\n";
 
   // get default device of the default platform
-  std::vector<cl::Device> all_devices;
-  default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
-  if(all_devices.size() == 0) {
+  std::vector<cl::Device> allDevices;
+  defaultPlatform.getDevices(CL_DEVICE_TYPE_ALL, &allDevices);
+  if(allDevices.size() == 0) {
     std::cout << " No devices found. Check OpenCL installation!\n";
     exit(1);
   }
-  cl::Device default_device = all_devices[0];
-  std::cout << "Using device: " << default_device.getInfo<CL_DEVICE_NAME>()
+  cl::Device defaultDevice = allDevices[0];
+  std::cout << "Using device: " << defaultDevice.getInfo<CL_DEVICE_NAME>()
             << "\n";
 
-  return default_device;
+  return defaultDevice;
 }
 
-inline std::string getKernelFunc(std::string &&file_name, const std::filesystem::path& rootPath,
+inline std::string getKernelFunc(std::string &&fileName, const std::filesystem::path& rootPath,
                                    std::string &&path = "cl_kern/") {
-  std::ifstream t((rootPath / (path + file_name)).c_str());
+  std::ifstream t((rootPath / (path + fileName)).c_str());
   std::string tmp{std::istreambuf_iterator<char>{t},
                   std::istreambuf_iterator<char>{}};
 
@@ -56,7 +56,7 @@ inline void printTime(std::ostream &os, const timePoint start, const timePoint s
 }
 
 template <typename... Args>
-cl::Program loadBuildPrograms(const cl::Context context, const cl::Device default_device,
+cl::Program loadBuildPrograms(const cl::Context context, const cl::Device defaultDevice,
                                 const std::filesystem::path& rootPath, Args... names) {
   cl::Program::Sources sources;
   for(auto n : {names...}) {
@@ -66,9 +66,9 @@ cl::Program loadBuildPrograms(const cl::Context context, const cl::Device defaul
   }
 
   cl::Program program(context, sources);
-  if(program.build({default_device}) != CL_SUCCESS) {
+  if(program.build({defaultDevice}) != CL_SUCCESS) {
     std::cout << " Error building: "
-              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(default_device)
+              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(defaultDevice)
               << "\n";
     exit(1);
   }

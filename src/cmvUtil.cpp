@@ -81,7 +81,7 @@ void convStamp(Stamp& s, const Image& img, const Kernel& k, const int n, const i
   }
 }
 
-void cutSStamp(SubStamp& ss, const  Image& img, const ImageMask& mask) {
+void cutSStamp(SubStamp& ss, const Image& img, const ImageMask& mask) {
   /* Store the original image data around the substamp in said substamp */
 
   for(int y = 0; y < args.fSStampWidth; y++) {
