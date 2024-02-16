@@ -28,7 +28,7 @@ double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> imgSize, const
                   const int y);
 
 /* SSS */
-void createStamps(const Image&, std::vector<Stamp>& stamps, const int w, const int h);
+void createStamps(const Image& img, std::vector<Stamp>& stamps, const int w, const int h);
 double checkSStamp(const SubStamp& sstamp, const Image& image, ImageMask& mask, const Stamp&, const ImageMask::masks badMask, const bool isTemplate);
 cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int index, const bool isTemplate);
 void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience);
