@@ -67,7 +67,7 @@ inline bool cmdOptionExists(const char** begin, const char** end,
 
 inline Arguments args{};
 
-inline void getArguments(int argc, const char* argv[]) {
+inline void getArguments(const int argc, const char* argv[]) {
   if(cmdOptionExists(argv, argv + argc, "-o")) {
     args.outName = getCmdOption(argv, argv + argc, "-o");
   }

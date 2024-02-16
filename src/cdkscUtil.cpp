@@ -1,11 +1,11 @@
 #include "bachUtil.h"
 
 double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask) {
-  int nComp1 = args.nPSF - 1;
-  int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
-  int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
-  int matSize = nComp1 * nComp2 + nBGComp + 1;
-  int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
+  const int nComp1 = args.nPSF - 1;
+  const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
+  const int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
+  const int matSize = nComp1 * nComp2 + nBGComp + 1;
+  const int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
 
   std::vector<double> kernelSum(stamps.size(), 0.0);
   std::vector<int> index(nKernSolComp);  // Internal between ludcmp and lubksb.
@@ -80,15 +80,15 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
 createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize) {
-  int nComp1 = args.nPSF - 1;
-  int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;  // = 6
-  int nComp = nComp1 * nComp2;
-  int nBGVectors =
+  const int nComp1 = args.nPSF - 1;
+  const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;  // = 6
+  const int nComp = nComp1 * nComp2;
+  const int nBGVectors =
       ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;  // = 3
-  int matSize = nComp + nBGVectors + 1;
+  const int matSize = nComp + nBGVectors + 1;
 
-  int pixStamp = args.fSStampWidth * args.fSStampWidth;
-  float hPixX = imgSize.first / 2, hPixY = imgSize.second / 2;
+  const int pixStamp = args.fSStampWidth * args.fSStampWidth;
+  const float hPixX = imgSize.first / 2, hPixY = imgSize.second / 2;
 
   std::vector<std::vector<double>> matrix(
       matSize + 1, std::vector<double>(matSize + 1, 0.0));
@@ -176,10 +176,10 @@ createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>
 
 std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& img,
                                  const std::vector<std::vector<double>>& weight) {
-  int nComp1 = args.nPSF - 1;
-  int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
-  int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
-  int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
+  const int nComp1 = args.nPSF - 1;
+  const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
+  const int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
+  const int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
 
   std::vector<double> res(nKernSolComp, 0.0);
 
@@ -319,10 +319,10 @@ std::vector<float> makeModel(const Stamp& s, const std::vector<double>& kernSol,
 
 void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
                const Image& sImg, ImageMask& mask) {
-  int nComp1 = args.nPSF - 1;
-  int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
-  int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
-  int matSize = nComp1 * nComp2 + nBGComp + 1;
+  const int nComp1 = args.nPSF - 1;
+  const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
+  const int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
+  const int matSize = nComp1 * nComp2 + nBGComp + 1;
 
   auto [fittingMatrix, weight] = createMatrix(stamps, tImg.axis);
   std::vector<double> solution = createScProd(stamps, sImg, weight);

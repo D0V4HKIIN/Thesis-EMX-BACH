@@ -17,10 +17,12 @@ struct ClData
 };
 
 void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData);
-void sss(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps);
-void cmv(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Kernel &convolutionKernel);
+void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps);
+void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel);
 void cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps);
-void ksc(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel);
-void conv(Image &templateImg, Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, cl::Context &context, cl::Program &program, cl::CommandQueue &queue);
-void sub(Image &convImg, Image &scienceImg, ImageMask &mask, Image &diffImg, cl::Context &context, cl::Program &program, cl::CommandQueue &queue);
-void fin(Image &convImg, Image &diffImg);
+void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel);
+void conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel,
+          const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue);
+void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg,
+         const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue);
+void fin(const Image &convImg, const Image &diffImg);

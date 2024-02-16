@@ -216,7 +216,12 @@ struct Image {
         axis{a},
         data{d} {}
 
-  double* operator&() { return &data[0]; }
+  const double* operator&() const {
+    return &data[0]; 
+  }
+  double* operator&() {
+    return &data[0];
+  }
 
   double operator[](size_t index) const { return float(data[index]); }
 
