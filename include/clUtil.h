@@ -48,7 +48,7 @@ inline auto getTime() -> decltype(std::chrono::high_resolution_clock::now()) {
 
 using timePoint = std::chrono::high_resolution_clock::time_point;
 
-inline void printTime(std::ostream &os, timePoint start, timePoint stop) {
+inline void printTime(std::ostream &os, const timePoint start, const timePoint stop) {
   os << "Time in ms: "
      << std::chrono::duration_cast<std::chrono::microseconds>(stop - start)
             .count()
@@ -56,7 +56,7 @@ inline void printTime(std::ostream &os, timePoint start, timePoint stop) {
 }
 
 template <typename... Args>
-cl::Program loadBuildPrograms(cl::Context context, cl::Device default_device,
+cl::Program loadBuildPrograms(const cl::Context context, const cl::Device default_device,
                                 const std::filesystem::path& rootPath, Args... names) {
   cl::Program::Sources sources;
   for(auto n : {names...}) {

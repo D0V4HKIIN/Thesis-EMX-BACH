@@ -44,10 +44,10 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
   maskInput(templateImg, scienceImg, mask, clData);
 }
 
-void sss(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps) {
+void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps) {
   std::cout << "\nCreating stamps..." << std::endl;
     
-  auto [w, h] = templateImg.axis;
+  const auto [w, h] = templateImg.axis;
   args.fStampWidth = std::min(int(templateImg.axis.first / args.stampsx),
                               int(templateImg.axis.second / args.stampsy));
   args.fStampWidth -= args.fKernelWidth;
@@ -109,7 +109,7 @@ void sss(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Sta
   }
 }
 
-void cmv(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Kernel &convolutionKernel) {
+void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel) {
   std::cout << "\nCalculating matrix variables..." << std::endl;
 
   for(auto& s : templateStamps) {
@@ -123,8 +123,8 @@ void cmv(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Sta
 void cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps) {
   std::cout << "\nChoosing convolution direction..." << std::endl;
 
-  double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask);
-  double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask);
+  const double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask);
+  const double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask);
   if(args.verbose)
     std::cout << "template merit value = " << templateMerit
               << ", science merit value = " << scienceMerit << std::endl;
@@ -136,17 +136,17 @@ void cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
     std::cout << templateImg.name << " chosen to be convolved." << std::endl;
 }
 
-void ksc(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel) {
+void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel) {
   std::cout << "\nFitting kernel..." << std::endl;
 
   fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask);
 }
 
-void conv(Image &templateImg, Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel,
-          cl::Context &context, cl::Program &program, cl::CommandQueue &queue) {
+void conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel,
+          const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue) {
   std::cout << "\nConvolving..." << std::endl;
   
-  auto [w, h] = templateImg.axis;
+  const auto [w, h] = templateImg.axis;
 
   // Convolution kernels generated beforehand since we only need on per
   // kernelsize.
@@ -260,10 +260,10 @@ void conv(Image &templateImg, Image &scienceImg, ImageMask &mask, Image &convImg
   }
 }
 
-void sub(Image &convImg, Image &scienceImg, ImageMask &mask, Image &diffImg,
-         cl::Context &context, cl::Program &program, cl::CommandQueue &queue) {
+void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg,
+         const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue) {
   std::cout << "\nSubtracting images..." << std::endl;
-  auto [w, h] = scienceImg.axis;
+  const auto [w, h] = scienceImg.axis;
 
   cl::Buffer convImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
   cl::Buffer diffImgBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
@@ -299,7 +299,7 @@ void sub(Image &convImg, Image &scienceImg, ImageMask &mask, Image &diffImg,
   }
 } 
 
-void fin(Image &convImg, Image &diffImg) {
+void fin(const Image &convImg, const Image &diffImg) {
   std::cout << "\nWriting output..." << std::endl;
 
   cl_int err{};

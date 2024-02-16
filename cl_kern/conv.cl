@@ -16,10 +16,10 @@ void kernel conv(global const double *convKern, const long convWidth, const long
                  global const double *image, global double *outimg,
                  global const ushort *convMask, global ushort *outMask,
                  const long w, const long h) {
-  int id = get_global_id(0);
+  const int id = get_global_id(0);
   double acc = 0.0;
-  long x = id % w;
-  long y = id / w;
+  const long x = id % w;
+  const long y = id / w;
 
   long halfConvWidth = convWidth / 2;
 

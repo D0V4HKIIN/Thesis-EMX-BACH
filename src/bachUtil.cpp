@@ -1,6 +1,6 @@
 #include "bachUtil.h"
 
-void checkError(cl_int err) {
+void checkError(const cl_int err) {
   if(err != 0) {
     std::cout << "Error encountered with error code: " << err << std::endl;
     exit(err);

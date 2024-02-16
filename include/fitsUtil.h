@@ -44,7 +44,7 @@ inline cl_int readImage(Image& input) {
   return 0;
 }
 
-inline cl_int writeImage(Image& img) {
+inline cl_int writeImage(const Image& img) {
   constexpr cl_long nAxis = 2;
   CCfits::FITS* pFits{};
 
