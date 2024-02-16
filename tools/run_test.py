@@ -23,10 +23,11 @@ except ModuleNotFoundError:
     PASS_COLOR= ""
 
 TEST_TABLE = [
-    # ID | Science       | Template        | HOTPANTS conv   | HOTPANTS sub   | Max abs error S,T | Max rel error S,T
-    ( 1,   "test0",        "test1",          "test01_conv",    "test01_sub",    (2e-4, 5e-4),       (5e-3, 4e-3)),
-    ( 2,   "testScience",  "testTemplate",   "testST_conv",    "testST_sub",    (8e-3, 2e-3),       (5e-6, 9e-1)),
-    ( 3,   "sparse0",      "sparse1",        "sparse01_conv",  "sparse01_sub",  (2e1,  5e0),        (3e-4, 5e-4))
+    # ID | Science       | Template      | HOTPANTS conv    | HOTPANTS sub    | Max abs error S,T | Max rel error S,T
+    ( 1,   "test0",        "test1",        "test01_conv",     "test01_sub",     (2e-4, 5e-4),       (5e-3, 4e-3)),
+    ( 2,   "testScience",  "testTemplate", "testST_conv",     "testST_sub",     (8e-3, 2e-3),       (5e-6, 9e-1)),
+    ( 3,   "ptf_m82_s_2k", "ptf_m82_t_2k", "ptf_m82_2k_conv", "ptf_m82_2k_sub", (0e-4, 0e-4),       (0e-3, 0e-3)),
+    ( 4,   "sparse0",      "sparse1",      "sparse01_conv",   "sparse01_sub",   (2e1,  5e0),        (3e-4, 5e-4))
 ]
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
@@ -116,9 +117,9 @@ def run_test(test_index):
     print(f"Convolution errors: {conv_abs_err:.2e} (abs), {conv_rel_err:.2e} (rel) and {conv_wrong_nans} (NaN)")
     print(f"Subtraction errors: {sub_abs_err:.2e} (abs), {sub_rel_err:.2e} (rel) and {sub_wrong_nans} (NaN)")
 
-    return conv_abs_err > max_abs_error[0] or conv_rel_err > max_rel_error[0] or\
-        sub_abs_err > max_abs_error[1] or sub_rel_err > max_rel_error[1] or\
-        conv_wrong_nans > 0 or sub_wrong_nans > 0
+    return conv_abs_err < max_abs_error[0] and conv_rel_err < max_rel_error[0] and\
+        sub_abs_err < max_abs_error[1] and sub_rel_err < max_rel_error[1] and\
+        conv_wrong_nans == 0 and sub_wrong_nans == 0
 
 def main(args):
     print(f"There are a total of {len(TEST_TABLE)} tests to run")
@@ -146,13 +147,13 @@ def main(args):
 
     for i in range(len(TEST_TABLE)):
         test_id = TEST_TABLE[i][0]
-        test_fail = run_test(i)
+        test_success = run_test(i)
         
-        if test_fail:
+        if test_success:
+            print(f"{PASS_COLOR}Test {test_id} succeeded!")
+        else:
             failed_tests += 1
             print(f"{ERROR_COLOR}Test {test_id} failed!")
-        else:
-            print(f"{PASS_COLOR}Test {test_id} succeeded!")
 
         total_tests += 1
         print()
