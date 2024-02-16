@@ -11,10 +11,11 @@
 
 #include "bach.h"
 
-void init(Image &templateImg, Image &scienceImg, ImageMask &mask) {
+void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData) {
 
   cl_int err{};
 
+  // Read input images
   err = readImage(templateImg);
   checkError(err);
   err = readImage(scienceImg);
@@ -25,8 +26,22 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask) {
               << std::endl;
     exit(1);
   }
+  
   mask = ImageMask(templateImg.axis);
-  maskInput(templateImg, scienceImg, mask);
+
+  int pixelCount = templateImg.axis.first * templateImg.axis.second;
+
+  // Upload buffers
+  clData.tImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
+  clData.sImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
+  clData.maskBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_ushort) * pixelCount);
+
+  err = clData.queue.enqueueWriteBuffer(clData.tImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &templateImg);
+  checkError(err);
+  err = clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &clData.maskBuf);
+  checkError(err);
+
+  maskInput(templateImg, scienceImg, mask, clData);
 }
 
 void sss(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps) {

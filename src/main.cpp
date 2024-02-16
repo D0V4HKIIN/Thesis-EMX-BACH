@@ -41,9 +41,12 @@ int main(int argc, const char* argv[]) {
   cl::Context context{defaultDevice};
   cl::Program program =
       loadBuildPrograms(context, defaultDevice, std::filesystem::path(argv[0]).parent_path(),
-      "conv.cl", "sub.cl");
+      "conv.cl", "ini.cl", "sub.cl");
+  cl::CommandQueue queue(context, defaultDevice);
 
-  init(templateImg, scienceImg, mask);
+  ClData clData { defaultDevice, context, program, queue };
+
+  init(templateImg, scienceImg, mask, clData);
   auto [w, h] = templateImg.axis;
 
   clock_t p2 = clock();
@@ -109,7 +112,6 @@ int main(int argc, const char* argv[]) {
   clock_t p11 = clock();
 
   Image convImg{args.outName, templateImg.axis, args.outPath};
-  cl::CommandQueue queue(context, defaultDevice);
   conv(templateImg, scienceImg, mask, convImg, convolutionKernel, context, program, queue);
 
   clock_t p12 = clock();

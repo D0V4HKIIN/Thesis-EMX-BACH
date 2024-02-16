@@ -9,11 +9,12 @@
 #include <utility>
 
 #include "argsUtil.h"
+#include "bach.h"
 #include "datatypeUtil.h"
 
 /* Utils */
 void checkError(const cl_int err);
-void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask);
+void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask, const ClData& clData);
 void spreadMask(ImageMask& mask, const int width);
 void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
                const int iter);

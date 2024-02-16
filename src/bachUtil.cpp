@@ -7,38 +7,21 @@ void checkError(cl_int err) {
   }
 }
 
-void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask) {
-  for(long y = 0; y < tImg.axis.second; y++) {
-    for(long x = 0; x < tImg.axis.first; x++) {
-      long index = x + y * tImg.axis.first;
-
-      if (tImg[index] == 0.0 || sImg[index] == 0.0) {
-        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
-      }
-
-      if (tImg[index] >= args.threshHigh || sImg[index] >= args.threshHigh) {
-        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
-      }
-
-      if(tImg[index] <= args.threshLow || sImg[index] <= args.threshLow) {
-        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
-      }
-    }
-  }
+void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask, const ClData& clData) {
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_double, cl_double>
+      maskFunc(clData.program, "maskInput");
+  cl::EnqueueArgs eargs{clData.queue, cl::NullRange, cl::NDRange(mask.axis.first * mask.axis.second), cl::NullRange};
+  cl::Event maskEvent = maskFunc(eargs, clData.tImgBuf, clData.sImgBuf, clData.maskBuf,
+    mask.axis.first, mask.axis.second, args.hSStampWidth + args.hKernelWidth,
+    args.threshHigh, args.threshLow);
+  maskEvent.wait();
+  
+  // For now, return the image mask to the CPU
+  cl_int err = clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
+    sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
+  checkError(err);
 
   spreadMask(mask, args.hKernelWidth * 1);
-  
-  for(long y = 0; y < tImg.axis.second; y++) {
-    for(long x = 0; x < tImg.axis.first; x++) {
-      long index = x + y * tImg.axis.first;
-      int borderSize = args.hSStampWidth + args.hKernelWidth;
-
-      if(x < borderSize || x >= tImg.axis.first - borderSize || y < borderSize ||
-         y >= tImg.axis.second - borderSize) {
-        mask.maskPix(x, y, ImageMask::BAD_PIXEL_S | ImageMask::BAD_PIXEL_T);
-      }
-    }
-  }
 }
 
 void spreadMask(ImageMask& mask, const int width) {
