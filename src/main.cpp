@@ -89,7 +89,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p7 = clock();
 
-  cd(templateImg, scienceImg, mask, templateStamps, sciStamps, args);
+  bool convTemplate = cd(templateImg, scienceImg, mask, templateStamps, sciStamps, args);
 
   clock_t p8 = clock();
   if(args.verboseTime) {
@@ -114,7 +114,7 @@ int main(int argc, const char* argv[]) {
   clock_t p11 = clock();
 
   Image convImg{args.outName, templateImg.axis, args.outPath};
-  conv(templateImg, scienceImg, mask, convImg, convolutionKernel, context, program, queue, args);
+  double kernSum = conv(templateImg, scienceImg, mask, convImg, convolutionKernel, convTemplate, context, program, queue, args);
 
   clock_t p12 = clock();
   if(args.verboseTime) {
@@ -127,7 +127,7 @@ int main(int argc, const char* argv[]) {
   clock_t p13 = clock();
 
   Image diffImg{"sub.fits", templateImg.axis, args.outPath};
-  sub(convImg, scienceImg, mask, diffImg, context, program, queue, args);
+  sub(convImg, scienceImg, mask, diffImg, convTemplate, kernSum, context, program, queue, args);
 
   clock_t p14 = clock();
   if(args.verboseTime) {

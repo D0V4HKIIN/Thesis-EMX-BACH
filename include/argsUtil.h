@@ -39,6 +39,7 @@ struct Arguments {
   cl_int fStampWidth = 0;    // half stamp width
 
   double inSpreadMaskFactor = 1.0;
+  bool normalizeTemplate = true; // If false, normalize science
 
   cl_int backgroundOrder = 1;
   cl_int kernelOrder = 2;

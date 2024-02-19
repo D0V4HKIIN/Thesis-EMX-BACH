@@ -120,7 +120,7 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   }
 }
 
-void cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Arguments& args) {
+bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Arguments& args) {
   std::cout << "\nChoosing convolution direction..." << std::endl;
 
   const double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask, args);
@@ -128,12 +128,17 @@ void cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
   if(args.verbose)
     std::cout << "template merit value = " << templateMerit
               << ", science merit value = " << scienceMerit << std::endl;
-  if(scienceMerit <= templateMerit) {
+
+  bool convTemplate = scienceMerit > templateMerit;
+
+  if(!convTemplate) {
     std::swap(scienceImg, templateImg);
     std::swap(sciStamps, templateStamps);
   }
   if(args.verbose)
     std::cout << templateImg.name << " chosen to be convolved." << std::endl;
+
+  return convTemplate;
 }
 
 void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel, const Arguments& args) {
@@ -142,11 +147,13 @@ void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask, args);
 }
 
-void conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel,
+double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
           const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue, const Arguments& args) {
   std::cout << "\nConvolving..." << std::endl;
   
   const auto [w, h] = templateImg.axis;
+  bool scaleConv = args.normalizeTemplate && convTemplate ||
+                   !args.normalizeTemplate && !convTemplate;
 
   // Convolution kernels generated beforehand since we only need on per
   // kernelsize.
@@ -222,9 +229,9 @@ void conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Im
 
   cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long,
                     cl_long>
-      conv{program, "conv"};
+      convFunc{program, "conv"};
   cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange};
-  cl::Event convEvent = conv(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, w, h);
+  cl::Event convEvent = convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, w, h);
   convEvent.wait();
 
   err = queue.enqueueReadBuffer(convImgBuf, CL_TRUE, 0,
@@ -259,12 +266,25 @@ void conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Im
       }
     }
   }
+
+  if (scaleConv) {
+    for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
+      for(int x = args.hKernelWidth; x < w - args.hKernelWidth; x++) {
+        convImg.data[x + y * w] *= invKernSum;
+      }
+    }
+  }
+
+  return kernSum;
 }
 
-void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg,
+void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg, bool convTemplate, double kernSum,
          const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue, const Arguments& args) {
   std::cout << "\nSubtracting images..." << std::endl;
+
   const auto [w, h] = scienceImg.axis;
+  bool scaleConv = args.normalizeTemplate && convTemplate ||
+                   !args.normalizeTemplate && !convTemplate;
 
   cl::Buffer convImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
   cl::Buffer diffImgBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
@@ -278,10 +298,11 @@ void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, I
                                  &scienceImg);
   checkError(err);
   
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long> sub{program,
-                                                                       "sub"};
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_double, cl_double> subFunc(program,
+                                                                       "sub");
   cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange};
-  cl::Event subEvent = sub(eargs, sImgBuf, convImgBuf, diffImgBuf, args.fKernelWidth, w, h);
+  cl::Event subEvent = subFunc(eargs, sImgBuf, convImgBuf, diffImgBuf, args.fKernelWidth, w, h,
+                               scaleConv ? kernSum : 1.0, scaleConv ? -(1.0 / kernSum) : 1.0);
   subEvent.wait();
 
   // Read data from subtraction
