@@ -88,7 +88,8 @@ createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>
   const int matSize = nComp + nBGVectors + 1;
 
   const int pixStamp = args.fSStampWidth * args.fSStampWidth;
-  const float hPixX = imgSize.first / 2, hPixY = imgSize.second / 2;
+  const float hPixX = 0.5 * imgSize.first;
+  const float hPixY = 0.5 * imgSize.second;
 
   std::vector<std::vector<double>> matrix(
       matSize + 1, std::vector<double>(matSize + 1, 0.0));
