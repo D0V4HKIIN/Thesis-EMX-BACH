@@ -7,7 +7,7 @@ void checkError(const cl_int err) {
   }
 }
 
-void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask, const ClData& clData) {
+void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask, const ClData& clData, const Arguments& args) {
   cl::EnqueueArgs eargs{clData.queue, cl::NullRange, cl::NDRange(mask.axis.first * mask.axis.second), cl::NullRange};
 
   // Create mask from input data
@@ -33,7 +33,7 @@ void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask, const ClDa
 }
 
 void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
-               const int iter) {
+               const int iter, const Arguments& args) {
   /* Does sigma clipping on data to provide the mean and stdDev of said
    * data
    */
@@ -142,7 +142,7 @@ double ran1(int *idum) {
 #undef IA3
 #undef IC3
 
-void calcStats(Stamp& stamp, const Image& image, ImageMask& mask) {
+void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Arguments& args) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
@@ -223,7 +223,7 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask) {
 
   // sigma clip of maskedStamp to get mean and sd.
   double mean, stdDev, invStdDev;
-  sigmaClip(maskedStamp, mean, stdDev, 3);
+  sigmaClip(maskedStamp, mean, stdDev, 3, args);
   invStdDev = 1.0 / stdDev;
 
   int attempts = 0;
@@ -334,7 +334,7 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask) {
 }
 
 int ludcmp(std::vector<std::vector<double>>& matrix, int matrixSize,
-           std::vector<int>& index, double& d) {
+           std::vector<int>& index, double& d, const Arguments& args) {
   std::vector<double> vv(matrixSize + 1, 0.0);
   int maxI{};
   double temp2{};
@@ -428,7 +428,7 @@ void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
 }
 
 double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> imgSize, const int x,
-                  const int y) {
+                  const int y, const Arguments& args) {
   /*
    * Calculates the kernel for a certain pixel, need finished kernelSol.
    */

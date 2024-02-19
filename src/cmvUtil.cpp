@@ -1,6 +1,6 @@
 #include "bachUtil.h"
 
-void createB(Stamp& s, const Image& img) {
+void createB(Stamp& s, const Image& img, const Arguments& args) {
   /* Does Equation 2.13 which create the right side of the Equation Ma=B */
 
   s.B = {};
@@ -32,7 +32,7 @@ void createB(Stamp& s, const Image& img) {
   s.B.push_back(q);
 }
 
-void convStamp(Stamp& s, const Image& img, const Kernel& k, const int n, const int odd) {
+void convStamp(Stamp& s, const Image& img, const Kernel& k, const int n, const int odd, const Arguments& args) {
   /*
    * Fills a Stamp with a convolved version (using only gaussian basis functions
    * without amlitude) of the area around its selected substamp.
@@ -81,7 +81,7 @@ void convStamp(Stamp& s, const Image& img, const Kernel& k, const int n, const i
   }
 }
 
-void cutSStamp(SubStamp& ss, const Image& img, const ImageMask& mask) {
+void cutSStamp(SubStamp& ss, const Image& img, const ImageMask& mask, const Arguments& args) {
   /* Store the original image data around the substamp in said substamp */
 
   for(int y = 0; y < args.fSStampWidth; y++) {
@@ -99,7 +99,7 @@ void cutSStamp(SubStamp& ss, const Image& img, const ImageMask& mask) {
   }
 }
 
-int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k) {
+int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k, const Arguments& args) {
   /* Fills Substamp with gaussian basis convolved images around said substamp
    * and calculates CMV.
    */
@@ -124,13 +124,13 @@ int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& m
         int dy = (y / 2) * 2 - y;
         if(dx == 0 && dy == 0 && nvec > 0) odd = 1;
 
-        convStamp(s, tImg, k, nvec, odd);
+        convStamp(s, tImg, k, nvec, odd, args);
         nvec++;
       }
     }
   }
 
-  cutSStamp(s.subStamps[0], sImg, mask);
+  cutSStamp(s.subStamps[0], sImg, mask, args);
 
   auto [ssx, ssy] = s.subStamps[0].imageCoords;
 
@@ -158,8 +158,8 @@ int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& m
     }
   }
 
-  s.createQ();  // TODO: is name accurate?
-  createB(s, sImg);
+  s.createQ(args);  // TODO: is name accurate?
+  createB(s, sImg, args);
 
   return 0;
 }
