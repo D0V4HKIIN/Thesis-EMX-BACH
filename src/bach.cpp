@@ -147,7 +147,7 @@ void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask, args);
 }
 
-double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel,
+double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
           const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue, const Arguments& args) {
   std::cout << "\nConvolving..." << std::endl;
   
