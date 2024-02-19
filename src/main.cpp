@@ -16,11 +16,9 @@ int main(int argc, const char* argv[]) {
   clock_t p1 = clock();
 
   CCfits::FITS::setVerboseMode(true);
-  
-  Arguments args{};
   try {
     std::cout << "Reading in arguments..." << std::endl;
-    getArguments(argc, argv, args);
+    getArguments(argc, argv);
   } catch(const std::invalid_argument& err) {
     std::cout << err.what() << '\n';
     return 1;
@@ -48,7 +46,7 @@ int main(int argc, const char* argv[]) {
 
   ClData clData { device, context, program, queue };
 
-  init(templateImg, scienceImg, mask, clData, args);
+  init(templateImg, scienceImg, mask, clData);
   const auto [w, h] = templateImg.axis;
 
   clock_t p2 = clock();
@@ -62,7 +60,7 @@ int main(int argc, const char* argv[]) {
   clock_t p3 = clock();
   std::vector<Stamp> templateStamps{};
   std::vector<Stamp> sciStamps{};
-  sss(templateImg, scienceImg, mask, templateStamps, sciStamps, args);
+  sss(templateImg, scienceImg, mask, templateStamps, sciStamps);
 
   clock_t p4 = clock();
   if(args.verboseTime) {
@@ -76,8 +74,8 @@ int main(int argc, const char* argv[]) {
 
   clock_t p5 = clock();
 
-  Kernel convolutionKernel{args};
-  cmv(templateImg, scienceImg, mask, templateStamps, sciStamps, convolutionKernel, args);
+  Kernel convolutionKernel{};
+  cmv(templateImg, scienceImg, mask, templateStamps, sciStamps, convolutionKernel);
   
   clock_t p6 = clock();
   if(args.verboseTime) {
@@ -89,7 +87,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p7 = clock();
 
-  cd(templateImg, scienceImg, mask, templateStamps, sciStamps, args);
+  cd(templateImg, scienceImg, mask, templateStamps, sciStamps);
 
   clock_t p8 = clock();
   if(args.verboseTime) {
@@ -101,7 +99,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p9 = clock();
 
-  ksc(templateImg, scienceImg, mask, templateStamps, convolutionKernel, args);
+  ksc(templateImg, scienceImg, mask, templateStamps, convolutionKernel);
 
   clock_t p10 = clock();
   if(args.verboseTime) {
@@ -114,7 +112,7 @@ int main(int argc, const char* argv[]) {
   clock_t p11 = clock();
 
   Image convImg{args.outName, templateImg.axis, args.outPath};
-  conv(templateImg, scienceImg, mask, convImg, convolutionKernel, context, program, queue, args);
+  conv(templateImg, scienceImg, mask, convImg, convolutionKernel, context, program, queue);
 
   clock_t p12 = clock();
   if(args.verboseTime) {
@@ -127,7 +125,7 @@ int main(int argc, const char* argv[]) {
   clock_t p13 = clock();
 
   Image diffImg{"sub.fits", templateImg.axis, args.outPath};
-  sub(convImg, scienceImg, mask, diffImg, context, program, queue, args);
+  sub(convImg, scienceImg, mask, diffImg, context, program, queue);
 
   clock_t p14 = clock();
   if(args.verboseTime) {
@@ -139,7 +137,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p15 = clock();
 
-  fin(convImg, diffImg, args);
+  fin(convImg, diffImg);
 
   clock_t p16 = clock();
   if(args.verboseTime) {

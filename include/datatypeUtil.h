@@ -33,16 +33,16 @@ struct Kernel {
   std::vector<kernelStats> stats{};
   std::vector<double> solution{};
 
-  Kernel(const Arguments& args)
+  Kernel()
       : currKernel(args.fKernelWidth * args.fKernelWidth, 0.0),
         filterX{},
         filterY{},
         stats{},
         solution{} {
-    resetKernVec(args);
+    resetKernVec();
   }
 
-  void resetKernVec(const Arguments& args) {
+  void resetKernVec() {
     /* Fill Kerenel Vector
      * TODO: Make parallel, should be very possible. You can interprate stats as
      * a Vec3 in a kernel.
@@ -53,7 +53,7 @@ struct Kernel {
       for(int x = 0; x <= args.dg[gauss]; x++) {
         for(int y = 0; y <= args.dg[gauss] - x; y++) {
           stats.push_back({gauss, x, y});
-          resetKernelHelper(i, args);
+          resetKernelHelper(i);
           i++;
         }
       }
@@ -61,7 +61,7 @@ struct Kernel {
   }
 
  private:
-  void resetKernelHelper(cl_int n, const Arguments& args) {
+  void resetKernelHelper(cl_int n) {
     /* Will perfom one iteration of equation 2.3 but without a fit parameter.
      *
      * TODO: Make into a clKernel, look at hotpants for c indexing instead.
@@ -164,7 +164,7 @@ struct Stamp {
 
   double pixels() const { return size.first * size.second; }
 
-  void createQ(const Arguments& args) {
+  void createQ() {
     /* Does Equation 2.12 which create the left side of the Equation Ma=B */
     Q = std::vector<std::vector<double>>(
         args.nPSF + 2, std::vector<double>(args.nPSF + 2, 0.0));
