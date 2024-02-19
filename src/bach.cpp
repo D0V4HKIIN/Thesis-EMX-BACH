@@ -41,7 +41,7 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
   err = clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &scienceImg);
   checkError(err);
 
-  maskInput(templateImg, scienceImg, mask, clData, args);
+  maskInput(mask, clData, args);
 }
 
 void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args) {

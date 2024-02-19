@@ -7,7 +7,7 @@ void checkError(const cl_int err) {
   }
 }
 
-void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask, const ClData& clData, const Arguments& args) {
+void maskInput(ImageMask& mask, const ClData& clData, const Arguments& args) {
   cl::EnqueueArgs eargs{clData.queue, cl::NullRange, cl::NDRange(mask.axis.first * mask.axis.second), cl::NullRange};
 
   // Create mask from input data
