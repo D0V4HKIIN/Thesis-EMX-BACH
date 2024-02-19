@@ -3,12 +3,12 @@ import pathlib
 import sys
 from astropy.io import fits
 
-def main(args):
-    if len(args) != 4:
-        print(f"Usage: {pathlib.Path(__file__).name} <input> <output> <width> <height>")
-        return False
-    
+def main(args):    
     color_print.init()
+
+    if len(args) != 4:
+        print(f"{color_print.YELLOW}Usage: {pathlib.Path(__file__).name} <input> <output> <width> <height>")
+        return False
     
     input_path = pathlib.Path(args[0])
 
@@ -51,6 +51,8 @@ def main(args):
     # Save
         print(f"Saving output to '{output_path.resolve()}'...")
     file.writeto(output_path, overwrite=True)
+
+    color_print.destroy()
 
     return True
 

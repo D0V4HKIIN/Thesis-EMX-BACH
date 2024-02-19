@@ -20,3 +20,6 @@ def init():
         colorama.init(autoreset=True)
     else:
         print("'colorama' is not installed. Print will not be colored.")
+
+def destroy():
+    colorama.deinit()

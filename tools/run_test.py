@@ -9,11 +9,11 @@ import time
 from astropy.io import fits
 
 TEST_TABLE = [
-    # ID | Science       | Template      | HOTPANTS conv    | HOTPANTS sub    | Max abs error S,T | Max rel error S,T
-    ( 1,   "test0",        "test1",        "test01_conv",     "test01_sub",     (2e-4, 5e-4),       (5e-3, 4e-3)),
-    ( 2,   "testScience",  "testTemplate", "testST_conv",     "testST_sub",     (8e-3, 2e-3),       (5e-6, 9e-1)),
-    ( 3,   "ptf_m82_s_2k", "ptf_m82_t_2k", "ptf_m82_2k_conv", "ptf_m82_2k_sub", (2e-1, 3e1),        (1e-5, 4e-1)),
-    ( 4,   "sparse0",      "sparse1",      "sparse01_conv",   "sparse01_sub",   (2e1,  5e0),        (3e-4, 5e-4))
+    # ID | Fast? | Speed | Science       | Template      | HOTPANTS conv    | HOTPANTS sub    | Max abs error S,T | Max rel error S,T
+    ( 1,   True,  "test0",        "test1",        "test01_conv",     "test01_sub",     (2e-4, 5e-4),       (5e-3, 4e-3)),
+    ( 2,   True,  "testScience",  "testTemplate", "testST_conv",     "testST_sub",     (8e-3, 2e-3),       (5e-6, 9e-1)),
+    ( 3,   False, "ptf_m82_s_2k", "ptf_m82_t_2k", "ptf_m82_2k_conv", "ptf_m82_2k_sub", (2e-1, 3e1),        (1e-5, 4e-1)),
+    ( 4,   False, "sparse0",      "sparse1",      "sparse01_conv",   "sparse01_sub",   (2e1,  5e0),        (3e-4, 5e-4))
 ]
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
@@ -83,7 +83,7 @@ def diff_fits(h_path, b_path):
     return max_error_abs, mean_error_abs, max_error_rel, mean_error_rel, wrong_nans, abs_coords
 
 def run_test(test_index, verbose):
-    (id, science_name, template_name, conv_name, sub_name, max_abs_error, max_rel_error) = TEST_TABLE[test_index]
+    (id, _, science_name, template_name, conv_name, sub_name, max_abs_error, max_rel_error) = TEST_TABLE[test_index]
 
     print(f"{color_print.CYAN}Running test {id}...")
 
@@ -135,30 +135,23 @@ def run_test(test_index, verbose):
         conv_wrong_nans == 0 and sub_wrong_nans == 0
 
 def print_help():
-    print(f"Usage: {pathlib.Path(__file__).name} [<flags>...]")
-    print("Possible flags:")
-    print("-h: Print this help text and exits.")
-    print("-v: Verbose printing.")
+    print(f"{color_print.YELLOW}Usage: {pathlib.Path(__file__).name} [<flags>...]")
+    print(f"{color_print.YELLOW}Possible flags:")
+    print(f"{color_print.YELLOW}-h: Print this help text and exits.")
+    print(f"{color_print.YELLOW}-v: Verbose printing.")
+    print(f"{color_print.YELLOW}--all: Runs all tests (default).")
+    print(f"{color_print.YELLOW}--fast: Runs all tests which are slow.")
+    print(f"{color_print.YELLOW}--slow: Runs all tests which are fast.")
 
-def main(args):
-    # Parse args
-    verbose = False
+def run_tests(verbose, tests):
+    print(f"{color_print.CYAN}Running X-BACH from \"{BUILD_PATH.resolve()}\"")
 
-    for arg in args:
-        if arg == "-h":
-            print_help()
-            return True
-        elif arg == "-v":
-            verbose = True
-        else:
-            print(f"{color_print.RED}Unrecognized flag: {arg}")
-            print()
-            print_help()
+    print()
+    print(f"There are a total of {len(tests)} tests to run:")
 
-    print(f"There are a total of {len(TEST_TABLE)} tests to run")
-    print(f"{color_print.CYAN}NOTE: running X-BACH from \"{BUILD_PATH.resolve()}\"")
-
-    color_print.init()
+    for i in tests:
+        test = TEST_TABLE[i]
+        print(f" Test {test[0]}, Science: {test[2]} Template: {test[3]}")
 
     print()
 
@@ -175,7 +168,7 @@ def main(args):
     failed_tests = 0
     total_tests = 0
 
-    for i in range(len(TEST_TABLE)):
+    for i in tests:
         test_id = TEST_TABLE[i][0]
         test_success = run_test(i, verbose)
         
@@ -191,9 +184,43 @@ def main(args):
     if failed_tests > 0:
         print(f"{color_print.RED}{failed_tests} / {total_tests} tests failed!")
 
-        sys.exit(1)
-    else:
-        print(f"{color_print.GREEN}All tests were successful!")
+        return False
+    
+    print(f"{color_print.GREEN}All tests were successful!")
+
+def main(args):
+    color_print.init()
+
+    # Parse args
+    verbose = False
+    tests = {}
+
+    for arg in args:
+        if arg == "-h":
+            print_help()
+            return True
+        elif arg == "-v":
+            verbose = True
+        elif arg == "--all":
+            tests = [i for i in range(len(TEST_TABLE))]
+        elif arg == "--fast":
+            tests = [i for i in range(len(TEST_TABLE)) if TEST_TABLE[i][1]]
+        elif arg == "--slow":
+            tests = [i for i in range(len(TEST_TABLE)) if not TEST_TABLE[i][1]]
+        else:
+            print(f"{color_print.RED}Unrecognized flag: {arg}")
+            print()
+            print_help()
+            return False
+
+    if len(tests) == 0:
+        tests = [i for i in range(len(TEST_TABLE))]
+
+    success = run_tests(verbose, tests)
+
+    color_print.destroy()
+
+    return success
 
 if __name__ == "__main__":
     if not main(sys.argv[1:]):
