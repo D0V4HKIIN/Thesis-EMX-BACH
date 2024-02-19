@@ -9,7 +9,7 @@
 #include "argsUtil.h"
 #include "datatypeUtil.h"
 
-inline cl_int readImage(Image& input) {
+inline cl_int readImage(Image& input, const Arguments& args) {
   CCfits::FITS* pIn{};
   try {
     pIn = new CCfits::FITS(input.getFile(), CCfits::RWmode::Read, true);
@@ -44,7 +44,7 @@ inline cl_int readImage(Image& input) {
   return 0;
 }
 
-inline cl_int writeImage(const Image& img) {
+inline cl_int writeImage(const Image& img, const Arguments& args) {
   constexpr cl_long nAxis = 2;
   CCfits::FITS* pFits{};
 
