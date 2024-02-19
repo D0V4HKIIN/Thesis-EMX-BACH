@@ -1,6 +1,6 @@
 #include "bachUtil.h"
 
-double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask) {
+double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
   const int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
@@ -26,7 +26,7 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
         }
       }
 
-      ludcmp(testMat, args.nPSF + 1, index, d);
+      ludcmp(testMat, args.nPSF + 1, index, d, args);
       lubksb(testMat, args.nPSF + 1, index, testVec);
       s.stats.norm = testVec[1];
       kernelSum[count++] = testVec[1];
@@ -34,7 +34,7 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   }
 
   double kernelMean, kernelStdev;
-  sigmaClip(kernelSum, kernelMean, kernelStdev, 10);
+  sigmaClip(kernelSum, kernelMean, kernelStdev, 10, args);
 
   // normalise
   for(auto& s : stamps) {
@@ -52,26 +52,26 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   }
 
   // do fit
-  auto [matrix, weight] = createMatrix(testStamps, tImg.axis);
-  std::vector<double> testKernSol = createScProd(testStamps, sImg, weight);
+  auto [matrix, weight] = createMatrix(testStamps, tImg.axis, args);
+  std::vector<double> testKernSol = createScProd(testStamps, sImg, weight, args);
 
   double d;
-  ludcmp(matrix, matSize, index, d);
+  ludcmp(matrix, matSize, index, d, args);
   lubksb(matrix, matSize, index, testKernSol);
 
-  Kernel testKern{};
+  Kernel testKern(args);
   testKern.solution = testKernSol;
-  kernelMean = makeKernel(testKern, tImg.axis, 0, 0);
+  kernelMean = makeKernel(testKern, tImg.axis, 0, 0, args);
 
   // calc merit value
   std::vector<double> merit{};
   double sig{};
   for(auto& ts : testStamps) {
-    sig = calcSig(ts, testKern.solution, tImg, sImg, mask);
+    sig = calcSig(ts, testKern.solution, tImg, sImg, mask, args);
     if(sig != -1 && sig <= 1e10) merit.push_back(sig);
   }
   double meritMean, meritStdDev;
-  sigmaClip(merit, meritMean, meritStdDev, 10);
+  sigmaClip(merit, meritMean, meritStdDev, 10, args);
   //TODO: Add other merits before 666
   meritMean /= kernelMean;
   if(merit.size() > 0) return meritMean;
@@ -79,7 +79,7 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 }
 
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
-createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize) {
+createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;  // = 6
   const int nComp = nComp1 * nComp2;
@@ -176,7 +176,7 @@ createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>
 }
 
 std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& img,
-                                 const std::vector<std::vector<double>>& weight) {
+                                 const std::vector<std::vector<double>>& weight, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
   const int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
@@ -222,12 +222,12 @@ std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& 
 }
 
 double calcSig(Stamp& s, const std::vector<double>& kernSol, const Image& tImg,
-               const Image& sImg, ImageMask& mask) {
+               const Image& sImg, ImageMask& mask, const Arguments& args) {
   if(s.subStamps.empty()) return -1.0;
   auto [ssx, ssy] = s.subStamps[0].imageCoords;
 
-  double background = getBackground(ssx, ssy, kernSol, tImg.axis);
-  std::vector<float> tmp{makeModel(s, kernSol, tImg.axis)};
+  double background = getBackground(ssx, ssy, kernSol, tImg.axis, args);
+  std::vector<float> tmp{makeModel(s, kernSol, tImg.axis, args)};
 
   int sigCount = 0;
   double signal = 0.0;
@@ -267,7 +267,7 @@ double calcSig(Stamp& s, const std::vector<double>& kernSol, const Image& tImg,
 }
 
 double getBackground(const int x, const int y, const std::vector<double>& kernSol,
-                     const std::pair<cl_long, cl_long> imgSize) {
+                     const std::pair<cl_long, cl_long> imgSize, const Arguments& args) {
   int BGComp = (args.nPSF - 1) *
                    (((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2) +
                1;
@@ -288,7 +288,7 @@ double getBackground(const int x, const int y, const std::vector<double>& kernSo
 }
 
 std::vector<float> makeModel(const Stamp& s, const std::vector<double>& kernSol,
-                             const std::pair<cl_long, cl_long> imgSize) {
+                             const std::pair<cl_long, cl_long> imgSize, const Arguments& args) {
   std::vector<float> model(args.fSStampWidth * args.fSStampWidth, 0.0);
 
   std::pair<float, float> hImgAxis =
@@ -319,48 +319,48 @@ std::vector<float> makeModel(const Stamp& s, const std::vector<double>& kernSol,
 }
 
 void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
-               const Image& sImg, ImageMask& mask) {
+               const Image& sImg, ImageMask& mask, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
   const int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
   const int matSize = nComp1 * nComp2 + nBGComp + 1;
 
-  auto [fittingMatrix, weight] = createMatrix(stamps, tImg.axis);
-  std::vector<double> solution = createScProd(stamps, sImg, weight);
+  auto [fittingMatrix, weight] = createMatrix(stamps, tImg.axis, args);
+  std::vector<double> solution = createScProd(stamps, sImg, weight, args);
 
   std::vector<int> index(matSize, 0);
   double d{};
-  ludcmp(fittingMatrix, matSize, index, d);
+  ludcmp(fittingMatrix, matSize, index, d, args);
   lubksb(fittingMatrix, matSize, index, solution);
 
   k.solution = solution;
-  bool check = checkFitSolution(k, stamps, tImg, sImg, mask);
+  bool check = checkFitSolution(k, stamps, tImg, sImg, mask, args);
   while(check) {
     if(args.verbose) std::cout << "Re-expanding matrix..." << std::endl;
-    auto [fittingMatrix, weight] = createMatrix(stamps, tImg.axis);
-    solution = createScProd(stamps, sImg, weight);
+    auto [fittingMatrix, weight] = createMatrix(stamps, tImg.axis, args);
+    solution = createScProd(stamps, sImg, weight, args);
 
-    ludcmp(fittingMatrix, matSize, index, d);
+    ludcmp(fittingMatrix, matSize, index, d, args);
     lubksb(fittingMatrix, matSize, index, solution);
 
     k.solution = solution;
-    check = checkFitSolution(k, stamps, tImg, sImg, mask);
+    check = checkFitSolution(k, stamps, tImg, sImg, mask, args);
   }
 }
 
 bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
-                      const Image& sImg, ImageMask& mask) {
+                      const Image& sImg, ImageMask& mask, const Arguments& args) {
   std::vector<double> ssValues{};
 
   bool check = false;
 
   for(Stamp& s : stamps) {
     if(!s.subStamps.empty()) {
-      double sig = calcSig(s, k.solution, tImg, sImg, mask);
+      double sig = calcSig(s, k.solution, tImg, sImg, mask, args);
 
       if(sig == -1) {
         s.subStamps.erase(s.subStamps.begin(), next(s.subStamps.begin()));
-        fillStamp(s, tImg, sImg, mask, k);
+        fillStamp(s, tImg, sImg, mask, k, args);
         check = true;
       } else {
         s.stats.chi2 = sig;
@@ -370,7 +370,7 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
   }
 
   double mean = 0.0, stdDev = 0.0;
-  sigmaClip(ssValues, mean, stdDev, 10);
+  sigmaClip(ssValues, mean, stdDev, 10, args);
 
   if(args.verbose) {
     std::cout << "Mean sig: " << mean << " stdev: " << stdDev << '\n'
@@ -382,7 +382,7 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
     if(!s.subStamps.empty()) {
       if((s.stats.chi2 - mean) > args.sigKernFit * stdDev) {
         s.subStamps.erase(s.subStamps.begin(), next(s.subStamps.begin()));
-        fillStamp(s, tImg, sImg, mask, k);
+        fillStamp(s, tImg, sImg, mask, k, args);
         check = true;
       }
     }
