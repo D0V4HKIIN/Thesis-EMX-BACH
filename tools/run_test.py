@@ -1,3 +1,4 @@
+import color_print
 import math
 import os
 import pathlib
@@ -6,21 +7,6 @@ import subprocess
 import sys
 import time
 from astropy.io import fits
-
-# Try import colorama, if not, create a 'dummy' environment
-USE_COLORAMA = False
-try:
-    import colorama
-
-    USE_COLORAMA = True
-
-    INFO_COLOR = colorama.Fore.CYAN
-    ERROR_COLOR = colorama.Fore.RED
-    PASS_COLOR = colorama.Fore.GREEN
-except ModuleNotFoundError:
-    INFO_COLOR = ""
-    ERROR_COLOR = ""
-    PASS_COLOR= ""
 
 TEST_TABLE = [
     # ID | Science       | Template      | HOTPANTS conv    | HOTPANTS sub    | Max abs error S,T | Max rel error S,T
@@ -99,7 +85,7 @@ def diff_fits(h_path, b_path):
 def run_test(test_index, verbose):
     (id, science_name, template_name, conv_name, sub_name, max_abs_error, max_rel_error) = TEST_TABLE[test_index]
 
-    print(f"{INFO_COLOR}Running test {id}...")
+    print(f"{color_print.CYAN}Running test {id}...")
 
     exe_path = BUILD_PATH / "BACH.exe"
 
@@ -113,7 +99,7 @@ def run_test(test_index, verbose):
 
     with open(OUTPUT_PATH / f"test{id}_out.txt", "w") as out_stream:
         if not subprocess.run(args=exe_args, stdout=out_stream, stderr=out_stream):
-            print(f"{ERROR_COLOR}X-BACH exited with an error code!")
+            print(f"{color_print.RED}X-BACH exited with an error code!")
             return False
 
     CONV_OUT_PATH = OUTPUT_PATH / f"test{id}_diff.fits"
@@ -165,17 +151,14 @@ def main(args):
         elif arg == "-v":
             verbose = True
         else:
-            print(f"{ERROR_COLOR}Unrecognized flag: {arg}")
+            print(f"{color_print.RED}Unrecognized flag: {arg}")
             print()
             print_help()
 
     print(f"There are a total of {len(TEST_TABLE)} tests to run")
-    print(f"{INFO_COLOR}NOTE: running X-BACH from \"{BUILD_PATH.resolve()}\"")
+    print(f"{color_print.CYAN}NOTE: running X-BACH from \"{BUILD_PATH.resolve()}\"")
 
-    if USE_COLORAMA:
-        colorama.init(autoreset=True)
-    else:
-        print("NOTE: colorama is not installed. Print will not be colored.")
+    color_print.init()
 
     print()
 
@@ -197,20 +180,20 @@ def main(args):
         test_success = run_test(i, verbose)
         
         if test_success:
-            print(f"{PASS_COLOR}Test {test_id} succeeded!")
+            print(f"{color_print.GREEN}Test {test_id} succeeded!")
         else:
             failed_tests += 1
-            print(f"{ERROR_COLOR}Test {test_id} failed!")
+            print(f"{color_print.RED}Test {test_id} failed!")
 
         total_tests += 1
         print()
 
     if failed_tests > 0:
-        print(f"{ERROR_COLOR}{failed_tests} / {total_tests} tests failed!")
+        print(f"{color_print.RED}{failed_tests} / {total_tests} tests failed!")
 
         sys.exit(1)
     else:
-        print(f"{PASS_COLOR}All tests were successful!")
+        print(f"{color_print.GREEN}All tests were successful!")
 
 if __name__ == "__main__":
     if not main(sys.argv[1:]):
