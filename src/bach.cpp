@@ -11,14 +11,14 @@
 
 #include "bach.h"
 
-void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData, const Arguments& args) {
+void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData) {
 
   cl_int err{};
 
   // Read input images
-  err = readImage(templateImg, args);
+  err = readImage(templateImg);
   checkError(err);
-  err = readImage(scienceImg, args);
+  err = readImage(scienceImg);
   checkError(err);
 
   if(templateImg.axis != scienceImg.axis) {
@@ -41,10 +41,10 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
   err = clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &scienceImg);
   checkError(err);
 
-  maskInput(templateImg, scienceImg, mask, clData, args);
+  maskInput(templateImg, scienceImg, mask, clData);
 }
 
-void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args) {
+void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps) {
   std::cout << "\nCreating stamps..." << std::endl;
     
   const auto [w, h] = templateImg.axis;
@@ -65,12 +65,12 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
                 << args.stampsy << " stamps instead." << std::endl;
   }
 
-  createStamps(templateImg, templateStamps, w, h, args);
+  createStamps(templateImg, templateStamps, w, h);
   if(args.verbose) {
     std::cout << "Stamps created for " << templateImg.name << std::endl;
   }
 
-  createStamps(scienceImg, sciStamps, w, h, args);
+  createStamps(scienceImg, sciStamps, w, h);
   if(args.verbose) {
     std::cout << "Stamps created for " << scienceImg.name << std::endl;
   }
@@ -78,7 +78,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   /* == Check Template Stamps  ==*/
   double filledTempl{};
   double filledScience{};
-  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args);
+  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience);
   if(filledTempl < 0.1 || filledScience < 0.1) {
     if(args.verbose)
       std::cout << "Not enough substamps found in " << templateImg.name
@@ -95,11 +95,11 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
       }
     }
 
-    createStamps(templateImg, templateStamps, w, h, args);
+    createStamps(templateImg, templateStamps, w, h);
 
-    createStamps(scienceImg, sciStamps, w, h, args);
+    createStamps(scienceImg, sciStamps, w, h);
 
-    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args);
+    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience);
     args.threshLow /= 0.5;
   }
 
@@ -109,22 +109,22 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   }
 }
 
-void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, const Arguments& args) {
+void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel) {
   std::cout << "\nCalculating matrix variables..." << std::endl;
 
   for(auto& s : templateStamps) {
-    fillStamp(s, templateImg, scienceImg, mask, convolutionKernel, args);
+    fillStamp(s, templateImg, scienceImg, mask, convolutionKernel);
   }
   for(auto& s : sciStamps) {
-    fillStamp(s, scienceImg, templateImg, mask, convolutionKernel, args);
+    fillStamp(s, scienceImg, templateImg, mask, convolutionKernel);
   }
 }
 
-void cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Arguments& args) {
+void cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps) {
   std::cout << "\nChoosing convolution direction..." << std::endl;
 
-  const double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask, args);
-  const double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask, args);
+  const double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask);
+  const double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask);
   if(args.verbose)
     std::cout << "template merit value = " << templateMerit
               << ", science merit value = " << scienceMerit << std::endl;
@@ -136,14 +136,14 @@ void cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
     std::cout << templateImg.name << " chosen to be convolved." << std::endl;
 }
 
-void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel, const Arguments& args) {
+void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel) {
   std::cout << "\nFitting kernel..." << std::endl;
 
-  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask, args);
+  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask);
 }
 
 void conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel,
-          const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue, const Arguments& args) {
+          const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue) {
   std::cout << "\nConvolving..." << std::endl;
   
   const auto [w, h] = templateImg.axis;
@@ -158,8 +158,7 @@ void conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Im
       makeKernel(
           convolutionKernel, templateImg.axis,
           xStep * args.fKernelWidth + args.hKernelWidth + args.hKernelWidth,
-          yStep * args.fKernelWidth + args.hKernelWidth + args.hKernelWidth,
-          args);
+          yStep * args.fKernelWidth + args.hKernelWidth + args.hKernelWidth);
       convKernels.insert(convKernels.end(),
                          convolutionKernel.currKernel.begin(),
                          convolutionKernel.currKernel.end());
@@ -169,7 +168,7 @@ void conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Im
   // Used to normalize the result since the kernel sum is not always 1.
   double kernSum =
       makeKernel(convolutionKernel, templateImg.axis,
-                 templateImg.axis.first / 2, templateImg.axis.second / 2, args);
+                 templateImg.axis.first / 2, templateImg.axis.second / 2);
   cl_double invKernSum = 1.0 / kernSum;
 
   if(args.verbose) {
@@ -238,7 +237,7 @@ void conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Im
   for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
     for(int x = args.hKernelWidth; x < w - args.hKernelWidth; x++) {
       convImg.data[x + y * w] +=
-          getBackground(x, y, convolutionKernel.solution, templateImg.axis, args);
+          getBackground(x, y, convolutionKernel.solution, templateImg.axis);
     }
   }
 
@@ -262,7 +261,7 @@ void conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Im
 }
 
 void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg,
-         const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue, const Arguments& args) {
+         const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue) {
   std::cout << "\nSubtracting images..." << std::endl;
   const auto [w, h] = scienceImg.axis;
 
@@ -300,13 +299,13 @@ void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, I
   }
 } 
 
-void fin(const Image &convImg, const Image &diffImg, const Arguments& args) {
+void fin(const Image &convImg, const Image &diffImg) {
   std::cout << "\nWriting output..." << std::endl;
 
   cl_int err{};
-  err = writeImage(convImg, args);
+  err = writeImage(convImg);
   checkError(err);
   
-  err = writeImage(diffImg, args);
+  err = writeImage(diffImg);
   checkError(err);
 }

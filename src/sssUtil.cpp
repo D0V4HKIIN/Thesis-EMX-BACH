@@ -1,17 +1,17 @@
 #include "bachUtil.h"
 #include <cassert>
 
-void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience, const Arguments& args) {
+void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience) {
   std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
 
   assert(templStamps.size() == scienceStamps.size());
 
   for (int i = 0; i < templStamps.size(); i++) {
-    calcStats(templStamps[i], templImage, mask, args);
-    calcStats(scienceStamps[i], scienceImage, mask, args);
+    calcStats(templStamps[i], templImage, mask);
+    calcStats(scienceStamps[i], scienceImage, mask);
 
-    findSStamps(templStamps[i], templImage, mask, i, true, args);
-    findSStamps(scienceStamps[i], scienceImage, mask, i, false, args);
+    findSStamps(templStamps[i], templImage, mask, i, true);
+    findSStamps(scienceStamps[i], scienceImage, mask, i, false);
   }
 
   int oldCount = templStamps.size();
@@ -36,7 +36,7 @@ void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, s
     std::cout << "Non-Empty science stamps: " << scienceStamps.size() << std::endl;
   }
 }
-void createStamps(const Image& img, std::vector<Stamp>& stamps, const int w, const int h, const Arguments& args) {
+void createStamps(const Image& img, std::vector<Stamp>& stamps, const int w, const int h) {
   for(int j = 0; j < args.stampsy; j++) {
     for(int i = 0; i < args.stampsx; i++) {
       int startx = i * (double(w) / double(args.stampsx));
@@ -65,7 +65,7 @@ void createStamps(const Image& img, std::vector<Stamp>& stamps, const int w, con
   }
 }
 
-double checkSStamp(const SubStamp& sstamp, const Image& image, ImageMask& mask, const Stamp& stamp, const ImageMask::masks badMask, const bool isTemplate, const Arguments& args) {
+double checkSStamp(const SubStamp& sstamp, const Image& image, ImageMask& mask, const Stamp& stamp, const ImageMask::masks badMask, const bool isTemplate) {
   double retVal = 0.0;
   for(int y = sstamp.imageCoords.second - args.hSStampWidth;
       y <= sstamp.imageCoords.second + args.hSStampWidth; y++) {
@@ -92,7 +92,7 @@ double checkSStamp(const SubStamp& sstamp, const Image& image, ImageMask& mask, 
   return retVal;
 }
 
-cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int index, const bool isTemplate, const Arguments& args) {
+cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int index, const bool isTemplate) {
   double floor = stamp.stats.skyEst + args.threshKernFit * stamp.stats.fwhm;
 
   double dfrac = 0.9;
@@ -174,7 +174,7 @@ cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int 
               }
             }
           }
-          s.val = checkSStamp(s, image, mask, stamp, badMask, isTemplate, args);
+          s.val = checkSStamp(s, image, mask, stamp, badMask, isTemplate);
           if(s.val == 0.0) continue;
           stamp.subStamps.push_back(s);
 

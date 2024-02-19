@@ -67,7 +67,9 @@ inline bool cmdOptionExists(const char** begin, const char** end,
   return std::find(begin, end, option) != end;
 }
 
-inline void getArguments(const int argc, const char* argv[], Arguments& args) {
+inline Arguments args{};
+
+inline void getArguments(const int argc, const char* argv[]) {
   if(cmdOptionExists(argv, argv + argc, "-o")) {
     args.outName = getCmdOption(argv, argv + argc, "-o");
   }
