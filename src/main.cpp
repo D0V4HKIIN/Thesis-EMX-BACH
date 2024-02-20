@@ -43,7 +43,7 @@ int main(int argc, const char* argv[]) {
   cl::Context context{device};
   cl::Program program =
       loadBuildPrograms(context, device, std::filesystem::path(argv[0]).parent_path(),
-      "conv.cl", "ini.cl", "sub.cl");
+      "cmv.cl", "conv.cl", "ini.cl", "sub.cl");
   cl::CommandQueue queue(context, device);
 
   ClData clData { device, context, program, queue };
@@ -77,7 +77,7 @@ int main(int argc, const char* argv[]) {
   clock_t p5 = clock();
 
   Kernel convolutionKernel{args};
-  cmv(templateImg, scienceImg, mask, templateStamps, sciStamps, convolutionKernel, args);
+  cmv(templateImg, scienceImg, mask, templateStamps, sciStamps, convolutionKernel, clData, args);
   
   clock_t p6 = clock();
   if(args.verboseTime) {

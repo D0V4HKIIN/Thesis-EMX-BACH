@@ -4,8 +4,7 @@
 
 #include "datatypeUtil.h"
 
-struct ClData
-{
+struct ClData {
     cl::Device &device;
     cl::Context &context;
     cl::Program &program;
@@ -14,11 +13,21 @@ struct ClData
     cl::Buffer tImgBuf;
     cl::Buffer sImgBuf;
     cl::Buffer maskBuf;
+
+    struct {
+        cl::Buffer gauss;
+        cl::Buffer x;
+        cl::Buffer y;
+        cl::Buffer bg;
+        cl::Buffer filterX;
+        cl::Buffer filterY;
+        cl::Buffer vec;
+    } kernel;
 };
 
 void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData, const Arguments& args);
 void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args);
-void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, const Arguments& args);
+void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args);
 bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Arguments& args);
 void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel, const Arguments& args);
 double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
