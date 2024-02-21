@@ -69,6 +69,29 @@ void kernel createKernelVector(global const int *kernelX, global const int *kern
     vec[id] = vv;
 }
 
+void kernel createQ(global const double *w,
+                    global double *q,
+                    const long wRows, const long wColumns,
+                    const long qRows, const long qColumns,
+                    const long subStampWidth) {
+    int stampId = get_global_id(0);
+    int i = get_global_id(1);
+    int j = get_global_id(2);
+
+    double q0 = 0.0;
+
+    // Can be optimized as ~1/2 of the threads are idle and outputs 0
+    if (i > 0 && j > 0 && j <= i) {
+        for(int k = 0; k < subStampWidth * subStampWidth; k++) {
+          double w0 = w[stampId * wRows * wColumns + (i - 1) * wColumns + k];
+          double w1 = w[stampId * wRows * wColumns + (j - 1) * wColumns + k];
+          q0 += w0 * w1;
+        }
+    }
+
+    q[stampId * qRows * qColumns + i * qColumns + j] = q0;
+}
+
 void kernel createB(global const int *subStampCoords,
                     global const double *img, global const double *w,
                     global double *b,

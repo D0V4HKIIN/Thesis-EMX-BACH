@@ -204,8 +204,10 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   clData.wColumns = args.fSStampWidth * args.fSStampWidth;
   clData.wRows = args.nPSF + triNum(args.backgroundOrder + 1);
+  clData.qCount = args.nPSF + 2;
   clData.bCount = args.nPSF + 2;
 
+  stampData.q = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * stamps.size());
   stampData.b = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
 
   // TEMP: create w buffer and transfer data to GPU
@@ -223,6 +225,14 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   clData.queue.enqueueWriteBuffer(stampData.w, CL_TRUE, 0, sizeof(cl_double) * w.size(), &w[0]);
 
+  // Create Q
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_long, cl_long>
+                    qFunc(clData.program, "createQ");
+  cl::EnqueueArgs qEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size(), clData.qCount, clData.qCount), cl::NullRange);
+  cl::Event qEvent = qFunc(qEargs, stampData.w, stampData.q, clData.wRows, clData.wColumns,
+                           clData.qCount, clData.qCount, args.fSStampWidth);
+
+  // Create B
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
                     bFunc(clData.program, "createB");
@@ -230,14 +240,31 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   cl::Event bEvent = bFunc(bEargs, stampData.subStampCoords, sImgBuf,
                            stampData.w, stampData.b, clData.wRows, clData.wColumns, clData.bCount,
                            args.fSStampWidth, 2 * args.maxKSStamps, tImg.axis.first);
+
+  qEvent.wait();
   bEvent.wait();
 
   // TEMP: transfer the data back to the CPU
+  std::vector<double> gpuQ(clData.qCount * clData.qCount * stamps.size());
   std::vector<double> gpuB(clData.bCount * stamps.size());
 
+  clData.queue.enqueueReadBuffer(stampData.q, CL_TRUE, 0, sizeof(cl_double) * gpuQ.size(), &gpuQ[0]);
   clData.queue.enqueueReadBuffer(stampData.b, CL_TRUE, 0, sizeof(cl_double) * gpuB.size(), &gpuB[0]);
 
-  // TEMP: put data in B
+  // TEMP: put data back in Q
+  for (int i = 0; i < stamps.size(); i++) {
+    auto& s = stamps[i];
+    
+    for (int j = 0; j < clData.qCount; j++) {
+      s.Q[j].clear();
+
+      for (int k = 0; k < clData.qCount; k++) {
+        s.Q[j].push_back(gpuQ[i * clData.qCount * clData.qCount + j * clData.qCount + k]);
+      }
+    }
+  }
+
+  // TEMP: put data back in B
   for (int i = 0; i < stamps.size(); i++) {
     auto& s = stamps[i];
     s.B.clear();

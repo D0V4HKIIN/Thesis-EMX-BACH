@@ -7,6 +7,7 @@
 struct ClStampsData {
     cl::Buffer subStampCoords; // (x, y) coordinates
     cl::Buffer w;
+    cl::Buffer q;
     cl::Buffer b;
 };
 
@@ -30,6 +31,7 @@ struct ClData {
         cl::Buffer vec;
     } kernel;
 
+    int qCount;
     int bCount;
     int wRows;
     int wColumns;
