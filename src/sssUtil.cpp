@@ -36,33 +36,61 @@ void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, s
     std::cout << "Non-Empty science stamps: " << scienceStamps.size() << std::endl;
   }
 }
-void createStamps(const Image& img, std::vector<Stamp>& stamps, const int w, const int h, const Arguments& args) {
+
+void createStamps(const Image& templateImg, const Image& scienceImg, std::vector<Stamp>& templateStamps, std::vector<Stamp>& scienceStamps, const int w, const int h, const Arguments& args, const ClData& clData) {
+  cl::EnqueueArgs eargsBounds{clData.queue, cl::NullRange, cl::NDRange(args.stampsx * args.stampsy), cl::NullRange};
+
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_int, cl_long, cl_long, cl_long>
+  boundsFunc(clData.program, "createStamps");
+
+  cl::Event boundsEvent = 
+      boundsFunc(eargsBounds,
+                  clData.stampsCoordsBuf, clData.stampsSizesBuf,
+                  args.stampsx, args.stampsy, args.fStampWidth,
+                  w, h);
+  boundsEvent.wait();
+
+  std::vector<cl_long> stampCoords(2 * args.stampsx * args.stampsy, 0);
+  std::vector<cl_long> stampSizes(2 * args.stampsx * args.stampsy, 0);
+
+  cl_int err = clData.queue.enqueueReadBuffer(clData.stampsCoordsBuf, CL_TRUE, 0,
+    sizeof(cl_long) * 2 * args.stampsx * args.stampsy, &stampCoords[0]);
+  checkError(err);
+  err = clData.queue.enqueueReadBuffer(clData.stampsSizesBuf, CL_TRUE, 0,
+    sizeof(cl_long) * 2 * args.stampsx * args.stampsy, &stampSizes[0]);
+  checkError(err);
+
   for(int j = 0; j < args.stampsy; j++) {
     for(int i = 0; i < args.stampsx; i++) {
-      int startx = i * (double(w) / double(args.stampsx));
-      int starty = j * (double(h) / double(args.stampsy));
-      int stopx = std::min(startx + args.fStampWidth, w);
-      int stopy = std::min(starty + args.fStampWidth, h);
-      int stampw = stopx - startx;
-      int stamph = stopy - starty;
+      int startx = stampCoords[2*(j*args.stampsx + i) + 0];
+      int starty = stampCoords[2*(j*args.stampsx + i) + 1];
+      int stampw =  stampSizes[2*(j*args.stampsx + i) + 0];
+      int stamph =  stampSizes[2*(j*args.stampsx + i) + 1];
 
-      int centerx = startx + stampw / 2;
-      int centery = starty + stamph / 2;
-
-      Stamp tmpS{};
+      printf("%d, %3d, %3d, %3d, %d, %d\n", i, j, startx, starty, stampw, stamph);
+      templateStamps.emplace_back();
+      scienceStamps.emplace_back();
+      
+      templateStamps.back().data.reserve(args.fStampWidth*args.fStampWidth);
+      templateStamps.back().coords = std::make_pair(startx, starty);
+      templateStamps.back().size = std::make_pair(stampw, stamph);
+      
+      scienceStamps.back().data.reserve(args.fStampWidth*args.fStampWidth);
+      scienceStamps.back().coords = std::make_pair(startx, starty);
+      scienceStamps.back().size = std::make_pair(stampw, stamph);
+      
       for(int y = 0; y < stamph; y++) {
         for(int x = 0; x < stampw; x++) {
-          double tmp = img[(startx + x) + ((starty + y) * w)];
-          tmpS.data.push_back(tmp);
+          templateStamps.back().data.push_back(
+            templateImg[(startx + x) + ((starty + y) * w)]);
+          scienceStamps.back().data.push_back(
+            scienceImg[(startx + x) + ((starty + y) * w)]);
         }
       }
-
-      tmpS.coords = std::make_pair(startx, starty);
-      tmpS.size = std::make_pair(stampw, stamph);
-      tmpS.center = std::make_pair(centerx, centery);
-      stamps.push_back(tmpS);
     }
   }
+
+
 }
 
 double checkSStamp(const SubStamp& sstamp, const Image& image, ImageMask& mask, const Stamp& stamp, const ImageMask::masks badMask, const bool isTemplate, const Arguments& args) {

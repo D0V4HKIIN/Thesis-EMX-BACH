@@ -141,7 +141,6 @@ struct StampStats {
 struct Stamp {
   std::pair<cl_long, cl_long> coords{};
   std::pair<cl_long, cl_long> size{};
-  std::pair<cl_long, cl_long> center{};
   std::vector<SubStamp> subStamps{};
   std::vector<double> data{};
   StampStats stats{};
@@ -156,7 +155,6 @@ struct Stamp {
         const std::vector<double>& stampData)
       : coords{stampCoords},
         size{stampSize},
-        center{c},
         subStamps{subStamps},
         data{stampData} {}
 
