@@ -41,7 +41,7 @@ void createStamps(const Image& templateImg, const Image& scienceImg, std::vector
   cl::EnqueueArgs eargsBounds{clData.queue, cl::NullRange, cl::NDRange(args.stampsx * args.stampsy), cl::NullRange};
 
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_int, cl_long, cl_long, cl_long>
-  boundsFunc(clData.program, "createStamps");
+  boundsFunc(clData.program, "createStampBounds");
 
   cl::Event boundsEvent = 
       boundsFunc(eargsBounds,

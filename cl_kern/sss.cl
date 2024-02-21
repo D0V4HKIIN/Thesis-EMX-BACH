@@ -14,7 +14,7 @@
 
 //TODO: Fix swizzling for stamp data
 
-void kernel createStamps(global long *stampsCoords, global long *stampsSizes,
+void kernel createStampBounds(global long *stampsCoords, global long *stampsSizes,
                           const int nStampsX, const int nStampsY, const long fullStampWidth, 
                           const long w, const long h) {
   const int id = get_global_id(0);
