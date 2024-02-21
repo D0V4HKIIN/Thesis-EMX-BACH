@@ -68,3 +68,33 @@ void kernel createKernelVector(global const int *kernelX, global const int *kern
     
     vec[id] = vv;
 }
+
+void kernel createB(global const int *subStampCoords,
+                    global const double *img, global const double *w,
+                    global double *b,
+                    const long wRows, const long wColumns, const long bCount,
+                    const long subStampWidth, const long maxSubStamps,
+                    const long width) {
+    int stampId = get_global_id(0);
+    int i = get_global_id(1);
+
+    double p0 = 0.0;
+
+    if (i > 0) {
+        int halfSubStampWidth = subStampWidth / 2;
+
+        int ssx = subStampCoords[2 * stampId * maxSubStamps + 0];
+        int ssy = subStampCoords[2 * stampId * maxSubStamps + 1];
+
+        for(int x = -halfSubStampWidth; x <= halfSubStampWidth; x++) {
+            for(int y = -halfSubStampWidth; y <= halfSubStampWidth; y++) {
+                int k = x + halfSubStampWidth + subStampWidth * (y + halfSubStampWidth);
+                int imgIndex = x + ssx + (y + ssy) * width;
+
+                p0 += w[stampId * wRows * wColumns + (i - 1) * wColumns + k] * img[imgIndex];
+            }
+        }
+    }
+
+    b[stampId * bCount + i] = p0;
+}

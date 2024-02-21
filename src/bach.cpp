@@ -167,7 +167,7 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 
   vecEvent.wait();
 
-  // Temp, return data to CPU
+  // TEMP: return data to CPU
   std::vector<double> filterX(kernelGauss.size() * args.fKernelWidth, 0.0);
   std::vector<double> filterY(kernelGauss.size() * args.fKernelWidth, 0.0);
   std::vector<double> vec(kernelGauss.size() * args.fKernelWidth * args.fKernelWidth, 0.0);
@@ -191,12 +191,9 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
     ((Kernel&)convolutionKernel).kernVec[i / (args.fKernelWidth * args.fKernelWidth)][i % (args.fKernelWidth * args.fKernelWidth)] = vec[i];
   }
 
-  for(auto& s : templateStamps) {
-    fillStamp(s, templateImg, scienceImg, mask, convolutionKernel, args);
-  }
-  for(auto& s : sciStamps) {
-    fillStamp(s, scienceImg, templateImg, mask, convolutionKernel, args);
-  }
+  fillStamps(templateStamps, templateImg, scienceImg, clData.tImgBuf, clData.sImgBuf, mask, convolutionKernel, clData, clData.tmpl, args);
+
+  fillStamps(sciStamps, scienceImg, templateImg, clData.sImgBuf, clData.tImgBuf, mask, convolutionKernel, clData, clData.sci, args);
 }
 
 bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Arguments& args) {

@@ -1,4 +1,5 @@
 #include "bachUtil.h"
+#include "mathUtil.h"
 
 void createB(Stamp& s, const Image& img, const Arguments& args) {
   /* Does Equation 2.13 which create the right side of the Equation Ma=B */
@@ -97,6 +98,156 @@ void cutSStamp(SubStamp& ss, const Image& img, const ImageMask& mask, const Argu
                     : std::abs(img[imgCoords]);
     }
   }
+}
+
+int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf, const ImageMask& mask, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args) {
+  /* Fills Substamp with gaussian basis convolved images around said substamp
+   * and calculates CMV.
+   */
+
+  for (auto& s : stamps) {
+    if(s.subStamps.empty()) {
+      if(args.verbose) {
+        std::cout << "No eligable substamps in stamp at x = " << s.coords.first
+                  << " y = " << s.coords.second << ", stamp rejected"
+                  << std::endl;
+      }
+      continue;
+    }
+
+    int nvec = 0;
+    s.W = std::vector<std::vector<double>>();
+    for(int g = 0; g < cl_int(args.dg.size()); g++) {
+      for(int x = 0; x <= args.dg[g]; x++) {
+        for(int y = 0; y <= args.dg[g] - x; y++) {
+          int odd = 0;
+
+          int dx = (x / 2) * 2 - x;
+          int dy = (y / 2) * 2 - y;
+          if(dx == 0 && dy == 0 && nvec > 0) odd = 1;
+
+          convStamp(s, tImg, k, nvec, odd, args);
+          nvec++;
+        }
+      }
+    }
+  }
+
+  for (auto& s : stamps) {
+    if(s.subStamps.empty()) {
+      continue;
+    }
+    
+    cutSStamp(s.subStamps[0], sImg, mask, args);
+  }
+
+  for (auto& s : stamps) {
+    if(s.subStamps.empty()) {
+      continue;
+    }
+
+    auto [ssx, ssy] = s.subStamps[0].imageCoords;
+
+    for(int j = 0; j <= args.backgroundOrder; j++) {
+      for(int k = 0; k <= args.backgroundOrder - j; k++) {
+        s.W.emplace_back();
+      }
+    }
+    for(int y = ssy - args.hSStampWidth; y <= ssy + args.hSStampWidth; y++) {
+      double yf =
+          (y - float(tImg.axis.second * 0.5)) / float(tImg.axis.second * 0.5);
+      for(int x = ssx - args.hSStampWidth; x <= ssx + args.hSStampWidth; x++) {
+        double xf =
+            (x - float(tImg.axis.first * 0.5)) / float(tImg.axis.first * 0.5);
+        double ax = 1.0;
+        cl_int nBGVec = 0;
+        for(int j = 0; j <= args.backgroundOrder; j++) {
+          double ay = 1.0;
+          for(int k = 0; k <= args.backgroundOrder - j; k++) {
+            s.W[args.nPSF + nBGVec++].push_back(ax * ay);
+            ay *= yf;
+          }
+          ax *= xf;
+        }
+      }
+    }
+  }
+
+  for (auto& s : stamps) {
+    if(s.subStamps.empty()) {
+      continue;
+    }
+
+    s.createQ(args);
+  }
+
+  for (auto& s : stamps) {
+    if(s.subStamps.empty()) {
+      continue;
+    }
+
+    createB(s, sImg, args);
+  }
+
+  // TEMP: create sub stamp coordinates (should already be done)
+  std::vector<cl_int> subStampCoords(2 * (2 * args.maxKSStamps) * stamps.size(), 0);
+
+  for (int i = 0; i < stamps.size(); i++) {
+    for (int j = 0; j < stamps[i].subStamps.size(); j++) {
+      subStampCoords[2 * (i * 2 * args.maxKSStamps + j) + 0] = stamps[i].subStamps[j].imageCoords.first;
+      subStampCoords[2 * (i * 2 * args.maxKSStamps + j) + 1] = stamps[i].subStamps[j].imageCoords.second;
+    }
+  }
+
+  stampData.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * subStampCoords.size());
+  clData.queue.enqueueWriteBuffer(stampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int) * subStampCoords.size(), &subStampCoords[0]);
+
+  clData.wColumns = args.fSStampWidth * args.fSStampWidth;
+  clData.wRows = args.nPSF + triNum(args.backgroundOrder + 1);
+  clData.bCount = args.nPSF + 2;
+
+  stampData.b = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
+
+  // TEMP: create w buffer and transfer data to GPU
+  stampData.w = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.wRows * clData.wColumns * stamps.size());
+
+  std::vector<double> w{};
+
+  for (auto& s : stamps) {
+    for (auto& m : s.W) {
+      for (auto& v : m) {
+        w.push_back(v);
+      }
+    }
+  }
+
+  clData.queue.enqueueWriteBuffer(stampData.w, CL_TRUE, 0, sizeof(cl_double) * w.size(), &w[0]);
+
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
+                    bFunc(clData.program, "createB");
+  cl::EnqueueArgs bEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size(), clData.bCount), cl::NullRange);
+  cl::Event bEvent = bFunc(bEargs, stampData.subStampCoords, sImgBuf,
+                           stampData.w, stampData.b, clData.wRows, clData.wColumns, clData.bCount,
+                           args.fSStampWidth, 2 * args.maxKSStamps, tImg.axis.first);
+  bEvent.wait();
+
+  // TEMP: transfer the data back to the CPU
+  std::vector<double> gpuB(clData.bCount * stamps.size());
+
+  clData.queue.enqueueReadBuffer(stampData.b, CL_TRUE, 0, sizeof(cl_double) * gpuB.size(), &gpuB[0]);
+
+  // TEMP: put data in B
+  for (int i = 0; i < stamps.size(); i++) {
+    auto& s = stamps[i];
+    s.B.clear();
+
+    for (int j = 0; j < clData.bCount; j++) {
+      s.B.push_back(gpuB[i * clData.bCount + j]);
+    }
+  }
+
+  return 0;
 }
 
 int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k, const Arguments& args) {

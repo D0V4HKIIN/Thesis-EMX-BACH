@@ -4,6 +4,12 @@
 
 #include "datatypeUtil.h"
 
+struct ClStampsData {
+    cl::Buffer subStampCoords; // (x, y) coordinates
+    cl::Buffer w;
+    cl::Buffer b;
+};
+
 struct ClData {
     cl::Device &device;
     cl::Context &context;
@@ -23,6 +29,13 @@ struct ClData {
         cl::Buffer filterY;
         cl::Buffer vec;
     } kernel;
+
+    int bCount;
+    int wRows;
+    int wColumns;
+
+    ClStampsData tmpl;
+    ClStampsData sci;
 };
 
 void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData, const Arguments& args);
