@@ -127,6 +127,8 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
     }
   }
 
+  clData.gaussCount = kernelGauss.size();
+
   // Upload kernel status to GPU
   clData.kernel.gauss = cl::Buffer(clData.context, CL_MEM_READ_ONLY, sizeof(cl_int) * kernelGauss.size());
   clData.kernel.x = cl::Buffer(clData.context, CL_MEM_READ_ONLY, sizeof(cl_int) * kernelX.size());
@@ -144,23 +146,23 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   checkError(err);
 
   // Create kernel filter
-  clData.kernel.filterX = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * kernelGauss.size() * args.fKernelWidth);
-  clData.kernel.filterY = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * kernelGauss.size() * args.fKernelWidth);
+  clData.kernel.filterX = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.gaussCount * args.fKernelWidth);
+  clData.kernel.filterY = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.gaussCount * args.fKernelWidth);
 
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long>
       filterFunc(clData.program, "createKernelFilter");
-  cl::EnqueueArgs filterEargs(clData.queue, cl::NullRange, cl::NDRange(kernelGauss.size()), cl::NullRange);
+  cl::EnqueueArgs filterEargs(clData.queue, cl::NullRange, cl::NDRange(clData.gaussCount), cl::NullRange);
   cl::Event filterEvent = filterFunc(filterEargs, clData.kernel.gauss, clData.kernel.x, clData.kernel.y,
                                      clData.kernel.bg, clData.kernel.filterX, clData.kernel.filterY,
                                      args.fKernelWidth);
   filterEvent.wait();
 
   // Create kernel vector
-  clData.kernel.vec = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * kernelGauss.size() * args.fKernelWidth * args.fKernelWidth);
+  clData.kernel.vec = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.gaussCount * args.fKernelWidth * args.fKernelWidth);
 
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long>
       vecFunc(clData.program, "createKernelVector");
-  cl::EnqueueArgs vecEargs(clData.queue, cl::NullRange, cl::NDRange(kernelGauss.size() * args.fKernelWidth * args.fKernelWidth), cl::NullRange);
+  cl::EnqueueArgs vecEargs(clData.queue, cl::NullRange, cl::NDRange(clData.gaussCount * args.fKernelWidth * args.fKernelWidth), cl::NullRange);
   cl::Event vecEvent = vecFunc(vecEargs, clData.kernel.x, clData.kernel.y,
                                clData.kernel.filterX, clData.kernel.filterY,
                                clData.kernel.vec, args.fKernelWidth);
@@ -168,9 +170,9 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   vecEvent.wait();
 
   // TEMP: return data to CPU
-  std::vector<double> filterX(kernelGauss.size() * args.fKernelWidth, 0.0);
-  std::vector<double> filterY(kernelGauss.size() * args.fKernelWidth, 0.0);
-  std::vector<double> vec(kernelGauss.size() * args.fKernelWidth * args.fKernelWidth, 0.0);
+  std::vector<double> filterX(clData.gaussCount * args.fKernelWidth, 0.0);
+  std::vector<double> filterY(clData.gaussCount * args.fKernelWidth, 0.0);
+  std::vector<double> vec(clData.gaussCount * args.fKernelWidth * args.fKernelWidth, 0.0);
   
   err = clData.queue.enqueueReadBuffer(clData.kernel.filterX, CL_TRUE, 0, sizeof(cl_double) * filterX.size(), &filterX[0]);
   checkError(err);

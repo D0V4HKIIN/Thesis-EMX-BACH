@@ -69,6 +69,87 @@ void kernel createKernelVector(global const int *kernelX, global const int *kern
     vec[id] = vv;
 }
 
+void kernel convStampY(global const double *img, global const int *subStampCoords,
+                       global const double *filterY,
+                       global float *tmp,
+                       const long kernelWidth, const long subStampWidth,
+                       const long width, const long gaussCount, const long maxSubStamps) {
+    int stampId = get_global_id(0);
+    int n = get_global_id(1);
+    int pixel = get_global_id(2);
+
+    int halfKernWidth = kernelWidth / 2;
+    int halfSubStampWidth = subStampWidth / 2;
+
+    int ssx = subStampCoords[2 * stampId * maxSubStamps + 0];
+    int ssy = subStampCoords[2 * stampId * maxSubStamps + 1];
+
+    int xHalfSize = halfSubStampWidth + halfKernWidth;
+    int yHalfSize = halfSubStampWidth;
+    int pixelCount = (2 * xHalfSize + 1) * (2 * yHalfSize + 1);
+
+    int j = ssy + pixel / (2 * xHalfSize + 1) - yHalfSize;
+    int i = ssx + pixel % (2 * xHalfSize + 1) - xHalfSize;
+
+    float v = 0.0;
+
+    for (int y = -halfKernWidth; y <= halfKernWidth; y++) {
+        int imgIndex = i + (j + y) * width;
+        float imgV = img[imgIndex];
+        v += imgV * filterY[n * kernelWidth + halfKernWidth - y];
+    }
+
+    tmp[stampId * gaussCount * pixelCount + n * pixelCount + pixel] = v;
+}
+
+void kernel convStampX(global const float *tmp, global const double *filterX,
+                       global double *w, 
+                       const long kernelWidth, const long subStampWidth,
+                       const long wRows, const long wColumns,
+                       const long gaussCount) {
+    int stampId = get_global_id(0);
+    int n = get_global_id(1);
+    int pixel = get_global_id(2);
+
+    int halfKernWidth = kernelWidth / 2;
+    int halfSubStampWidth = subStampWidth / 2;
+
+    int j = pixel / subStampWidth - halfSubStampWidth;
+    int i = pixel % subStampWidth - halfSubStampWidth;
+
+    int subWidth = kernelWidth + subStampWidth - 1;
+    double w0 = 0.0f;
+
+    int tmpPixelStride = (2 * (halfSubStampWidth + halfKernWidth) + 1) * (2 * halfSubStampWidth + 1);
+    int firstTmpId = stampId * gaussCount * tmpPixelStride + n * tmpPixelStride;
+
+    for(int x = -halfKernWidth; x <= halfKernWidth; x++) {
+        int index = (i + x) + subWidth / 2 + (j + halfSubStampWidth) * subWidth;
+        w0 += tmp[firstTmpId + index] * filterX[n * kernelWidth + halfKernWidth - x];
+    }
+
+    w[stampId * wRows * wColumns + n * wColumns + pixel] = w0;
+}
+
+void kernel convStampOdd(global const int *kernelX, global const int *kernelY,
+                         global double *w,
+                         const long wRows, const long wColumns) {
+    int stampId = get_global_id(0);
+    int n = get_global_id(1);
+    int pixel = get_global_id(2);
+
+    int x = kernelX[n];
+    int y = kernelY[n];
+    
+    int dx = (x / 2) * 2 - x;
+    int dy = (y / 2) * 2 - y;
+
+    // Not optimal, a lot of threads will do nothing
+    if (n > 0 && dx == 0 && dy == 0) {
+        w[stampId * wRows * wColumns + n * wColumns + pixel] -= w[stampId * wRows * wColumns + pixel];
+    }
+}
+
 void kernel createQ(global const double *w,
                     global double *q,
                     const long wRows, const long wColumns,
@@ -80,7 +161,7 @@ void kernel createQ(global const double *w,
 
     double q0 = 0.0;
 
-    // Can be optimized as ~1/2 of the threads are idle and outputs 0
+    // Can be optimized as ~50% of the threads are idle and outputs 0.0
     if (i > 0 && j > 0 && j <= i) {
         for(int k = 0; k < subStampWidth * subStampWidth; k++) {
           double w0 = w[stampId * wRows * wColumns + (i - 1) * wColumns + k];
