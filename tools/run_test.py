@@ -94,6 +94,7 @@ def run_test(test_index, verbose):
     exe_args += ["-s", f"{science_name}.fits"]
     exe_args += ["-t", f"{template_name}.fits"]
     exe_args += ["-op", str(OUTPUT_PATH / f"test{id}_")]
+    exe_args += ["-vt"]
 
     start_time = time.time()
 
@@ -168,6 +169,8 @@ def run_tests(verbose, tests):
     failed_tests = 0
     total_tests = 0
 
+    start_time = time.time()
+
     for i in tests:
         test_id = TEST_TABLE[i][0]
         test_success = run_test(i, verbose)
@@ -180,13 +183,17 @@ def run_tests(verbose, tests):
 
         total_tests += 1
         print()
+    
+    end_time = time.time()
+    tess_time = end_time - start_time
 
     if failed_tests > 0:
         print(f"{color_print.RED}{failed_tests} / {total_tests} tests failed!")
 
         return False
-    
+
     print(f"{color_print.GREEN}All tests were successful!")
+    print(f"All tests took {tess_time:.2f} seconds")
 
 def main(args):
     color_print.init()
