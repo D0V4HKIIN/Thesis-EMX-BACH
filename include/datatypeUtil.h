@@ -118,16 +118,12 @@ struct Kernel {
 };
 
 struct SubStamp {
-  std::vector<double> data;
-  double sum = 0.0;
   std::pair<cl_long, cl_long> imageCoords{};
   std::pair<cl_long, cl_long> stampCoords{};
   double val;
 
   bool operator<(const SubStamp& other) const { return val < other.val; }
   bool operator>(const SubStamp& other) const { return val > other.val; }
-
-  double& operator[](size_t index) { return data[index]; }
 };
 
 struct StampStats {

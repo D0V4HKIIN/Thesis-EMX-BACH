@@ -81,24 +81,6 @@ void convStamp(Stamp& s, const Image& img, const Kernel& k, const int n, const i
   }
 }
 
-void cutSStamp(SubStamp& ss, const Image& img, const ImageMask& mask, const Arguments& args) {
-  /* Store the original image data around the substamp in said substamp */
-
-  for(int y = 0; y < args.fSStampWidth; y++) {
-    int imgY = ss.imageCoords.second + y - args.hSStampWidth;
-
-    for(int x = 0; x < args.fSStampWidth; x++) {
-      int imgX = ss.imageCoords.first + x - args.hSStampWidth;
-      int imgCoords = imgX + imgY * img.axis.first;
-
-      ss.data.push_back(img[imgX + imgY * img.axis.first]);
-      ss.sum += mask.isMasked(imgCoords, ImageMask::BAD_INPUT)
-                    ? 0.0
-                    : std::abs(img[imgCoords]);
-    }
-  }
-}
-
 int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf, const ImageMask& mask, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args) {
   /* Fills Substamp with gaussian basis convolved images around said substamp
    * and calculates CMV.
@@ -190,14 +172,6 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
         s.W[j].push_back(wGpu[i * clData.wRows * clData.wColumns + j * clData.wColumns + k]);
       }
     }
-  }
-
-  for (auto& s : stamps) {
-    if(s.subStamps.empty()) {
-      continue;
-    }
-    
-    cutSStamp(s.subStamps[0], sImg, mask, args);
   }
 
   for (auto& s : stamps) {
@@ -335,8 +309,6 @@ int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& m
       }
     }
   }
-
-  cutSStamp(s.subStamps[0], sImg, mask, args);
 
   auto [ssx, ssy] = s.subStamps[0].imageCoords;
 

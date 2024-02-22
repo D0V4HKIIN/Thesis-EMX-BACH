@@ -133,9 +133,7 @@ cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int 
         }
 
         if(stamp[coords] > lowestPSFLim) {  // good candidate found
-          SubStamp s{{},
-                     0.0,
-                     std::make_pair(absx, absy),
+          SubStamp s{std::make_pair(absx, absy),
                      std::make_pair(x, y),
                      stamp[coords]};
           
