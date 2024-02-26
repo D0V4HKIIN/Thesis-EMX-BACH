@@ -21,8 +21,8 @@ void kernel createKernelFilter(global const int *gauss,
         double x = i - kernelWidth / 2;
         double qe = exp(-x * x * b);
 
-        double fx = qe * pow(x, kx);
-        double fy = qe * pow(x, ky);
+        double fx = qe * pown(x, kx);
+        double fy = qe * pown(x, ky);
 
         filterX[firstFilterId + i] = fx;
         filterY[firstFilterId + i] = fy;
@@ -148,6 +148,36 @@ void kernel convStampOdd(global const int *kernelX, global const int *kernelY,
     if (n > 0 && dx == 0 && dy == 0) {
         w[stampId * wRows * wColumns + n * wColumns + pixel] -= w[stampId * wRows * wColumns + pixel];
     }
+}
+
+void kernel convStampBg(global const int *subStampCoords, global const int *bgXY,
+                        global double *w,
+                        const long width, const long height,
+                        const long subStampWidth,
+                        const long wRows, const long wColumns,
+                        const long gaussCount, const long maxSubStamps) {
+    int stampId = get_global_id(0);
+    int bgId = get_global_id(1);
+    int pixel = get_global_id(2);
+
+    int ssx = subStampCoords[2 * stampId * maxSubStamps + 0];
+    int ssy = subStampCoords[2 * stampId * maxSubStamps + 1];
+
+    long halfSubStampWidth = subStampWidth / 2;
+
+    long x = ssx - halfSubStampWidth + pixel % subStampWidth;
+    long y = ssy - halfSubStampWidth + pixel / subStampWidth;
+
+    double xf = (x - (width * 0.5f)) / (width * 0.5f);
+    double yf = (y - (height * 0.5f)) / (height * 0.5f);
+
+    int j = bgXY[2 * bgId + 0];
+    int k = bgXY[2 * bgId + 1];
+
+    double ax = pown(xf, j);
+    double ay = pown(yf, k);
+
+    w[stampId * wRows * wColumns + (bgId + gaussCount) * wColumns + pixel] = ax * ay;
 }
 
 void kernel createQ(global const double *w,

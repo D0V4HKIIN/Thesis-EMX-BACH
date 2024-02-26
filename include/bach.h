@@ -31,6 +31,11 @@ struct ClData {
         cl::Buffer vec;
     } kernel;
 
+    struct {
+        cl::Buffer xy;
+        int count;
+    } bg;
+
     int gaussCount;
     int qCount;
     int bCount;

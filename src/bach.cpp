@@ -145,6 +145,22 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   err = clData.queue.enqueueWriteBuffer(clData.kernel.bg, CL_TRUE, 0, sizeof(cl_float) * args.bg.size(), &args.bg[0]);
   checkError(err);
 
+  // Generate background X/Y
+  std::vector<int> bgXY;
+
+  for(int x = 0; x <= args.backgroundOrder; x++) {
+    for(int y = 0; y <= args.backgroundOrder - x; y++) {
+      bgXY.push_back(x);
+      bgXY.push_back(y);
+    }
+  }
+
+  clData.bg.xy = cl::Buffer(clData.context, CL_MEM_READ_ONLY, sizeof(cl_int) * bgXY.size());
+  clData.bg.count = bgXY.size();
+
+  err = clData.queue.enqueueWriteBuffer(clData.bg.xy, CL_TRUE, 0, sizeof(cl_int) * clData.bg.count, bgXY.data());
+  checkError(err);
+
   // Create kernel filter
   clData.kernel.filterX = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.gaussCount * args.fKernelWidth);
   clData.kernel.filterY = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.gaussCount * args.fKernelWidth);

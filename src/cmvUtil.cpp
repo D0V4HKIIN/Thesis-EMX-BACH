@@ -111,10 +111,6 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   yConvEvent.wait();
 
-  // TEMP: move back tmp to CPU
-  std::vector<float> tmp(stamps.size() * clData.gaussCount * (2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1));
-  clData.queue.enqueueReadBuffer(yConvTmp, CL_TRUE, 0, sizeof(cl_float) * tmp.size(), tmp.data());
-
   // Create W buffer
   clData.wColumns = args.fSStampWidth * args.fSStampWidth;
   clData.wRows = args.nPSF + triNum(args.backgroundOrder + 1);
@@ -139,69 +135,30 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   oddConvEvent.wait();
 
-  // TODO: final w rows
+  // Compute background
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_long, cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
+                    bgConvFunc(clData.program, "convStampBg");
+  cl::EnqueueArgs bgConvEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size(), clData.wRows - clData.gaussCount, clData.wColumns), cl::NullRange);
+  cl::Event bgConvEvent = bgConvFunc(bgConvEargs, stampData.subStampCoords, clData.bg.xy, stampData.w,
+                                     tImg.axis.first, tImg.axis.second, args.fSStampWidth,
+                                     clData.wRows, clData.wColumns, clData.gaussCount, 2 * args.maxKSStamps);
 
   // TEMP: move back w to CPU
   std::vector<double> wGpu(clData.wRows * clData.wColumns * stamps.size(), 0.0);
 
   clData.queue.enqueueReadBuffer(stampData.w, CL_TRUE, 0, sizeof(cl_double) * wGpu.size(), wGpu.data());
-
-  for (auto& s : stamps) {
-    if(s.subStamps.empty()) {
-      if(args.verbose) {
-        std::cout << "No eligable substamps in stamp at x = " << s.coords.first
-                  << " y = " << s.coords.second << ", stamp rejected"
-                  << std::endl;
-      }
-      continue;
-    }
-
-    int nvec = 0;
-    s.W = std::vector<std::vector<double>>();
-  }
-
+  
   // TEMP: replace w with GPU data
   for (int i = 0; i < stamps.size(); i++) {
     Stamp& s = stamps[i];
     s.W.clear();
 
-    for (int j = 0; j < clData.gaussCount; j++) {
+    for (int j = 0; j < clData.wRows; j++) {
       s.W.emplace_back();
 
       for (int k = 0; k < clData.wColumns; k++) {
         s.W[j].push_back(wGpu[i * clData.wRows * clData.wColumns + j * clData.wColumns + k]);
-      }
-    }
-  }
-
-  for (auto& s : stamps) {
-    if(s.subStamps.empty()) {
-      continue;
-    }
-
-    auto [ssx, ssy] = s.subStamps[0].imageCoords;
-
-    for(int j = 0; j <= args.backgroundOrder; j++) {
-      for(int k = 0; k <= args.backgroundOrder - j; k++) {
-        s.W.emplace_back();
-      }
-    }
-    for(int y = ssy - args.hSStampWidth; y <= ssy + args.hSStampWidth; y++) {
-      double yf =
-          (y - float(tImg.axis.second * 0.5)) / float(tImg.axis.second * 0.5);
-      for(int x = ssx - args.hSStampWidth; x <= ssx + args.hSStampWidth; x++) {
-        double xf =
-            (x - float(tImg.axis.first * 0.5)) / float(tImg.axis.first * 0.5);
-        double ax = 1.0;
-        cl_int nBGVec = 0;
-        for(int j = 0; j <= args.backgroundOrder; j++) {
-          double ay = 1.0;
-          for(int k = 0; k <= args.backgroundOrder - j; k++) {
-            s.W[args.nPSF + nBGVec++].push_back(ax * ay);
-            ay *= yf;
-          }
-          ax *= xf;
-        }
       }
     }
   }
@@ -212,19 +169,6 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   stampData.q = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * stamps.size());
   stampData.b = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
-
-  // TEMP: transfer w buffer to GPU
-  std::vector<double> w{};
-
-  for (auto& s : stamps) {
-    for (auto& m : s.W) {
-      for (auto& v : m) {
-        w.push_back(v);
-      }
-    }
-  }
-
-  clData.queue.enqueueWriteBuffer(stampData.w, CL_TRUE, 0, sizeof(cl_double) * w.size(), &w[0]);
 
   // Create Q
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_long, cl_long>
