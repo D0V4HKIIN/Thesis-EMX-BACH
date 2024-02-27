@@ -39,7 +39,7 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k, const Arguments& args);
 
 /* CD && KSC */
-double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, const Arguments& args);
+double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, ClData& clData, ClStampsData stampData, const Arguments& args);
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
 createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args);
 std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& img,

@@ -43,7 +43,7 @@ int main(int argc, const char* argv[]) {
   cl::Context context{device};
   cl::Program program =
       loadBuildPrograms(context, device, std::filesystem::path(argv[0]).parent_path(),
-      "cmv.cl", "conv.cl", "ini.cl", "sub.cl");
+      "cd.cl", "cmv.cl", "conv.cl", "ini.cl", "sub.cl");
   cl::CommandQueue queue(context, device);
 
   ClData clData { device, context, program, queue };
@@ -89,7 +89,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p7 = clock();
 
-  bool convTemplate = cd(templateImg, scienceImg, mask, templateStamps, sciStamps, args);
+  bool convTemplate = cd(templateImg, scienceImg, mask, templateStamps, sciStamps, clData, args);
 
   clock_t p8 = clock();
   if(args.verboseTime) {

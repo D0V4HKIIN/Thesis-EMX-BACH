@@ -144,6 +144,8 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
                                      tImg.axis.first, tImg.axis.second, args.fSStampWidth,
                                      clData.wRows, clData.wColumns, clData.gaussCount, 2 * args.maxKSStamps);
 
+  bgConvEvent.wait();
+
   // TEMP: move back w to CPU
   std::vector<double> wGpu(clData.wRows * clData.wColumns * stamps.size(), 0.0);
 

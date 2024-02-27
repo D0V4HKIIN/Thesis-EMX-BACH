@@ -1,7 +1,7 @@
 #include "bachUtil.h"
 #include "mathUtil.h"
 
-double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, const Arguments& args) {
+double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, ClData& clData, ClStampsData stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nBGComp = triNum(args.backgroundOrder + 1);
@@ -11,6 +11,26 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   std::vector<double> kernelSum(stamps.size(), 0.0);
   std::vector<int> index(nKernSolComp);  // Internal between ludcmp and lubksb.
 
+  // Create test vec
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> testVecFunc(clData.program, "createTestVec");
+  cl::EnqueueArgs testVecEargs(clData.queue, cl::NullRange, cl::NDRange(clData.bCount, stamps.size()), cl::NullRange);
+  cl::Event testVecEvent = testVecFunc(testVecEargs, stampData.b, clData.cd.testVec, clData.bCount);
+
+  // Create test mat
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> testMatFunc(clData.program, "createTestMat");
+  cl::EnqueueArgs testMatEargs(clData.queue, cl::NullRange, cl::NDRange(clData.qCount, clData.qCount, stamps.size()), cl::NullRange);
+  cl::Event testMatEvent = testMatFunc(testMatEargs, stampData.q, clData.cd.testMat, clData.qCount);
+
+  testVecEvent.wait();
+  testMatEvent.wait();
+
+  // TEMP: transfer to CPU
+  std::vector<double> gpuTestVec(clData.bCount * stamps.size());
+  clData.queue.enqueueReadBuffer(clData.cd.testVec, CL_TRUE, 0, sizeof(cl_double) * gpuTestVec.size(), gpuTestVec.data());
+  
+  std::vector<double> gpuTestMat(clData.qCount * clData.qCount * stamps.size());
+  clData.queue.enqueueReadBuffer(clData.cd.testMat, CL_TRUE, 0, sizeof(cl_double) * gpuTestMat.size(), gpuTestMat.data());
+
   int count = 0;
   for(auto& s : stamps) {
     if(!s.subStamps.empty()) {
@@ -19,11 +39,14 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
       std::vector<std::vector<double>> testMat(
           args.nPSF + 2, std::vector<double>(args.nPSF + 2, 0.0));
 
-      for(int i = 1; i <= args.nPSF + 1; i++) {
-        testVec[i] = s.B[i];
-        for(int j = 1; j <= i; j++) {
-          testMat[i][j] = s.Q[i][j];
-          testMat[j][i] = testMat[i][j];
+      // TEMP: replace data with GPU data
+      for (int i = 0; i <= args.nPSF + 1; i++) {
+        testVec[i] = gpuTestVec[count * clData.bCount + i];
+      }
+      
+      for (int i = 0; i <= args.nPSF + 1; i++) {
+        for (int j = 0; j <= args.nPSF + 1; j++) {
+          testMat[i][j] = gpuTestMat[count * clData.qCount * clData.qCount + i * clData.qCount + j];
         }
       }
 

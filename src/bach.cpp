@@ -8,6 +8,7 @@
 #include "clUtil.h"
 #include "argsUtil.h"
 #include "bachUtil.h"
+#include "mathUtil.h"
 
 #include "bach.h"
 
@@ -214,11 +215,17 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   fillStamps(sciStamps, scienceImg, templateImg, clData.sImgBuf, clData.tImgBuf, mask, convolutionKernel, clData, clData.sci, args);
 }
 
-bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Arguments& args) {
+bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, ClData &clData, const Arguments& args) {
   std::cout << "\nChoosing convolution direction..." << std::endl;
+  
+  int maxStamps = std::max(templateStamps.size(), sciStamps.size());
+  
+  // Create buffers
+  clData.cd.testVec = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * maxStamps);
+  clData.cd.testMat = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * maxStamps);
 
-  const double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask, args);
-  const double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask, args);
+  const double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask, clData, clData.tmpl, args);
+  const double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask, clData, clData.sci, args);
   if(args.verbose)
     std::cout << "template merit value = " << templateMerit
               << ", science merit value = " << scienceMerit << std::endl;
