@@ -178,7 +178,7 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long>
       vecFunc(clData.program, "createKernelVector");
-  cl::EnqueueArgs vecEargs(clData.queue, cl::NullRange, cl::NDRange(clData.gaussCount * args.fKernelWidth * args.fKernelWidth), cl::NullRange);
+  cl::EnqueueArgs vecEargs(clData.queue, cl::NullRange, cl::NDRange(args.fKernelWidth, args.fKernelWidth, clData.gaussCount), cl::NullRange);
   cl::Event vecEvent = vecFunc(vecEargs, clData.kernel.x, clData.kernel.y,
                                clData.kernel.filterX, clData.kernel.filterY,
                                clData.kernel.vec, args.fKernelWidth);

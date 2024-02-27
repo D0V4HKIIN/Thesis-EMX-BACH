@@ -46,11 +46,9 @@ void kernel createKernelVector(global const int *kernelX, global const int *kern
                                global const double *filterX, global const double *filterY,
                                global double *vec,
                                const long kernelWidth) {
-    int id = get_global_id(0);
-
-    int n = id / (kernelWidth * kernelWidth);
-    int u = (id % (kernelWidth * kernelWidth)) % kernelWidth;
-    int v = (id % (kernelWidth * kernelWidth)) / kernelWidth;
+    int u = get_global_id(0);
+    int v = get_global_id(1);
+    int n = get_global_id(2);
 
     int kx = kernelX[n];
     int ky = kernelY[n];
@@ -66,7 +64,7 @@ void kernel createKernelVector(global const int *kernelX, global const int *kern
         vv -= filterX[u] * filterY[v];
     }
     
-    vec[id] = vv;
+    vec[n * kernelWidth * kernelWidth + v * kernelWidth + u] = vv;
 }
 
 void kernel convStampY(global const double *img, global const int *subStampCoords,
