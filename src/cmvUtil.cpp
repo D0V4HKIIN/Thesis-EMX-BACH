@@ -105,7 +105,7 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long>
                     yConvFunc(clData.program, "convStampY");
-  cl::EnqueueArgs yConvEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size(), clData.gaussCount, (2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1)), cl::NullRange);
+  cl::EnqueueArgs yConvEargs(clData.queue, cl::NullRange, cl::NDRange((2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1), clData.gaussCount, stamps.size()), cl::NullRange);
   cl::Event yConvEvent = yConvFunc(yConvEargs, tImgBuf, stampData.subStampCoords, clData.kernel.filterY, yConvTmp,
                                    args.fKernelWidth, args.fSStampWidth, sImg.axis.first, clData.gaussCount, 2 * args.maxKSStamps);
 
@@ -121,7 +121,7 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long,cl_long>
                     xConvFunc(clData.program, "convStampX");
-  cl::EnqueueArgs xConvEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size(), clData.gaussCount, args.fSStampWidth * args.fSStampWidth), cl::NullRange);
+  cl::EnqueueArgs xConvEargs(clData.queue, cl::NullRange, cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount, stamps.size()), cl::NullRange);
   cl::Event xConvEvent = xConvFunc(xConvEargs, yConvTmp, clData.kernel.filterX, stampData.w,
                                    args.fKernelWidth, args.fSStampWidth, clData.wRows, clData.wColumns, clData.gaussCount);
 
@@ -129,7 +129,7 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   // Subtract for odd
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long> oddConvFunc(clData.program, "convStampOdd");
-  cl::EnqueueArgs oddConvEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size(), clData.gaussCount, args.fSStampWidth * args.fSStampWidth), cl::NullRange);
+  cl::EnqueueArgs oddConvEargs(clData.queue, cl::NullRange, cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount, stamps.size()), cl::NullRange);
   cl::Event oddConvEvent = oddConvFunc(oddConvEargs, clData.kernel.x, clData.kernel.y, stampData.w,
                                        clData.wRows, clData.wColumns);
 
@@ -139,7 +139,7 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
                     bgConvFunc(clData.program, "convStampBg");
-  cl::EnqueueArgs bgConvEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size(), clData.wRows - clData.gaussCount, clData.wColumns), cl::NullRange);
+  cl::EnqueueArgs bgConvEargs(clData.queue, cl::NullRange, cl::NDRange(clData.wColumns, clData.wRows - clData.gaussCount, stamps.size()), cl::NullRange);
   cl::Event bgConvEvent = bgConvFunc(bgConvEargs, stampData.subStampCoords, clData.bg.xy, stampData.w,
                                      tImg.axis.first, tImg.axis.second, args.fSStampWidth,
                                      clData.wRows, clData.wColumns, clData.gaussCount, 2 * args.maxKSStamps);
@@ -173,7 +173,7 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   // Create Q
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_long, cl_long>
                     qFunc(clData.program, "createQ");
-  cl::EnqueueArgs qEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size(), clData.qCount, clData.qCount), cl::NullRange);
+  cl::EnqueueArgs qEargs(clData.queue, cl::NullRange, cl::NDRange(clData.qCount, clData.qCount, stamps.size()), cl::NullRange);
   cl::Event qEvent = qFunc(qEargs, stampData.w, stampData.q, clData.wRows, clData.wColumns,
                            clData.qCount, clData.qCount, args.fSStampWidth);
 
@@ -181,7 +181,7 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
                     bFunc(clData.program, "createB");
-  cl::EnqueueArgs bEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size(), clData.bCount), cl::NullRange);
+  cl::EnqueueArgs bEargs(clData.queue, cl::NullRange, cl::NDRange(clData.bCount, stamps.size()), cl::NullRange);
   cl::Event bEvent = bFunc(bEargs, stampData.subStampCoords, sImgBuf,
                            stampData.w, stampData.b, clData.wRows, clData.wColumns, clData.bCount,
                            args.fSStampWidth, 2 * args.maxKSStamps, tImg.axis.first);
