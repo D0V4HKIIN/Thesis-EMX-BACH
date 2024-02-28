@@ -218,12 +218,6 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, ClData &clData, const Arguments& args) {
   std::cout << "\nChoosing convolution direction..." << std::endl;
   
-  int maxStamps = std::max(templateStamps.size(), sciStamps.size());
-  
-  // Create buffers
-  clData.cd.testVec = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * maxStamps);
-  clData.cd.testMat = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * maxStamps);
-
   const double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask, clData, clData.tmpl, args);
   const double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask, clData, clData.sci, args);
   if(args.verbose)

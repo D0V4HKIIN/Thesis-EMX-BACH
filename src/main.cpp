@@ -43,7 +43,7 @@ int main(int argc, const char* argv[]) {
   cl::Context context{device};
   cl::Program program =
       loadBuildPrograms(context, device, std::filesystem::path(argv[0]).parent_path(),
-      "cd.cl", "cmv.cl", "conv.cl", "ini.cl", "sub.cl");
+      "cd.cl", "cmv.cl", "conv.cl", "ini.cl", "lu.cl", "sub.cl");
   cl::CommandQueue queue(context, device);
 
   ClData clData { device, context, program, queue };

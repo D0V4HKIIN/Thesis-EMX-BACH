@@ -28,3 +28,11 @@ void kernel createTestMat(global const double *q,
 
     matrix[stampId * qCount * qCount + i * qCount + j] = v;
 }
+
+void kernel saveKernelSums(global const double *vec,
+                           global double *kernelSums,
+                           const int matrixSize) {
+    int stampId = get_global_id(0);
+
+    kernelSums[stampId] = vec[stampId * matrixSize + 1];
+}

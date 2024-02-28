@@ -37,11 +37,6 @@ struct ClData {
         int count;
     } bg;
 
-    struct {
-        cl::Buffer testVec;
-        cl::Buffer testMat;
-    } cd;
-
     int gaussCount;
     int qCount;
     int bCount;

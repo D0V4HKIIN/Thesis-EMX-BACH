@@ -19,6 +19,8 @@ void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
                const int iter, const Arguments& args);
 void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Arguments& args);
 
+void ludcmp(const cl::Buffer &matrix, int matrixSize, int indexSize, int stampCount, const cl::Buffer &index, const cl::Buffer &vv, const ClData &clData);
+void lubksb(const cl::Buffer &matrix, int matrixSize, int indexSize, int stampCount, const cl::Buffer &index, const cl::Buffer &result, const ClData &clData);
 int ludcmp(std::vector<std::vector<double>>& matrix, const int matrixSize,
            std::vector<int>& index, double& rowInter, const Arguments& args);
 void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
@@ -39,7 +41,7 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k, const Arguments& args);
 
 /* CD && KSC */
-double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, ClData& clData, ClStampsData stampData, const Arguments& args);
+double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, ClData& clData, ClStampsData& stampData, const Arguments& args);
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
 createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args);
 std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& img,

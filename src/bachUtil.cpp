@@ -333,6 +333,30 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
   median = lowerBinVal + binSize * (median - 1.0);
 }
 
+void ludcmp(const cl::Buffer &matrix, int matrixSize, int indexSize, int stampCount, const cl::Buffer &index, const cl::Buffer &vv, const ClData &clData) {
+  // Find big values
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> bigFunc(clData.program, "ludcmpBig");
+  cl::EnqueueArgs bigEargs(clData.queue, cl::NullRange, cl::NDRange(matrixSize, stampCount), cl::NullRange);
+  cl::Event bigEvent = bigFunc(bigEargs, matrix, vv, matrixSize);
+
+  bigEvent.wait();
+
+  // Rest of LU-decomposition
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long> restFunc(clData.program, "ludcmpRest");
+  cl::EnqueueArgs restEargs(clData.queue, cl::NullRange, cl::NDRange(stampCount), cl::NullRange);
+  cl::Event restEvent = restFunc(restEargs, vv, matrix, index, matrixSize, indexSize);
+
+  restEvent.wait();
+}
+
+void lubksb(const cl::Buffer &matrix, int matrixSize, int indexSize, int stampCount, const cl::Buffer &index, const cl::Buffer &result, const ClData &clData) {
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long> func(clData.program, "lubksb");
+  cl::EnqueueArgs eargs(clData.queue, cl::NullRange, cl::NDRange(stampCount), cl::NullRange);
+  cl::Event event = func(eargs, matrix, index, result, matrixSize, indexSize);
+
+  event.wait();
+}
+
 int ludcmp(std::vector<std::vector<double>>& matrix, int matrixSize,
            std::vector<int>& index, double& d, const Arguments& args) {
   std::vector<double> vv(matrixSize + 1, 0.0);

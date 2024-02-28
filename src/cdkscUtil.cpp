@@ -1,60 +1,52 @@
 #include "bachUtil.h"
 #include "mathUtil.h"
 
-double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, ClData& clData, ClStampsData stampData, const Arguments& args) {
+double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, ClData& clData, ClStampsData& stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nBGComp = triNum(args.backgroundOrder + 1);
   const int matSize = nComp1 * nComp2 + nBGComp + 1;
   const int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
 
-  std::vector<double> kernelSum(stamps.size(), 0.0);
-  std::vector<int> index(nKernSolComp);  // Internal between ludcmp and lubksb.
+  std::vector<int> index1(nKernSolComp);  // Internal between ludcmp and lubksb.
+
+  // Create buffers
+  cl::Buffer index(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * nKernSolComp * stamps.size());
+  cl::Buffer vv(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (args.nPSF + 2) * stamps.size());  
+  cl::Buffer testVec(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
+  cl::Buffer testMat(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * stamps.size());
+  cl::Buffer kernelSums(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size());
 
   // Create test vec
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> testVecFunc(clData.program, "createTestVec");
   cl::EnqueueArgs testVecEargs(clData.queue, cl::NullRange, cl::NDRange(clData.bCount, stamps.size()), cl::NullRange);
-  cl::Event testVecEvent = testVecFunc(testVecEargs, stampData.b, clData.cd.testVec, clData.bCount);
+  cl::Event testVecEvent = testVecFunc(testVecEargs, stampData.b, testVec, clData.bCount);
 
   // Create test mat
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> testMatFunc(clData.program, "createTestMat");
   cl::EnqueueArgs testMatEargs(clData.queue, cl::NullRange, cl::NDRange(clData.qCount, clData.qCount, stamps.size()), cl::NullRange);
-  cl::Event testMatEvent = testMatFunc(testMatEargs, stampData.q, clData.cd.testMat, clData.qCount);
+  cl::Event testMatEvent = testMatFunc(testMatEargs, stampData.q, testMat, clData.qCount);
 
   testVecEvent.wait();
   testMatEvent.wait();
 
+  // LU-solve
+  ludcmp(testMat, args.nPSF + 2, nKernSolComp, stamps.size(), index, vv, clData);
+  lubksb(testMat, args.nPSF + 2, nKernSolComp, stamps.size(), index, testVec, clData);
+
+  // Save kernel sums
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int> kernelSumFunc(clData.program, "saveKernelSums");
+  cl::EnqueueArgs kernelSumEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size()), cl::NullRange);
+  cl::Event kernelSumEvent = kernelSumFunc(kernelSumEargs, testVec, kernelSums, args.nPSF + 2);
+
+  kernelSumEvent.wait();
+
   // TEMP: transfer to CPU
-  std::vector<double> gpuTestVec(clData.bCount * stamps.size());
-  clData.queue.enqueueReadBuffer(clData.cd.testVec, CL_TRUE, 0, sizeof(cl_double) * gpuTestVec.size(), gpuTestVec.data());
-  
-  std::vector<double> gpuTestMat(clData.qCount * clData.qCount * stamps.size());
-  clData.queue.enqueueReadBuffer(clData.cd.testMat, CL_TRUE, 0, sizeof(cl_double) * gpuTestMat.size(), gpuTestMat.data());
+  std::vector<double> kernelSum(stamps.size(), 0.0);
+  clData.queue.enqueueReadBuffer(kernelSums, CL_TRUE, 0, sizeof(cl_double) * kernelSum.size(), kernelSum.data());
 
-  int count = 0;
-  for(auto& s : stamps) {
-    if(!s.subStamps.empty()) {
-      double d;
-      std::vector<double> testVec(args.nPSF + 2, 0.0);
-      std::vector<std::vector<double>> testMat(
-          args.nPSF + 2, std::vector<double>(args.nPSF + 2, 0.0));
-
-      // TEMP: replace data with GPU data
-      for (int i = 0; i <= args.nPSF + 1; i++) {
-        testVec[i] = gpuTestVec[count * clData.bCount + i];
-      }
-      
-      for (int i = 0; i <= args.nPSF + 1; i++) {
-        for (int j = 0; j <= args.nPSF + 1; j++) {
-          testMat[i][j] = gpuTestMat[count * clData.qCount * clData.qCount + i * clData.qCount + j];
-        }
-      }
-
-      ludcmp(testMat, args.nPSF + 1, index, d, args);
-      lubksb(testMat, args.nPSF + 1, index, testVec);
-      s.stats.norm = testVec[1];
-      kernelSum[count++] = testVec[1];
-    }
+  for (int i = 0; i < stamps.size(); i++) {
+    stamps[i].stats.norm = kernelSum[i];
   }
 
   double kernelMean, kernelStdev;
@@ -80,8 +72,8 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   std::vector<double> testKernSol = createScProd(testStamps, sImg, weight, args);
 
   double d;
-  ludcmp(matrix, matSize, index, d, args);
-  lubksb(matrix, matSize, index, testKernSol);
+  ludcmp(matrix, matSize, index1, d, args);
+  lubksb(matrix, matSize, index1, testKernSol);
 
   Kernel testKern(args);
   testKern.solution = testKernSol;
