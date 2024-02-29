@@ -1,4 +1,5 @@
 #include "bachUtil.h"
+#include <numeric>
 
 void checkError(const cl_int err) {
   if(err != 0) {
@@ -30,6 +31,82 @@ void maskInput(ImageMask& mask, const ClData& clData, const Arguments& args) {
   cl_int err = clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
     sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
   checkError(err);
+}
+
+void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args) {
+  if(dataCount == 0) {
+    std::cout << "Cannot send in empty vector to Sigma Clip" << std::endl;
+    *mean = 0.0;
+    *stdDev = 1e10;
+    return;
+  }
+
+  constexpr int localSize = 32;
+  int reduceCount = (dataCount + localSize - 1) / localSize;
+
+  std::vector<double> sumVec(reduceCount);
+  std::vector<double> sum2Vec(reduceCount);
+
+  cl::Buffer intMask(clData.context, CL_MEM_READ_WRITE, sizeof(cl_uchar) * dataCount);
+  cl::Buffer clipCountBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int));
+  cl::Buffer sumBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * reduceCount);
+  cl::Buffer sum2Buf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * reduceCount);
+
+  cl::KernelFunctor<cl::Buffer> initMaskFunc(clData.program, "sigmaClipInitMask");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long> calcFunc(clData.program, "sigmaClipCalc");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_double, cl_double, cl_double> maskFunc(clData.program, "sigmaClipMask");
+  
+  cl::EnqueueArgs calcEargs(clData.queue, cl::NullRange, cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
+  cl::EnqueueArgs eargs(clData.queue, cl::NullRange, cl::NDRange(dataCount), cl::NullRange);
+
+  // Zero mask
+  cl::Event initMaskEvent = initMaskFunc(eargs, intMask);
+  initMaskEvent.wait();
+
+  size_t currNPoints = 0;
+  size_t prevNPoints = dataCount;
+
+  // Do three times or a stable solution has been found.
+  for (int i = 0; (i < maxIter) && (currNPoints != prevNPoints); i++) {
+    if (prevNPoints <= 1) {
+      std::cout << "prevNPoints is: " << prevNPoints << "Needs to be greater than 1" << std::endl;
+      *mean = 0.0;
+      *stdDev = 1e10;
+      return;
+    }
+
+    currNPoints = prevNPoints;
+        
+    // Calculate mean and standard deviation    
+    cl::Event calcEvent = calcFunc(calcEargs, sumBuf, sum2Buf, data, intMask, dataCount);
+    calcEvent.wait();
+    
+    // Can be optimized to use a tree structure instead of reducing on CPU
+    clData.queue.enqueueReadBuffer(sumBuf, CL_TRUE, 0, sizeof(cl_double) * sumVec.size(), sumVec.data());    
+    clData.queue.enqueueReadBuffer(sum2Buf, CL_TRUE, 0, sizeof(cl_double) * sum2Vec.size(), sum2Vec.data());
+
+    double sum = std::accumulate(sumVec.begin(), sumVec.end(), 0.0);
+    double sum2 = std::accumulate(sum2Vec.begin(), sum2Vec.end(), 0.0);
+
+    double tempMean = sum / prevNPoints;
+    double tempStdDev = std::sqrt((sum2 - prevNPoints * tempMean * tempMean) / (prevNPoints - 1));
+
+    prevNPoints = 0;
+    double invStdDev = 1.0 / tempStdDev;
+
+    int clipCount = 0;
+    clData.queue.enqueueWriteBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);
+
+    // Mask bad values
+    cl::Event maskEvent = maskFunc(eargs, intMask, clipCountBuf, data, invStdDev, tempMean, args.sigClipAlpha);
+    maskEvent.wait();
+
+    clData.queue.enqueueReadBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);;
+
+    prevNPoints = dataCount - clipCount;
+    *mean = tempMean;
+    *stdDev = tempStdDev;
+  }
 }
 
 void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,

@@ -50,7 +50,7 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   }
 
   double kernelMean, kernelStdev;
-  sigmaClip(kernelSum, kernelMean, kernelStdev, 10, args);
+  sigmaClip(kernelSums, stamps.size(), &kernelMean, &kernelStdev, 10, clData, args);
 
   // normalise
   for(auto& s : stamps) {
