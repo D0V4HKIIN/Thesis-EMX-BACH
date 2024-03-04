@@ -142,7 +142,11 @@ void kernel sigmaClipCalc(global double *sum, global double *sum2,
     local double localD[32];
 
     if (gid < count) {
-        double d = select(0.0, data[gid], (long)(mask[gid] == 0));
+        double d = 0.0;
+
+        if (mask[gid] == 0) {
+            d = data[gid];
+        }
 
         localD[lid] = d;
     }

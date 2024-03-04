@@ -86,18 +86,24 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
    * and calculates CMV.
    */
 
-  // TEMP: create sub stamp coordinates (should already be done)
+  // TEMP: create sub stamp coordinates and counts (should already be done)
   std::vector<cl_int> subStampCoords(2 * (2 * args.maxKSStamps) * stamps.size(), 0);
+  std::vector<cl_int> subStampCounts(stamps.size(), 0);
 
   for (int i = 0; i < stamps.size(); i++) {
     for (int j = 0; j < stamps[i].subStamps.size(); j++) {
       subStampCoords[2 * (i * 2 * args.maxKSStamps + j) + 0] = stamps[i].subStamps[j].imageCoords.first;
       subStampCoords[2 * (i * 2 * args.maxKSStamps + j) + 1] = stamps[i].subStamps[j].imageCoords.second;
     }
+
+    subStampCounts[i] = stamps[i].subStamps.size();
   }
 
   stampData.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * subStampCoords.size());
-  clData.queue.enqueueWriteBuffer(stampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int) * subStampCoords.size(), &subStampCoords[0]);
+  stampData.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * subStampCounts.size());
+
+  clData.queue.enqueueWriteBuffer(stampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int) * subStampCoords.size(), subStampCoords.data());
+  clData.queue.enqueueWriteBuffer(stampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int) * subStampCounts.size(), subStampCounts.data());
 
   // Convolve stamps on Y
   cl::Buffer yConvTmp(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * stamps.size() * clData.gaussCount * (2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1));

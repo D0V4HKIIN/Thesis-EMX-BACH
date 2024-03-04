@@ -193,7 +193,7 @@ def run_tests(verbose, tests):
         return False
 
     print(f"{color_print.GREEN}All tests were successful!")
-    print(f"All tests took {tess_time:.2f} seconds")
+    print(f"Tests took {tess_time:.2f} seconds")
 
 def main(args):
     color_print.init()

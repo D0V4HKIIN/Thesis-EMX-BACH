@@ -52,6 +52,113 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   double kernelMean, kernelStdev;
   sigmaClip(kernelSums, stamps.size(), &kernelMean, &kernelStdev, 10, clData, args);
 
+  // Fit stamps, generate test stamps
+  int testStampCount = 0;
+  
+  cl::Buffer testStampCountBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int));
+  cl::Buffer testStampIndices(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stamps.size());
+  clData.queue.enqueueWriteBuffer(testStampCountBuf, CL_TRUE, 0, sizeof(cl_int), &testStampCount);
+
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_double, cl_double, cl_double> testStampFunc(clData.program, "genCdTestStamps");
+  cl::EnqueueArgs testStampEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size()), cl::NullRange);
+  cl::Event testStampEvent = testStampFunc(testStampEargs, kernelSums, testStampIndices, testStampCountBuf,
+                                           kernelMean, kernelStdev, args.sigKernFit);
+
+  clData.queue.enqueueReadBuffer(testStampCountBuf, CL_TRUE, 0, sizeof(cl_int), &testStampCount);
+
+  if (testStampCount == 0) {
+    return 666;
+  }
+
+  // Allocate test stamps, so we have continuous stamp data, since
+  // some stamps may be removed
+  ClStampsData testStampData{};
+  testStampData.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * 2 * (2 * args.maxKSStamps) * testStampCount);
+  testStampData.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * testStampCount);
+  testStampData.w = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount * clData.wColumns * clData.wRows);
+  testStampData.q = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount * clData.qCount * clData.qCount);
+  testStampData.b = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount * clData.bCount);
+
+  std::vector<cl::Event> testEvents{};
+
+  // Copy substamp coordinates
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> copySsCoordsFunc(clData.program, "copyTestSubStampsCoords");
+  cl::EnqueueArgs copySsCoordsEargs(clData.queue, cl::NullRange, cl::NDRange(2, 2 * args.maxKSStamps, testStampCount), cl::NullRange);
+  testEvents.push_back(copySsCoordsFunc(copySsCoordsEargs, stampData.subStampCoords, testStampIndices, testStampData.subStampCoords, 2 * args.maxKSStamps));
+
+  // Copy substamp counts
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer> copySsCountsFunc(clData.program, "copyTestSubStampsCounts");
+  cl::EnqueueArgs copySsCountsEargs(clData.queue, cl::NullRange, cl::NDRange(testStampCount), cl::NullRange);
+  testEvents.push_back(copySsCountsFunc(copySsCountsEargs, stampData.subStampCounts, testStampIndices, testStampData.subStampCounts));
+
+  // Copy W
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long> copyWFunc(clData.program, "copyTestStampsW");
+  cl::EnqueueArgs copyWEargs(clData.queue, cl::NullRange, cl::NDRange(clData.wColumns, clData.wRows, testStampCount), cl::NullRange);
+  testEvents.push_back(copyWFunc(copyWEargs, stampData.w, testStampIndices, testStampData.w, clData.wRows, clData.wColumns));
+
+  // Copy Q
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> copyQFunc(clData.program, "copyTestStampsQ");
+  cl::EnqueueArgs copyQEargs(clData.queue, cl::NullRange, cl::NDRange(clData.qCount, clData.qCount, testStampCount), cl::NullRange);
+  testEvents.push_back(copyQFunc(copyQEargs, stampData.q, testStampIndices, testStampData.q, clData.qCount));
+
+  // Copy B
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> copyBFunc(clData.program, "copyTestStampsB");
+  cl::EnqueueArgs copyBEargs(clData.queue, cl::NullRange, cl::NDRange(clData.bCount, testStampCount), cl::NullRange);
+  testEvents.push_back(copyBFunc(copyBEargs, stampData.b, testStampIndices, testStampData.b, clData.bCount));
+
+  cl::Event::waitForEvents(testEvents);
+
+  // TEMP: read back data
+  std::vector<cl_int> gpuSsCoords(2 * testStampCount * (2 * args.maxKSStamps), 0);
+  std::vector<cl_int> gpuSsCounts(testStampCount, 0);
+  std::vector<cl_double> gpuW(testStampCount * clData.wColumns * clData.wRows, 0.0);
+  std::vector<cl_double> gpuQ(testStampCount * clData.qCount * clData.qCount, 0.0);
+  std::vector<cl_double> gpuB(testStampCount * clData.bCount, 0.0);
+
+  clData.queue.enqueueReadBuffer(testStampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int) * gpuSsCoords.size(), gpuSsCoords.data());
+  clData.queue.enqueueReadBuffer(testStampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int) * gpuSsCounts.size(), gpuSsCounts.data());
+  clData.queue.enqueueReadBuffer(testStampData.w, CL_TRUE, 0, sizeof(cl_double) * gpuW.size(), gpuW.data());
+  clData.queue.enqueueReadBuffer(testStampData.q, CL_TRUE, 0, sizeof(cl_double) * gpuQ.size(), gpuQ.data());
+  clData.queue.enqueueReadBuffer(testStampData.b, CL_TRUE, 0, sizeof(cl_double) * gpuB.size(), gpuB.data());
+
+  // Something is not correct here even though it all looks correct in debugger
+  // Maybe just do indirect indexing instead...
+  std::vector<Stamp> testStamps2{};
+  for (int i = 0; i < testStampCount; i++) {
+    Stamp s{};
+
+    for (int j = 0; j < gpuSsCounts[i]; j++) {
+      SubStamp ss{};
+      ss.imageCoords = std::make_pair(gpuSsCoords[2 * (i * (2 * args.maxKSStamps) + j) + 0],
+                                      gpuSsCoords[2 * (i * (2 * args.maxKSStamps) + j) + 1]);
+
+      s.subStamps.push_back(ss);
+    }
+
+    for (int j = 0; j < clData.wRows; j++) {
+      s.W.emplace_back();
+
+      for (int k = 0; k < clData.wColumns; k++) {
+        s.W.back().push_back(gpuW[i * clData.wColumns * clData.wRows + j * clData.wColumns + k]);
+      }
+    }
+
+    for (int j = 0; j < clData.qCount; j++) {
+      s.Q.emplace_back();
+
+      for (int k = 0; k < clData.qCount; k++) {
+        s.Q.back().push_back(gpuQ[i * clData.qCount * clData.qCount + j * clData.qCount + k]);
+      }
+    }
+
+    for (int j = 0; j < clData.bCount; j++) {
+      s.B.push_back(gpuB[i * clData.bCount + j]);
+    }
+
+    testStamps2.push_back(s);
+  }
+
   // normalise
   for(auto& s : stamps) {
     s.stats.diff = std::abs((s.stats.norm - kernelMean) / kernelStdev);
@@ -59,13 +166,13 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   // global fit
   std::vector<Stamp> testStamps{};
-  int c = 0;
   for(auto& s : stamps) {
     if(s.stats.diff < args.sigKernFit && !s.subStamps.empty()) {
       testStamps.push_back(s);
-      c++;
     }
   }
+
+  testStamps = testStamps2;
 
   // do fit
   auto [matrix, weight] = createMatrix(testStamps, tImg.axis, args);
@@ -88,7 +195,6 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   }
   double meritMean, meritStdDev;
   sigmaClip(merit, meritMean, meritStdDev, 10, args);
-  //TODO: Add other merits before 666
   meritMean /= kernelMean;
   if(merit.size() > 0) return meritMean;
   return 666;
