@@ -1,4 +1,61 @@
 #include "bachUtil.h"
+#include <fstream>
+#include <iomanip>
+#include <algorithm>
+
+#define M1 259200
+#define IA1 7141
+#define IC1 54773
+#define RM1 (1.0/M1)
+#define M2 134456
+#define IA2 8121
+#define IC2 28411
+#define RM2 (1.0/M2)
+#define M3 243000
+#define IA3 4561
+#define IC3 51349
+double ran1(int *idum) {
+    static long ix1,ix2,ix3;
+    static double r[98];
+    double temp;
+    static int iff=0;
+    int j;
+    /* void nrerror(char *error_text); */
+    
+    if (*idum < 0 || iff == 0) {
+        iff=1;
+        ix1=(IC1-(*idum)) % M1;
+        ix1=(IA1*ix1+IC1) % M1;
+        ix2=ix1 % M2;
+        ix1=(IA1*ix1+IC1) % M1;
+        ix3=ix1 % M3;
+        for (j=1;j<=97;j++) {
+            ix1=(IA1*ix1+IC1) % M1;
+            ix2=(IA2*ix2+IC2) % M2;
+            r[j]=(ix1+ix2*RM2)*RM1;
+        }
+        *idum=1;
+    }
+    ix1=(IA1*ix1+IC1) % M1;
+    ix2=(IA2*ix2+IC2) % M2;
+    ix3=(IA3*ix3+IC3) % M3;
+    j=1 + ((97*ix3)/M3);
+    /* if (j > 97 || j < 1) nrerror("RAN1: This cannot happen."); */
+    temp=r[j];
+    r[j]=(ix1+ix2*RM2)*RM1;
+    return temp;
+}
+#undef M1
+#undef IA1
+#undef IC1
+#undef RM1
+#undef M2
+#undef IA2
+#undef IC2
+#undef RM2
+#undef M3
+#undef IA3
+#undef IC3
 
 void checkError(const cl_int err) {
   if(err != 0) {
@@ -88,249 +145,315 @@ void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
   }
 }
 
-#define M1 259200
-#define IA1 7141
-#define IC1 54773
-#define RM1 (1.0/M1)
-#define M2 134456
-#define IA2 8121
-#define IC2 28411
-#define RM2 (1.0/M2)
-#define M3 243000
-#define IA3 4561
-#define IC3 51349
-double ran1(int *idum) {
-    static long ix1,ix2,ix3;
-    static double r[98];
-    double temp;
-    static int iff=0;
-    int j;
-    /* void nrerror(char *error_text); */
-    
-    if (*idum < 0 || iff == 0) {
-        iff=1;
-        ix1=(IC1-(*idum)) % M1;
-        ix1=(IA1*ix1+IC1) % M1;
-        ix2=ix1 % M2;
-        ix1=(IA1*ix1+IC1) % M1;
-        ix3=ix1 % M3;
-        for (j=1;j<=97;j++) {
-            ix1=(IA1*ix1+IC1) % M1;
-            ix2=(IA2*ix2+IC2) % M2;
-            r[j]=(ix1+ix2*RM2)*RM1;
-        }
-        *idum=1;
-    }
-    ix1=(IA1*ix1+IC1) % M1;
-    ix2=(IA2*ix2+IC2) % M2;
-    ix3=(IA3*ix3+IC3) % M3;
-    j=1 + ((97*ix3)/M3);
-    /* if (j > 97 || j < 1) nrerror("RAN1: This cannot happen."); */
-    temp=r[j];
-    r[j]=(ix1+ix2*RM2)*RM1;
-    return temp;
+constexpr cl_int leastGreaterPow2(cl_int n) {
+  if (n < 0) return 0;
+  --n;
+  n |= n >> 1;
+  n |= n >> 2;
+  n |= n >> 4;
+  n |= n >> 8;
+  n |= n >> 16;
+  return n+1;
 }
-#undef M1
-#undef IA1
-#undef IC1
-#undef RM1
-#undef M2
-#undef IA2
-#undef IC2
-#undef RM2
-#undef M3
-#undef IA3
-#undef IC3
 
-void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Arguments& args) {
+void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const Arguments& args, const cl::Buffer imgBuf, const ClData clData) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
-
-  double median, sum;
+  
+  auto [imgW, imgH] = image.axis;
 
   std::vector<cl_int> bins(256, 0);
 
   constexpr cl_int nValues = 100;
-  double upProc = 0.9;
-  double midProc = 0.5;
-  cl_int numPix = stamp.size.first * stamp.size.second;
+  constexpr cl_int paddedNValues = leastGreaterPow2(nValues);
+  
+  cl_long stampPixelCount = args.fStampWidth * args.fStampWidth;
+  size_t paddedValuesCount = paddedNValues * stamps.size();
+  size_t valuesCount = nValues * stamps.size();
+  cl::Buffer rngBuf(clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * 2 * stampPixelCount);
+  cl::Buffer paddedValuesBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * paddedValuesCount);
+  cl::Buffer valuesBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * valuesCount);
+  cl::Buffer valCountersBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stamps.size());
+  cl::Buffer goodPixelsBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampPixelCount * stamps.size());
+  cl::Buffer goodPixelCountersBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stamps.size());
+  cl::Buffer binSizesBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size());
+  cl::Buffer stampCounterBuf{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int)};
+  
+  cl::EnqueueArgs eargsSample {clData.queue, cl::NullRange, cl::NDRange(stampPixelCount, stamps.size()/std::log2(stamps.size())), cl::NullRange};
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int, cl_long>
+  sampleFunc(clData.program, "sampleStamp");
+  
+  cl::EnqueueArgs eargsSort{clData.queue, cl::NDRange(paddedValuesCount), cl::NullRange};
+  cl::KernelFunctor<cl_long, cl_long, cl::Buffer, cl_long>
+  sortFunc(clData.program, "sortSamples");
 
-  if(numPix < nValues) {
-    std::cout << "Not enough pixels in a stamp" << std::endl;
-    exit(1);
-  }
-  int idum = -666;
+  cl::EnqueueArgs eargsMask{clData.queue, cl::NDRange(stampPixelCount, stamps.size()), cl::NullRange};
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long>
+  maskFunc(clData.program, "maskSamples");
 
-  std::array<double, nValues> values{};
-  int valuesCount = 0;
-
-  // Stop after randomly having selected a pixel numPix times.
-  for(int iter = 0; valuesCount < nValues && iter < numPix; iter++) {
-    int randX = std::floor(ran1(&idum) * stamp.size.first);
-    int randY = std::floor(ran1(&idum) * stamp.size.second);
+  for (auto&& stamp : stamps) {
+    cl_int numPix = stamp.size.first * stamp.size.second;
+    if(numPix < nValues) {
+      std::cout << "Not enough pixels in a stamp" << std::endl;
+      exit(1);
+    }
     
-    // Random pixel in stamp in stamp coords.
-    cl_int indexS = randX + randY * stamp.size.first;
+  }
+  
+  std::vector<cl_double> rands(2 * stampPixelCount);
+  std::vector<double> values(paddedValuesCount, CL_INFINITY);
+  std::vector<cl_int> valueCounters(stamps.size());
+  
+  
+  int rngSeed = -666; //Seed for ran1
+  
+  for (size_t i = 0; i < stampPixelCount; i++)
+  {  
+    rands[2*i + 0] = ran1(&rngSeed);
+    rands[2*i + 1] = ran1(&rngSeed);
+  }
+  int zero{0}; //For resetting the stamp counter
 
-    // Random pixel in stamp in Image coords.
-    cl_int xI = randX + stamp.coords.first;
-    cl_int yI = randY + stamp.coords.second;
-    int indexI = xI + yI * image.axis.first;
+  std::vector<cl::Event> writeInputEvents(4);
+  cl_int err = clData.queue.enqueueWriteBuffer(rngBuf, CL_FALSE, 0, sizeof(cl_double) * 2 * stampPixelCount, &rands[0], NULL, &writeInputEvents[0]);
+  checkError(err);
+  err = clData.queue.enqueueWriteBuffer(stampCounterBuf, CL_FALSE, 0, sizeof(cl_int), &zero, NULL, &writeInputEvents[1]);
+  checkError(err);
+  err = clData.queue.enqueueWriteBuffer(paddedValuesBuf, CL_FALSE, 0, sizeof(cl_double) * paddedValuesCount, &values[0], NULL, &writeInputEvents[2]);
+  checkError(err);
+  err = clData.queue.enqueueWriteBuffer(valCountersBuf, CL_FALSE, 0, sizeof(cl_int) * stamps.size(), &valueCounters[0], NULL, &writeInputEvents[3]);
+  checkError(err);
+  cl::Event::waitForEvents(writeInputEvents);
+  
+  
+  cl::Event sampleEvent = sampleFunc(eargsSample, 
+              imgBuf, clData.maskBuf, stampCounterBuf, rngBuf, 
+              clData.stampsCoordsBuf, clData.stampsSizesBuf, 
+              paddedValuesBuf, valCountersBuf,
+              stamps.size(), nValues, paddedNValues, imgW);
+  err = sampleEvent.wait();
+  checkError(err);
+  
 
-    if(mask.isMaskedAny(indexI) || std::abs(image[indexI]) <= 1e-10) {
-      continue;
+  err = clData.queue.enqueueReadBuffer(valCountersBuf, CL_TRUE, 0, sizeof(cl_int) * stamps.size(), &valueCounters[0]);
+  checkError(err);
+  // err = clData.queue.enqueueReadBuffer(paddedValuesBuf, CL_TRUE, 0, sizeof(cl_double) * paddedValuesCount, &values[0]);
+  // checkError(err);
+
+  cl::Event sortEvent;
+  for (size_t k=2;k<=paddedNValues;k=2*k) // Outer loop, double size for each step
+  {
+    for (size_t j=k>>1;j>0;j=j>>1)  // Inner loop, half size for each step
+    {
+      sortEvent = sortFunc(eargsSort, j, k, paddedValuesBuf, paddedNValues);
+      err = sortEvent.wait();
+      checkError(err);
     }
-
-    values[valuesCount++] = stamp[indexS];
   }
 
-  std::sort(std::begin(values), std::end(values));
+  err = clData.queue.enqueueReadBuffer(paddedValuesBuf, CL_TRUE, 0, sizeof(cl_double) * paddedValuesCount, &values[0]);
+  checkError(err);
+  
+  {
+    std::ofstream ofs{"values.log"};
+    ofs.precision(9);
+    ofs.fill('0');
+    for (auto&& value : values){
+      if (value == INFINITY) continue;
+      ofs << value << '\n'; 
+    }
+  }
 
-  // Width of a histogram bin.
-  double binSize = (values[(int)(upProc * valuesCount)] -
-                    values[(int)(midProc * valuesCount)]) /
-                   (double)nValues;
 
-  // Value of lowest bin.
-  double lowerBinVal =
-      values[(int)(midProc * valuesCount)] - (128.0 * binSize);
+  constexpr float upProc = 0.9;
+  constexpr float midProc = 0.5;
+  std::vector<double> binSizes(stamps.size());
+  std::vector<double> lowerBinVals(stamps.size());
+  
+  {
+    for(size_t i{0}; i < stamps.size(); i++)
+    {
+      int upper = i*paddedNValues+static_cast<int>(upProc*std::min(nValues, valueCounters[i]));
+      int lower = i*paddedNValues+static_cast<int>(midProc*std::min(nValues, valueCounters[i])); 
+      
+      // Width of a histogram bin for.
+      binSizes[i] = (values[upper]-values[lower])/(float)nValues;
+      
+      lowerBinVals[i] = values[lower] - (128.0 * binSizes[i]);
+    }
+  }
+  
+  std::vector<int> goodPixelCounters(stamps.size());
+  err = clData.queue.enqueueWriteBuffer(goodPixelCountersBuf, CL_TRUE, 0, sizeof(cl_int) * stamps.size(), &goodPixelCounters[0]);
+  checkError(err);
 
+  cl::Event maskEvent = maskFunc(eargsMask,
+            imgBuf, clData.maskBuf,
+            clData.stampsCoordsBuf, clData.stampsSizesBuf,
+            goodPixelsBuf, goodPixelCountersBuf,
+            imgW);
+  err = maskEvent.wait();
+  checkError(err);
+  
   // Contains all good Pixels in the stamp, aka not masked.
-  std::vector<double> maskedStamp{};
-  for(int y = 0; y < stamp.size.second; y++) {
-    for(int x = 0; x < stamp.size.first; x++) {
-      // Pixel in stamp in stamp coords.
-      cl_int indexS = x + y * stamp.size.first;
+  std::vector<double> goodPixels(stampPixelCount*stamps.size());
 
-      // Pixel in stamp in Image coords.
-      cl_int xI = x + stamp.coords.first;
-      cl_int yI = y + stamp.coords.second;
-      int indexI = xI + yI * image.axis.first;
+  std::vector<cl::Event> readGoodPixelsEvents(2);
+  err = clData.queue.enqueueReadBuffer(goodPixelsBuf, CL_FALSE, 0, sizeof(cl_double) * stampPixelCount * stamps.size(), &goodPixels[0], NULL, &readGoodPixelsEvents[0]);
+  checkError(err);
+  err = clData.queue.enqueueReadBuffer(goodPixelCountersBuf, CL_FALSE, 0, sizeof(cl_int) * stamps.size(), &goodPixelCounters[0], NULL, &readGoodPixelsEvents[1]);
+  checkError(err);
+  cl::Event::waitForEvents(readGoodPixelsEvents);
 
-      if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
-        continue;
-      }
+  cl::Buffer meansBuf{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size()};
+  cl::Buffer stdDevsBuf{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size()};
+  cl::Buffer invStdDevsBuf{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size()};
 
-      if (std::isnan(image[indexI])) {
-        mask.maskPix(xI, yI, ImageMask::NAN_PIXEL | ImageMask::BAD_INPUT);
-        continue;
-      }
+  std::vector<cl_double> means(stamps.size());
+  std::vector<cl_double> stdDevs(stamps.size());
+  std::vector<cl_double> invStdDevs(stamps.size());
 
-      maskedStamp.push_back(stamp[indexS]);
-    }
-  }
 
+  bool isScience{image.name == "testScience.fits"};
   // sigma clip of maskedStamp to get mean and sd.
-  double mean, stdDev, invStdDev;
-  sigmaClip(maskedStamp, mean, stdDev, 3, args);
-  invStdDev = 1.0 / stdDev;
-
-  int attempts = 0;
-  cl_int okCount = 0;
-  double sumBins = 0.0;
-  double sumExpect = 0.0;
-  double lower, upper;
-  while(true) {
-    if(attempts >= 5) {
-      std::cout << "Creation of histogram unsuccessful after 5 attempts";
-      return;
-    }
-
-    std::fill(bins.begin(), bins.end(), 0);
-    okCount = 0;
-    sum = 0.0;
-    sumBins = 0.0;
-    sumExpect = 0.0;
-    for(int y = 0; y < stamp.size.second; y++) {
-      for(int x = 0; x < stamp.size.first; x++) {
-        // Pixel in stamp in stamp coords.
-        cl_int indexS = x + y * stamp.size.first;
-
-        // Pixel in stamp in Image coords.
-        cl_int xI = x + stamp.coords.first;
-        cl_int yI = y + stamp.coords.second;
-        int indexI = xI + yI * image.axis.first;
-
-        if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
-          continue;
-        }
-
-        if((std::abs(stamp[indexS] - mean) * invStdDev) > args.sigClipAlpha) {
-          continue;
-        }
-        
-        int index = std::clamp(
-            (int)std::floor((stamp[indexS] - lowerBinVal) / binSize) + 1, 0, 255);
-
-        bins[index]++;
-        sum += abs(stamp[indexS]);
-        okCount++;
-      }
-    }
-
-    if(okCount == 0 || binSize == 0.0) {
-      std::cout << "No good pixels or variation in pixels" << std::endl;
-      return;
-    }
-
-    double maxDens = 0.0;
-    int lowerIndex, upperIndex, maxIndex = -1;
-    for(lowerIndex = upperIndex = 1; upperIndex < 255;
-        sumBins -= bins[lowerIndex++]) {
-      while(sumBins < okCount / 10.0 && upperIndex < 255) {
-        sumBins += bins[upperIndex++];
-      }
-      if(sumBins / (upperIndex - lowerIndex) > maxDens) {
-        maxDens = sumBins / (upperIndex - lowerIndex);
-        maxIndex = lowerIndex;
-      }
-    }
-    if(maxIndex < 0 || maxIndex > 255) maxIndex = 0;
-
-    sumBins = 0.0;
-    for(int i = maxIndex; sumBins < okCount / 10.0 && i < 255; i++) {
-      sumBins += bins[i];
-      sumExpect += i * bins[i];
-    }
-
-    double modeBin = sumExpect / sumBins + 0.5;
-    stamp.stats.skyEst = lowerBinVal + binSize * (modeBin - 1.0);
-
-    lower = okCount * 0.25;
-    upper = okCount * 0.75;
-    sumBins = 0.0;
-    int i = 0;
-    for(; sumBins < lower; sumBins += bins[i++])
-      ;
-    lower = i - (sumBins - lower) / bins[i - 1];
-    for(; sumBins < upper; sumBins += bins[i++])
-      ;
-    upper = i - (sumBins - upper) / bins[i - 1];
-
-    if(lower < 1.0 || upper > 255.0) {
-      if(args.verbose) {
-        std::cout << "Expanding bin size..." << std::endl;
-      }
-      lowerBinVal -= 128.0 * binSize;
-      binSize *= 2;
-      attempts++;
-    } else if(upper - lower < 40.0) {
-      if(args.verbose) {
-        std::cout << "Shrinking bin size..." << std::endl;
-      }
-      binSize /= 3.0;
-      lowerBinVal = stamp.stats.skyEst - 128.0 * binSize;
-      attempts++;
-    } else
-      break;
+  std::vector<cl_double> sigmaClipPixels(stampPixelCount);
+  size_t MAX{stamps.size()};
+  for (size_t i{0}; i < MAX; i++){
+    auto start = std::begin(goodPixels)+i*stampPixelCount;
+    std::copy_n(start, goodPixelCounters[i], std::begin(sigmaClipPixels));
+    
+    auto&& [min, max] = std::minmax_element(std::begin(sigmaClipPixels), std::begin(sigmaClipPixels) + goodPixelCounters[i]);
+    std::ptrdiff_t min_offset = min - std::begin(sigmaClipPixels);
+    std::ptrdiff_t max_offset = max - std::begin(sigmaClipPixels);
+    cl_double span = *max - *min;
+    sigmaClip(sigmaClipPixels, means[i], stdDevs[i], 3, args); //TODO: Use parallel version later
+    invStdDevs[i] = 1.0 / stdDevs[i];
   }
-  stamp.stats.fwhm = binSize * (upper - lower) / args.iqRange;
-  int i = 0;
-  for(i = 0, sumBins = 0; sumBins < okCount / 2.0; sumBins += bins[i++])
-    ;
-  median = i - (sumBins - okCount / 2.0) / bins[i - 1];
-  median = lowerBinVal + binSize * (median - 1.0);
+
+  writeInputEvents.resize(3);
+  err = clData.queue.enqueueWriteBuffer(meansBuf, CL_FALSE, 0, sizeof(cl_double) * stamps.size(), &means[0], NULL, &writeInputEvents[0]);
+  checkError(err);
+  err = clData.queue.enqueueWriteBuffer(stdDevsBuf, CL_FALSE, 0, sizeof(cl_double) * stamps.size(), &stdDevs[0], NULL, &writeInputEvents[1]);
+  checkError(err);
+  err = clData.queue.enqueueWriteBuffer(invStdDevsBuf, CL_FALSE, 0, sizeof(cl_double) * stamps.size(), &invStdDevs[0], NULL, &writeInputEvents[2]);
+  checkError(err);
+  err = cl::Event::waitForEvents(writeInputEvents);
+  checkError(err);
+
+  int statIdx{0};
+  
+  for (auto&& stamp : stamps) {
+    double median;
+    double sum;
+    cl_int okCount = 0;
+    int attempts = 0;
+    double sumBins = 0.0;
+    double sumExpect = 0.0;
+    double lower, upper;
+    while(true) {
+      if(attempts >= 5) {
+        std::cout <<"Stamp " << statIdx << ": Creation of histogram unsuccessful after 5 attempts" << std::endl;
+        break;
+      }
+
+      std::fill(bins.begin(), bins.end(), 0);
+      okCount = 0;
+      sum = 0.0;
+      sumBins = 0.0;
+      sumExpect = 0.0;
+      for(int y = 0; y < stamp.size.second; y++) {
+        for(int x = 0; x < stamp.size.first; x++) {
+          // Pixel in stamp in stamp coords.
+          cl_int indexS = x + y * stamp.size.first;
+
+          // Pixel in stamp in Image coords.
+          cl_int xI = x + stamp.coords.first;
+          cl_int yI = y + stamp.coords.second;
+          int indexI = xI + yI * image.axis.first;
+          if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
+            continue;
+          }
+          double compareValue = (std::abs(stamp[indexS] - means[statIdx]) * invStdDevs[statIdx]);
+          if(compareValue > args.sigClipAlpha) {
+            continue;
+          }
+          
+          int index = std::clamp(
+              (int)std::floor((stamp[indexS] - lowerBinVals[statIdx]) / binSizes[statIdx]) + 1, 0, 255);
+
+          bins[index]++;
+          sum += abs(stamp[indexS]);
+          okCount++;
+        }
+      }
+      
+      if(okCount == 0 || binSizes[statIdx] == 0.0) {
+        std::cout << "Stamp " << statIdx << ": No good pixels or variation in pixels" << std::endl;
+        break;
+      }
+
+      double maxDens = 0.0;
+      int lowerIndex, upperIndex, maxIndex = -1;
+      for(lowerIndex = upperIndex = 1; upperIndex < 255;
+          sumBins -= bins[lowerIndex++]) {
+        while(sumBins < okCount / 10.0 && upperIndex < 255) {
+          sumBins += bins[upperIndex++];
+        }
+        if(sumBins / (upperIndex - lowerIndex) > maxDens) {
+          maxDens = sumBins / (upperIndex - lowerIndex);
+          maxIndex = lowerIndex;
+        }
+      }
+      if(maxIndex < 0 || maxIndex > 255) maxIndex = 0;
+
+      sumBins = 0.0;
+      for(int i = maxIndex; sumBins < okCount / 10.0 && i < 255; i++) {
+        sumBins += bins[i];
+        sumExpect += i * bins[i];
+      }
+
+      double modeBin = sumExpect / sumBins + 0.5;
+      stamp.stats.skyEst = lowerBinVals[statIdx] + binSizes[statIdx] * (modeBin - 1.0);
+
+      lower = okCount * 0.25;
+      upper = okCount * 0.75;
+      sumBins = 0.0;
+      int i = 0;
+      for(; sumBins < lower; sumBins += bins[i++])
+        ;
+      lower = i - (sumBins - lower) / bins[i - 1];
+      for(; sumBins < upper; sumBins += bins[i++])
+        ;
+      upper = i - (sumBins - upper) / bins[i - 1];
+
+      if(lower < 1.0 || upper > 255.0) {
+        if(args.verbose) {
+          std::cout << "Expanding bin size..." << std::endl;
+        }
+        lowerBinVals[statIdx] -= 128.0 * binSizes[statIdx];
+        binSizes[statIdx] *= 2;
+        attempts++;
+      } else if(upper - lower < 40.0) {
+        if(args.verbose) {
+          std::cout << "Shrinking bin size..." << std::endl;
+        }
+        binSizes[statIdx] /= 3.0;
+        lowerBinVals[statIdx] = stamp.stats.skyEst - 128.0 * binSizes[statIdx];
+        attempts++;
+      } else
+        break;
+    }
+    
+    stamp.stats.fwhm = binSizes[statIdx] * (upper - lower) / args.iqRange;
+    int i = 0;
+    for(i = 0, sumBins = 0; sumBins < okCount / 2.0; sumBins += bins[i++])
+      ;
+    median = i - (sumBins - okCount / 2.0) / bins[i - 1];
+    median = lowerBinVals[statIdx] + binSizes[statIdx] * (median - 1.0);
+    
+    ++statIdx;
+  }
 }
 
 int ludcmp(std::vector<std::vector<double>>& matrix, int matrixSize,

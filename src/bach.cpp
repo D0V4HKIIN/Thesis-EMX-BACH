@@ -85,7 +85,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   /* == Check Template Stamps  ==*/
   double filledTempl{};
   double filledScience{};
-  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args);
+  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args, clData);
   if(filledTempl < 0.1 || filledScience < 0.1) {
     if(args.verbose)
       std::cout << "Not enough substamps found in " << templateImg.name
@@ -104,7 +104,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 
     createStamps(templateImg, scienceImg, templateStamps, sciStamps, w, h, args, clData);
 
-    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args);
+    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args, clData);
     args.threshLow /= 0.5;
   }
 

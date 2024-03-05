@@ -66,7 +66,7 @@ cl::Program loadBuildPrograms(const cl::Context context, const cl::Device defaul
   }
 
   cl::Program program(context, sources);
-  if(program.build({defaultDevice}) != CL_SUCCESS) {
+  if(program.build({defaultDevice}, "-cl-fp32-correctly-rounded-divide-sqrt") != CL_SUCCESS) {
     std::cout << " Error building: "
               << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(defaultDevice)
               << "\n";

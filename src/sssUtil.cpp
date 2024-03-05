@@ -1,15 +1,19 @@
 #include "bachUtil.h"
 #include <cassert>
 
-void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience, const Arguments& args) {
+extern double ran1(int *idum);
+
+void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience, const Arguments& args, const ClData& clData) {
   std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
 
   assert(templStamps.size() == scienceStamps.size());
 
-  for (int i = 0; i < templStamps.size(); i++) {
-    calcStats(templStamps[i], templImage, mask, args);
-    calcStats(scienceStamps[i], scienceImage, mask, args);
+  std::cout << "calcStats (template)" << std::endl;
+  calcStats(templStamps, templImage, mask, args, clData.tImgBuf, clData);
+  std::cout << "calcStats (science)" << std::endl;
+  calcStats(scienceStamps, scienceImage, mask, args, clData.sImgBuf, clData);
 
+  for (int i = 0; i < templStamps.size(); i++) {
     findSStamps(templStamps[i], templImage, mask, i, true, args);
     findSStamps(scienceStamps[i], scienceImage, mask, i, false, args);
   }
@@ -67,7 +71,6 @@ void createStamps(const Image& templateImg, const Image& scienceImg, std::vector
       int stampw =  stampSizes[2*(j*args.stampsx + i) + 0];
       int stamph =  stampSizes[2*(j*args.stampsx + i) + 1];
 
-      printf("%d, %3d, %3d, %3d, %d, %d\n", i, j, startx, starty, stampw, stamph);
       templateStamps.emplace_back();
       scienceStamps.emplace_back();
       
