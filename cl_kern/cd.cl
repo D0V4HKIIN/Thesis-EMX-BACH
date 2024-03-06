@@ -241,3 +241,54 @@ void kernel createMatrix(global const double *weights, global const double *w, g
 
     matrix[row * matrixSize + column] = m0;
 }
+
+void kernel createScProd(const global double *img, const global double *weights, const global double *b, const global double *w, const global int *subStampCoords,
+                         global double *res,
+                         const long width, const long stampCount, const long nComp1, const long nComp2, const long nBGComp,
+                         const long bCount, const long wRows, const long wColumns, const long subStampWidth, const long maxSubStamps) {
+    int id = get_global_id(0);
+
+    long nComp = nComp1 * nComp2;
+    long halfSubStampWidth = subStampWidth / 2;
+                        
+    double r0 = 0.0;
+    if (id >= 2 && id < nComp + 2) {
+        int i = (id - 2) / nComp2 + 1;
+        int j = (id - 2) % nComp2;
+
+        for (int stampId = 0; stampId < stampCount; stampId++) {
+            double p0 = b[stampId * bCount + i + 1];
+            double w0 = weights[stampId * nComp2 + j];
+            r0 += p0 * w0;
+        }
+    }
+    else if (id >= nComp + 2 && id < nComp + 2 + nBGComp) {
+        int bgIndex = id - (nComp + 2);
+
+        for (int stampId = 0; stampId < stampCount; stampId++) {
+            double q = 0.0;
+
+            int ssx = subStampCoords[2 * stampId * maxSubStamps + 0];
+            int ssy = subStampCoords[2 * stampId * maxSubStamps + 1];
+
+            for (int y = -halfSubStampWidth; y <= halfSubStampWidth; y++) {
+                for (int x = -halfSubStampWidth; x <= halfSubStampWidth; x++) {
+                    int index = x + halfSubStampWidth + subStampWidth * (y + halfSubStampWidth);
+
+                    double w0 = w[stampId * wRows * wColumns + (nComp1 + bgIndex + 1) * wColumns + index];
+                    double i0 = img[x + ssx + (y + ssy) * width];
+                    q += w0 * i0;
+                }
+            }
+
+            r0 += q;
+        }
+    }
+    else if (id == 1) {
+        for (int stampId = 0; stampId < stampCount; stampId++) {
+            r0 += b[stampId * bCount + 1];
+        }
+    }
+
+    res[id] = r0;
+}

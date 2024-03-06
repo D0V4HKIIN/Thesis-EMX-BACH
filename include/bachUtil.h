@@ -42,10 +42,11 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k, const Arguments& args);
 
 /* CD && KSC */
-double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, ClData& clData, ClStampsData& stampData, const Arguments& args);
+double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ImageMask& mask, ClData& clData, ClStampsData& stampData, const Arguments& args);
 void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClData &clData, const ClStampsData &stampData, int stampCount, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args);
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
 createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args);
+void createScProd(const cl::Buffer &res, const cl::Buffer &weights, const cl::Buffer &img, const std::pair<cl_long, cl_long>& imgSize, const ClData &clData, const ClStampsData &stampData, int stampCount, const Arguments& args);
 std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& img,
                                  const std::vector<std::vector<double>>& weight, const Arguments& args);
 double calcSig(Stamp& s, const std::vector<double>& kernSol, const Image& tImg, const Image& sImg, ImageMask& mask, const Arguments& args);

@@ -1,7 +1,7 @@
 #include "bachUtil.h"
 #include "mathUtil.h"
 
-double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, ClData& clData, ClStampsData& stampData, const Arguments& args) {
+double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ImageMask& mask, ClData& clData, ClStampsData& stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nBGComp = triNum(args.backgroundOrder + 1);
@@ -18,6 +18,7 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   cl::Buffer kernelSums(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size());
   cl::Buffer weights(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size() * nComp2);
   cl::Buffer matrix(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1) * (matSize + 1));
+  cl::Buffer testKernSol(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nKernSolComp);
 
   // Create test vec
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> testVecFunc(clData.program, "createTestVec");
@@ -176,18 +177,7 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   // Do fit
   createMatrix(matrix, weights, clData, testStampData, testStampCount, tImg.axis, args);
-  
-  // TEMP: transfer weights back to CPU
-  std::vector<cl_double> weightsCpu2(nComp2 * stamps.size());
-  clData.queue.enqueueReadBuffer(weights, CL_TRUE, 0, sizeof(cl_double) * weightsCpu2.size(), weightsCpu2.data());
-
-  std::vector<std::vector<double>> weightsCpu(stamps.size(), std::vector<double>(nComp2));
-
-  for (int i = 0; i < stamps.size(); i++) {
-    for (int j = 0; j < nComp2; j++) {
-      weightsCpu[i][j] = weightsCpu2[i * nComp2 + j];
-    }
-  }
+  createScProd(testKernSol, weights, sImgBuf, sImg.axis, clData, testStampData, testStampCount, args);
 
   // TEMP: transfer matrix back to CPU
   std::vector<cl_double> matrixCpu2((matSize + 1) * (matSize + 1));
@@ -201,15 +191,16 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
     }
   }
 
-  //auto [matrix, weight] = createMatrix(testStamps, tImg.axis, args);
-  std::vector<double> testKernSol = createScProd(testStamps, sImg, weightsCpu, args);
+  // TEMP: transfer kernel solution back to CPU
+  std::vector<cl_double> testKernSolCpu(nKernSolComp);
+  clData.queue.enqueueReadBuffer(testKernSol, CL_TRUE, 0, sizeof(cl_double) * testKernSolCpu.size(), testKernSolCpu.data());
 
   double d;
   ludcmp(matrixCpu, matSize, index1, d, args);
-  lubksb(matrixCpu, matSize, index1, testKernSol);
+  lubksb(matrixCpu, matSize, index1, testKernSolCpu);
 
   Kernel testKern(args);
-  testKern.solution = testKernSol;
+  testKern.solution = testKernSolCpu;
   kernelMean = makeKernel(testKern, tImg.axis, 0, 0, args);
 
   // calc merit value
@@ -349,6 +340,23 @@ createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>
   }
 
   return std::make_pair(matrix, weight);
+}
+
+void createScProd(const cl::Buffer &res, const cl::Buffer &weights, const cl::Buffer &img, const std::pair<cl_long, cl_long>& imgSize, const ClData &clData, const ClStampsData &stampData, int stampCount, const Arguments& args) {
+  const int nComp1 = args.nPSF - 1;
+  const int nComp2 = triNum(args.kernelOrder + 1);
+  const int nBgComp = triNum(args.backgroundOrder + 1);
+  const int nKernSolComp = args.nPSF * nComp2 + nBgComp + 1;
+  
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_long, cl_long, cl_long, cl_long, cl_long,
+                    cl_long, cl_long, cl_long, cl_long, cl_long> prodFunc(clData.program, "createScProd");
+  cl::EnqueueArgs prodEargs(clData.queue, cl::NDRange(nKernSolComp));
+  cl::Event prodEvent = prodFunc(prodEargs, img, weights, stampData.b, stampData.w, stampData.subStampCoords, res,
+                                 imgSize.first, stampCount, nComp1, nComp2, nBgComp,
+                                 clData.bCount, clData.wRows, clData.wColumns, args.fSStampWidth, 2 * args.maxKSStamps);
+
+  prodEvent.wait();
 }
 
 std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& img,
