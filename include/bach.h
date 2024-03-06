@@ -37,6 +37,10 @@ struct ClData {
         int count;
     } bg;
 
+    struct {
+        cl::Buffer kernelXy;
+    } cd;
+
     int gaussCount;
     int qCount;
     int bCount;

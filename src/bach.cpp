@@ -217,7 +217,21 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 
 bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, ClData &clData, const Arguments& args) {
   std::cout << "\nChoosing convolution direction..." << std::endl;
-  
+
+  // Create kernel XY
+  std::vector<cl_int> kernelXy{};
+
+  for (int i = 0; i <= args.kernelOrder; i++) {
+      for(int j = 0; j <= args.kernelOrder - i; j++) {
+        kernelXy.push_back(i);
+        kernelXy.push_back(j);
+      }
+  }
+
+  // Upload kernel XY
+  clData.cd.kernelXy = cl::Buffer(clData.context, CL_MEM_READ_ONLY, sizeof(cl_int) * kernelXy.size());
+  clData.queue.enqueueWriteBuffer(clData.cd.kernelXy, CL_TRUE, 0, sizeof(cl_int) * kernelXy.size(), kernelXy.data());
+
   const double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask, clData, clData.tmpl, args);
   const double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask, clData, clData.sci, args);
   if(args.verbose)

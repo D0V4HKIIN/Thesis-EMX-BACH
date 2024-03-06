@@ -43,6 +43,7 @@ int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& m
 
 /* CD && KSC */
 double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, ClData& clData, ClStampsData& stampData, const Arguments& args);
+void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClData &clData, const ClStampsData &stampData, int stampCount, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args);
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
 createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args);
 std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& img,

@@ -16,6 +16,8 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   cl::Buffer testVec(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
   cl::Buffer testMat(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * stamps.size());
   cl::Buffer kernelSums(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size());
+  cl::Buffer weights(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size() * nComp2);
+  cl::Buffer matrix(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1) * (matSize + 1));
 
   // Create test vec
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> testVecFunc(clData.program, "createTestVec");
@@ -122,8 +124,6 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   clData.queue.enqueueReadBuffer(testStampData.q, CL_TRUE, 0, sizeof(cl_double) * gpuQ.size(), gpuQ.data());
   clData.queue.enqueueReadBuffer(testStampData.b, CL_TRUE, 0, sizeof(cl_double) * gpuB.size(), gpuB.data());
 
-  // Something is not correct here even though it all looks correct in debugger
-  // Maybe just do indirect indexing instead...
   std::vector<Stamp> testStamps2{};
   for (int i = 0; i < testStampCount; i++) {
     Stamp s{};
@@ -174,13 +174,39 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   testStamps = testStamps2;
 
-  // do fit
-  auto [matrix, weight] = createMatrix(testStamps, tImg.axis, args);
-  std::vector<double> testKernSol = createScProd(testStamps, sImg, weight, args);
+  // Do fit
+  createMatrix(matrix, weights, clData, testStampData, testStampCount, tImg.axis, args);
+  
+  // TEMP: transfer weights back to CPU
+  std::vector<cl_double> weightsCpu2(nComp2 * stamps.size());
+  clData.queue.enqueueReadBuffer(weights, CL_TRUE, 0, sizeof(cl_double) * weightsCpu2.size(), weightsCpu2.data());
+
+  std::vector<std::vector<double>> weightsCpu(stamps.size(), std::vector<double>(nComp2));
+
+  for (int i = 0; i < stamps.size(); i++) {
+    for (int j = 0; j < nComp2; j++) {
+      weightsCpu[i][j] = weightsCpu2[i * nComp2 + j];
+    }
+  }
+
+  // TEMP: transfer matrix back to CPU
+  std::vector<cl_double> matrixCpu2((matSize + 1) * (matSize + 1));
+  clData.queue.enqueueReadBuffer(matrix, CL_TRUE, 0, sizeof(cl_double) * matrixCpu2.size(), matrixCpu2.data());
+
+  std::vector<std::vector<cl_double>> matrixCpu(matSize + 1, std::vector<cl_double>(matSize + 1));
+
+  for (int i = 0; i < matSize + 1; i++) {
+    for (int j = 0; j < matSize + 1; j++) {
+      matrixCpu[i][j] = matrixCpu2[i * (matSize + 1) + j];
+    }
+  }
+
+  //auto [matrix, weight] = createMatrix(testStamps, tImg.axis, args);
+  std::vector<double> testKernSol = createScProd(testStamps, sImg, weightsCpu, args);
 
   double d;
-  ludcmp(matrix, matSize, index1, d, args);
-  lubksb(matrix, matSize, index1, testKernSol);
+  ludcmp(matrixCpu, matSize, index1, d, args);
+  lubksb(matrixCpu, matSize, index1, testKernSol);
 
   Kernel testKern(args);
   testKern.solution = testKernSol;
@@ -198,6 +224,35 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   meritMean /= kernelMean;
   if(merit.size() > 0) return meritMean;
   return 666;
+}
+
+void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClData &clData, const ClStampsData &stampData, int stampCount, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args) {
+  const int nComp1 = args.nPSF - 1;
+  const int nComp2 = triNum(args.kernelOrder + 1);
+  const int nComp = nComp1 * nComp2;
+  const int nBGVectors = triNum(args.backgroundOrder + 1);
+  const int matSize = nComp + nBGVectors + 1;
+
+  const int pixStamp = args.fSStampWidth * args.fSStampWidth;
+
+  // Create weights
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_long, cl_long, cl_long, cl_long> weightFunc(clData.program, "createMatrixWeights");
+  cl::EnqueueArgs weightEargs(clData.queue, cl::NullRange, cl::NDRange(nComp2, stampCount), cl::NullRange);
+  cl::Event weightEvent = weightFunc(weightEargs, stampData.subStampCoords, clData.cd.kernelXy, weights, imgSize.first, imgSize.second, 2 * args.maxKSStamps, nComp2);
+
+  weightEvent.wait();
+
+  // Create matrix
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_long, cl_long, cl_long, cl_long, cl_long,
+                    cl_long, cl_long, cl_long> matrixFunc(clData.program, "createMatrix");
+  cl::EnqueueArgs matrixEargs(clData.queue, cl::NDRange(matSize + 1, matSize + 1));
+  cl::Event matrixEvent = matrixFunc(matrixEargs, weights, stampData.w, stampData.q, matrix,
+                                     stampCount, matSize + 1, pixStamp, nComp1, nComp2,
+                                     clData.wRows, clData.wColumns, clData.qCount);
+
+  matrixEvent.wait();
 }
 
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
