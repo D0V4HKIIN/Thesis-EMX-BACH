@@ -34,8 +34,8 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   testMatEvent.wait();
 
   // LU-solve
-  ludcmp(testMat, args.nPSF + 2, nKernSolComp, stamps.size(), index, vv, clData);
-  lubksb(testMat, args.nPSF + 2, nKernSolComp, stamps.size(), index, testVec, clData);
+  ludcmp(testMat, args.nPSF + 2, stamps.size(), index, vv, clData);
+  lubksb(testMat, args.nPSF + 2, stamps.size(), index, testVec, clData);
 
   // Save kernel sums
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int> kernelSumFunc(clData.program, "saveKernelSums");

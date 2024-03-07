@@ -24,12 +24,12 @@ void kernel ludcmpBig(global const double *matrix,
 }
 
 void kernel ludcmpRest(global double *vv, global double *matrix, global int *index,
-                       const long matrixSize, const long indexSize) {
+                       const long matrixSize) {
     int stampId = get_global_id(0);
 
     int firstMtxId = stampId * matrixSize * matrixSize;
     int firstVId = stampId * matrixSize;
-    int firstIId = stampId * indexSize;
+    int firstIId = stampId * matrixSize;
     int maxI = 0;
 
     // Terrible implementation
@@ -88,11 +88,11 @@ void kernel ludcmpRest(global double *vv, global double *matrix, global int *ind
 
 void kernel lubksb(const global double *matrix, const global int *index,
                    global double *result,
-                   long matrixSize, long indexSize) {
+                   const long matrixSize) {
     int stampId = get_global_id(0);
 
     int firstMtxId = stampId * matrixSize * matrixSize;
-    int firstIId = stampId * indexSize;
+    int firstIId = stampId * matrixSize;
     int firstResId = stampId * matrixSize;
 
     int ii = 0;

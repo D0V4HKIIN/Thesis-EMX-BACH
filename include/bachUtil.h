@@ -20,8 +20,8 @@ void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
                const int iter, const Arguments& args);
 void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Arguments& args);
 
-void ludcmp(const cl::Buffer &matrix, int matrixSize, int indexSize, int stampCount, const cl::Buffer &index, const cl::Buffer &vv, const ClData &clData);
-void lubksb(const cl::Buffer &matrix, int matrixSize, int indexSize, int stampCount, const cl::Buffer &index, const cl::Buffer &result, const ClData &clData);
+void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &vv, const ClData &clData);
+void lubksb(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &result, const ClData &clData);
 int ludcmp(std::vector<std::vector<double>>& matrix, const int matrixSize,
            std::vector<int>& index, double& rowInter, const Arguments& args);
 void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
