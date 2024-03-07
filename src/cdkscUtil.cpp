@@ -12,7 +12,7 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   // Create buffers
   cl::Buffer index(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * nKernSolComp * stamps.size());
-  cl::Buffer vv(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (args.nPSF + 2) * stamps.size());  
+  cl::Buffer vv(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * std::max<int>(matSize + 1, (args.nPSF + 2) * stamps.size()));
   cl::Buffer testVec(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
   cl::Buffer testMat(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * stamps.size());
   cl::Buffer kernelSums(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size());
@@ -179,6 +179,8 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   createMatrix(matrix, weights, clData, testStampData, testStampCount, tImg.axis, args);
   createScProd(testKernSol, weights, sImgBuf, sImg.axis, clData, testStampData, testStampCount, args);
 
+  // TEMP: parallel matrix solver is currently very slow, so temporarly use CPU version
+#if true
   // TEMP: transfer matrix back to CPU
   std::vector<cl_double> matrixCpu2((matSize + 1) * (matSize + 1));
   clData.queue.enqueueReadBuffer(matrix, CL_TRUE, 0, sizeof(cl_double) * matrixCpu2.size(), matrixCpu2.data());
@@ -198,6 +200,14 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   double d;
   ludcmp(matrixCpu, matSize, index1, d, args);
   lubksb(matrixCpu, matSize, index1, testKernSolCpu);
+#else
+  ludcmp(matrix, matSize + 1, 1, index, vv, clData);
+  lubksb(matrix, matSize + 1, 1, index, testKernSol, clData);
+  
+  // TEMP: transfer kernel solution back (again) to CPU
+  std::vector<cl_double> testKernSolCpu(nKernSolComp);
+  clData.queue.enqueueReadBuffer(testKernSol, CL_TRUE, 0, sizeof(cl_double) * testKernSolCpu.size(), testKernSolCpu.data());
+#endif
 
   Kernel testKern(args);
   testKern.solution = testKernSolCpu;
