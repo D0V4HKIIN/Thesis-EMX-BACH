@@ -87,22 +87,22 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
    */
 
   // TEMP: create sub stamp coordinates and counts (should already be done)
-  std::vector<cl_int> subStampCoords(2 * (2 * args.maxKSStamps) * stamps.size(), 0);
+  std::vector<cl_int2> subStampCoords((2 * args.maxKSStamps) * stamps.size(), { 0, 0 });
   std::vector<cl_int> subStampCounts(stamps.size(), 0);
 
   for (int i = 0; i < stamps.size(); i++) {
     for (int j = 0; j < stamps[i].subStamps.size(); j++) {
-      subStampCoords[2 * (i * 2 * args.maxKSStamps + j) + 0] = stamps[i].subStamps[j].imageCoords.first;
-      subStampCoords[2 * (i * 2 * args.maxKSStamps + j) + 1] = stamps[i].subStamps[j].imageCoords.second;
+      subStampCoords[(i * 2 * args.maxKSStamps + j)].x = stamps[i].subStamps[j].imageCoords.first;
+      subStampCoords[(i * 2 * args.maxKSStamps + j)].y = stamps[i].subStamps[j].imageCoords.second;
     }
 
     subStampCounts[i] = stamps[i].subStamps.size();
   }
 
-  stampData.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * subStampCoords.size());
+  stampData.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampCoords.size());
   stampData.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * subStampCounts.size());
 
-  clData.queue.enqueueWriteBuffer(stampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int) * subStampCoords.size(), subStampCoords.data());
+  clData.queue.enqueueWriteBuffer(stampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int2) * subStampCoords.size(), subStampCoords.data());
   clData.queue.enqueueWriteBuffer(stampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int) * subStampCounts.size(), subStampCounts.data());
 
   // Convolve stamps on Y
@@ -134,9 +134,9 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   xConvEvent.wait();
 
   // Subtract for odd
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long> oddConvFunc(clData.program, "convStampOdd");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long> oddConvFunc(clData.program, "convStampOdd");
   cl::EnqueueArgs oddConvEargs(clData.queue, cl::NullRange, cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount, stamps.size()), cl::NullRange);
-  cl::Event oddConvEvent = oddConvFunc(oddConvEargs, clData.kernel.x, clData.kernel.y, stampData.w,
+  cl::Event oddConvEvent = oddConvFunc(oddConvEargs, clData.kernel.xy, stampData.w,
                                        clData.wRows, clData.wColumns);
 
   oddConvEvent.wait();

@@ -24,8 +24,7 @@ struct ClData {
 
     struct {
         cl::Buffer gauss;
-        cl::Buffer x;
-        cl::Buffer y;
+        cl::Buffer xy;
         cl::Buffer bg;
         cl::Buffer filterX;
         cl::Buffer filterY;
@@ -34,7 +33,6 @@ struct ClData {
 
     struct {
         cl::Buffer xy;
-        int count;
     } bg;
 
     struct {

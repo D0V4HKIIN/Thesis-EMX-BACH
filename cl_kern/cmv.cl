@@ -1,5 +1,5 @@
 void kernel createKernelFilter(global const int *gauss,
-                               global const int *kernelX, global const int *kernelY,
+                               global const int2 *kernelXy,
                                global const float *bg,
                                global double *filterX, global double *filterY,
                                const long kernelWidth) {
@@ -11,8 +11,8 @@ void kernel createKernelFilter(global const int *gauss,
     double sumY = 0.0;
 
     float b = bg[gauss[id]];
-    int kx = kernelX[id];
-    int ky = kernelY[id];
+    int kx = kernelXy[id].x;
+    int ky = kernelXy[id].y;
 
     int dx = (kx / 2) * 2 - kx;
     int dy = (ky / 2) * 2 - ky;
@@ -42,7 +42,7 @@ void kernel createKernelFilter(global const int *gauss,
     }
 }
 
-void kernel createKernelVector(global const int *kernelX, global const int *kernelY,
+void kernel createKernelVector(global const int2 *kernelXy,
                                global const double *filterX, global const double *filterY,
                                global double *vec,
                                const long kernelWidth) {
@@ -50,8 +50,8 @@ void kernel createKernelVector(global const int *kernelX, global const int *kern
     int v = get_global_id(1);
     int n = get_global_id(2);
 
-    int kx = kernelX[n];
-    int ky = kernelY[n];
+    int kx = kernelXy[n].x;
+    int ky = kernelXy[n].y;
 
     int dx = (kx / 2) * 2 - kx;
     int dy = (ky / 2) * 2 - ky;
@@ -67,7 +67,7 @@ void kernel createKernelVector(global const int *kernelX, global const int *kern
     vec[n * kernelWidth * kernelWidth + v * kernelWidth + u] = vv;
 }
 
-void kernel convStampY(global const double *img, global const int *subStampCoords,
+void kernel convStampY(global const double *img, global const int2 *subStampCoords,
                        global const double *filterY,
                        global float *tmp,
                        const long kernelWidth, const long subStampWidth,
@@ -79,8 +79,8 @@ void kernel convStampY(global const double *img, global const int *subStampCoord
     int halfKernWidth = kernelWidth / 2;
     int halfSubStampWidth = subStampWidth / 2;
 
-    int ssx = subStampCoords[2 * stampId * maxSubStamps + 0];
-    int ssy = subStampCoords[2 * stampId * maxSubStamps + 1];
+    int ssx = subStampCoords[stampId * maxSubStamps].x;
+    int ssy = subStampCoords[stampId * maxSubStamps].y;
 
     int xHalfSize = halfSubStampWidth + halfKernWidth;
     int yHalfSize = halfSubStampWidth;
@@ -129,15 +129,15 @@ void kernel convStampX(global const float *tmp, global const double *filterX,
     w[stampId * wRows * wColumns + n * wColumns + pixel] = w0;
 }
 
-void kernel convStampOdd(global const int *kernelX, global const int *kernelY,
+void kernel convStampOdd(global const int2 *kernelXy,
                          global double *w,
                          const long wRows, const long wColumns) {
     int pixel = get_global_id(0);
     int n = get_global_id(1);
     int stampId = get_global_id(2);
 
-    int x = kernelX[n];
-    int y = kernelY[n];
+    int x = kernelXy[n].x;
+    int y = kernelXy[n].y;
     
     int dx = (x / 2) * 2 - x;
     int dy = (y / 2) * 2 - y;
@@ -148,7 +148,7 @@ void kernel convStampOdd(global const int *kernelX, global const int *kernelY,
     }
 }
 
-void kernel convStampBg(global const int *subStampCoords, global const int *bgXY,
+void kernel convStampBg(global const int2 *subStampCoords, global const int2 *bgXY,
                         global double *w,
                         const long width, const long height,
                         const long subStampWidth,
@@ -158,8 +158,8 @@ void kernel convStampBg(global const int *subStampCoords, global const int *bgXY
     int bgId = get_global_id(1);
     int stampId = get_global_id(2);
 
-    int ssx = subStampCoords[2 * stampId * maxSubStamps + 0];
-    int ssy = subStampCoords[2 * stampId * maxSubStamps + 1];
+    int ssx = subStampCoords[stampId * maxSubStamps].x;
+    int ssy = subStampCoords[stampId * maxSubStamps].y;
 
     long halfSubStampWidth = subStampWidth / 2;
 
@@ -169,8 +169,8 @@ void kernel convStampBg(global const int *subStampCoords, global const int *bgXY
     double xf = (x - (width * 0.5f)) / (width * 0.5f);
     double yf = (y - (height * 0.5f)) / (height * 0.5f);
 
-    int j = bgXY[2 * bgId + 0];
-    int k = bgXY[2 * bgId + 1];
+    int j = bgXY[bgId].x;
+    int k = bgXY[bgId].y;
 
     double ax = pown(xf, j);
     double ay = pown(yf, k);
@@ -201,7 +201,7 @@ void kernel createQ(global const double *w,
     q[stampId * qRows * qColumns + i * qColumns + j] = q0;
 }
 
-void kernel createB(global const int *subStampCoords,
+void kernel createB(global const int2 *subStampCoords,
                     global const double *img, global const double *w,
                     global double *b,
                     const long wRows, const long wColumns, const long bCount,
@@ -215,8 +215,8 @@ void kernel createB(global const int *subStampCoords,
     if (i > 0) {
         int halfSubStampWidth = subStampWidth / 2;
 
-        int ssx = subStampCoords[2 * stampId * maxSubStamps + 0];
-        int ssy = subStampCoords[2 * stampId * maxSubStamps + 1];
+        int ssx = subStampCoords[stampId * maxSubStamps].x;
+        int ssy = subStampCoords[stampId * maxSubStamps].y;
 
         for(int x = -halfSubStampWidth; x <= halfSubStampWidth; x++) {
             for(int y = -halfSubStampWidth; y <= halfSubStampWidth; y++) {

@@ -106,17 +106,17 @@ void kernel copyTestStampsB(global const double *in, global const int *testStamp
     out[dstStampId * bCount + i] = in[srcStampId * bCount + i];
 }
 
-void kernel createMatrixWeights(global const int *subStampCoords, global const int *xy,
+void kernel createMatrixWeights(global const int2 *subStampCoords, global const int2 *xy,
                                 global double *weights,
                                 const long width, const long height, const long maxSubStamps, const long count) {
     int k = get_global_id(0);
     int stampId = get_global_id(1);
 
-    int i = xy[2 * k + 0];
-    int j = xy[2 * k + 1];
+    int i = xy[k].x;
+    int j = xy[k].y;
 
-    int x = subStampCoords[2 * stampId * maxSubStamps + 0];
-    int y = subStampCoords[2 * stampId * maxSubStamps + 1];
+    int x = subStampCoords[stampId * maxSubStamps].x;
+    int y = subStampCoords[stampId * maxSubStamps].y;
 
     double xf = (x - (width * 0.5f)) / (width * 0.5f);
     double yf = (y - (height * 0.5f)) / (height * 0.5f);
@@ -242,7 +242,7 @@ void kernel createMatrix(global const double *weights, global const double *w, g
     matrix[row * matrixSize + column] = m0;
 }
 
-void kernel createScProd(const global double *img, const global double *weights, const global double *b, const global double *w, const global int *subStampCoords,
+void kernel createScProd(const global double *img, const global double *weights, const global double *b, const global double *w, const global int2 *subStampCoords,
                          global double *res,
                          const long width, const long stampCount, const long nComp1, const long nComp2, const long nBGComp,
                          const long bCount, const long wRows, const long wColumns, const long subStampWidth, const long maxSubStamps) {
@@ -268,8 +268,8 @@ void kernel createScProd(const global double *img, const global double *weights,
         for (int stampId = 0; stampId < stampCount; stampId++) {
             double q = 0.0;
 
-            int ssx = subStampCoords[2 * stampId * maxSubStamps + 0];
-            int ssy = subStampCoords[2 * stampId * maxSubStamps + 1];
+            int ssx = subStampCoords[stampId * maxSubStamps].x;
+            int ssy = subStampCoords[stampId * maxSubStamps].y;
 
             for (int y = -halfSubStampWidth; y <= halfSubStampWidth; y++) {
                 for (int x = -halfSubStampWidth; x <= halfSubStampWidth; x++) {
