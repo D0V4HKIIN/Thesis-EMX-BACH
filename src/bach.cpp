@@ -243,6 +243,7 @@ bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
   if(!convTemplate) {
     std::swap(scienceImg, templateImg);
     std::swap(sciStamps, templateStamps);
+    std::swap(clData.sci, clData.tmpl);
   }
   if(args.verbose)
     std::cout << templateImg.name << " chosen to be convolved." << std::endl;

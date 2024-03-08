@@ -26,7 +26,8 @@ int ludcmp(std::vector<std::vector<double>>& matrix, const int matrixSize,
            std::vector<int>& index, double& rowInter, const Arguments& args);
 void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
             const std::vector<int>& index, std::vector<double>& result);
-double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> imgSize, const int x,
+double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, const std::pair<cl_long, cl_long> &imgSize, const int x, const int y, const Arguments& args, const ClData &clData);
+double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> &imgSize, const int x,
                   const int y, const Arguments& args);
 
 /* SSS */

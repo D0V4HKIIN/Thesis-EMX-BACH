@@ -200,6 +200,9 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   double d;
   ludcmp(matrixCpu, matSize, index1, d, args);
   lubksb(matrixCpu, matSize, index1, testKernSolCpu);
+
+  // TEMP: transferback to GPU
+  clData.queue.enqueueWriteBuffer(testKernSol, CL_TRUE, 0, sizeof(cl_double) * testKernSolCpu.size(), testKernSolCpu.data());
 #else
   ludcmp(matrix, matSize + 1, 1, index, vv, clData);
   lubksb(matrix, matSize + 1, 1, index, testKernSol, clData);
@@ -211,7 +214,12 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   Kernel testKern(args);
   testKern.solution = testKernSolCpu;
-  kernelMean = makeKernel(testKern, tImg.axis, 0, 0, args);
+  
+  cl::Buffer kernel(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.fKernelWidth * args.fKernelWidth);
+  kernelMean = makeKernel(kernel, testKernSol, tImg.axis, 0, 0, args, clData);
+  
+  // TEMP: transfer kernel to CPU
+  clData.queue.enqueueReadBuffer(kernel, CL_TRUE, 0, sizeof(cl_double) * testKern.currKernel.size(), testKern.currKernel.data());
 
   // calc merit value
   std::vector<double> merit{};

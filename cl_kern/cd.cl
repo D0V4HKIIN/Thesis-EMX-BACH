@@ -292,3 +292,81 @@ void kernel createScProd(const global double *img, const global double *weights,
 
     res[id] = r0;
 }
+
+void kernel makeKernelCoeffs(const global double *kernSol,
+                             global double *coeffs,
+                             const long kernelOrder, const long kernXyCount, const double xf, const double yf) {
+    int i = get_global_id(0);
+
+    double c0 = 0.0;
+
+    if (i == 0) {
+        c0 = kernSol[1];
+    }
+    else {
+        int k = 2 + (i - 1) * kernXyCount;
+        double aX = 1.0;
+
+        for (int x = 0; x <= kernelOrder; x++) {
+            double aY = 1.0;
+
+            for (int y = 0; y <= kernelOrder - x; y++) {
+                double s0 = kernSol[k++];
+                c0 += s0 * aX * aY;
+
+                aY *= yf;
+            }
+
+            aX *= xf;
+        }
+    }
+
+    coeffs[i] = c0;
+}
+
+void kernel makeKernel(const global double *kernCoeffs, const global double *kernVec,
+                       global double *kern,
+                       const long nPsf, const long kernelWidth) {
+    int i = get_global_id(0);
+
+    int count = kernelWidth * kernelWidth;
+
+    if (i < count) {
+        double k0 = 0.0;
+
+        // TODO: improve performance with local memory
+        for (int p = 0; p < nPsf; p++) {
+            k0 += kernCoeffs[p] * kernVec[p * count + i];
+        }
+
+        kern[i] = k0;
+    }
+}
+
+void kernel sumKernel(const global double *in,
+                      global double *out,
+                      const long count) {
+    int gid = get_global_id(0);
+    int lid = get_local_id(0);
+    
+    int outid = count / 32;
+
+    local double localKern[32];
+
+    if (gid < count) {
+        localKern[lid] = in[gid];
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if (lid == 0) {
+        int localCount = min(32, (int)count - gid);
+        double sum = 0.0;
+
+        for (int i = 0; i < localCount; i++) {
+            sum += localKern[i];
+        }
+
+        out[gid / 32] = sum;
+    }
+}

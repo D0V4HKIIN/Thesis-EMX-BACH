@@ -1,4 +1,5 @@
 #include "bachUtil.h"
+#include "mathUtil.h"
 #include <numeric>
 
 void checkError(const cl_int err) {
@@ -528,7 +529,66 @@ void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
   }
 }
 
-double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> imgSize, const int x,
+double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, const std::pair<cl_long, cl_long> &imgSize, const int x, const int y, const Arguments& args, const ClData &clData) {
+  double hWidth = 0.5 * imgSize.first;
+  double hHeight = 0.5 * imgSize.second;
+
+  double xf = (x - hWidth) / hWidth;
+  double yf = (y - hHeight) / hHeight;
+
+  static constinit int localCount = 32;
+
+  // Create buffers
+  cl::Buffer kernCoeffs(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.nPSF);
+  cl::Buffer kernelSum(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.fKernelWidth * args.fKernelWidth);
+  cl::Buffer kernelSum2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * ((args.fKernelWidth * args.fKernelWidth + localCount - 1) / localCount));
+
+  // Create coefficients
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long,
+                    cl_double, cl_double> coeffFunc(clData.program, "makeKernelCoeffs");
+  cl::EnqueueArgs coeffEargs(clData.queue, cl::NDRange(args.nPSF));
+  cl::Event coeffEvent = coeffFunc(coeffEargs, kernSolution, kernCoeffs, args.kernelOrder,
+                                   triNum(args.kernelOrder + 1), xf, yf);
+
+  coeffEvent.wait();
+
+  // Create kernel
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long> kernelFunc(clData.program, "makeKernel");
+  cl::EnqueueArgs kernelEargs(clData.queue, cl::NDRange(roundUpToMultiple(args.fKernelWidth * args.fKernelWidth, localCount)), cl::NDRange(localCount));
+  cl::Event kernelEvent = kernelFunc(kernelEargs, kernCoeffs, clData.kernel.vec, kernel, args.nPSF, args.fKernelWidth);
+  
+  kernelEvent.wait();
+
+  // Sum kernel
+  cl::Event copyEvent{};
+  clData.queue.enqueueCopyBuffer(kernel, kernelSum, 0, 0, sizeof(cl_double) * args.fKernelWidth * args.fKernelWidth, nullptr, &copyEvent);
+
+  copyEvent.wait();
+
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> sumFunc(clData.program, "sumKernel");
+  int sumCount = args.fKernelWidth * args.fKernelWidth;
+
+  cl::Buffer* src = &kernelSum;
+  cl::Buffer* dst = &kernelSum2;
+
+  while (sumCount > 1) {
+    cl::EnqueueArgs sumEargs(clData.queue, cl::NDRange(roundUpToMultiple(sumCount, localCount)), cl::NDRange(localCount));
+    cl::Event sumEvent = sumFunc(sumEargs, *src, *dst, sumCount);
+    
+    sumEvent.wait();
+
+    sumCount = (sumCount + localCount - 1) / localCount;
+    std::swap(src, dst);
+  }
+
+  // Transfer sum to CPU
+  cl_double sumKernel = 0.0;
+  clData.queue.enqueueReadBuffer(*src, CL_TRUE, 0, sizeof(cl_double), &sumKernel);
+
+  return sumKernel;
+}
+
+double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> &imgSize, const int x,
                   const int y, const Arguments& args) {
   /*
    * Calculates the kernel for a certain pixel, need finished kernelSol.
