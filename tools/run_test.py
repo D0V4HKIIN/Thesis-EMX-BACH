@@ -17,7 +17,7 @@ TEST_TABLE = [
 ]
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
-BUILD_PATH = ROOT_PATH / "build" / "Debug"
+BUILD_PATH = ROOT_PATH / "build"
 RES_PATH = ROOT_PATH / "res"
 TEST_PATH = ROOT_PATH / "tests"
 OUTPUT_PATH = TEST_PATH / "out"
@@ -82,12 +82,12 @@ def diff_fits(h_path, b_path):
 
     return max_error_abs, mean_error_abs, max_error_rel, mean_error_rel, wrong_nans, abs_coords
 
-def run_test(test_index, verbose):
+def run_test(test_index, verbose, build_config):
     (id, _, science_name, template_name, conv_name, sub_name, max_abs_error, max_rel_error) = TEST_TABLE[test_index]
 
     print(f"{color_print.CYAN}Running test {id}...")
 
-    exe_path = BUILD_PATH / "BACH.exe"
+    exe_path = BUILD_PATH / build_config / "BACH.exe"
 
     exe_args = [str(exe_path)]
     exe_args += ["-ip", str(RES_PATH)]
@@ -143,9 +143,10 @@ def print_help():
     print(f"{color_print.YELLOW}--all: Runs all tests (default).")
     print(f"{color_print.YELLOW}--fast: Runs all tests which are slow.")
     print(f"{color_print.YELLOW}--slow: Runs all tests which are fast.")
+    print(f"{color_print.YELLOW}--release: Runs the program in release mode. If not specified, the debug build is used.")
 
-def run_tests(verbose, tests):
-    print(f"{color_print.CYAN}Running X-BACH from \"{BUILD_PATH.resolve()}\"")
+def run_tests(verbose, tests, build_config):
+    print(f"{color_print.CYAN}Running X-BACH ({build_config}) from \"{BUILD_PATH.resolve()}\"")
 
     print()
     print(f"There are a total of {len(tests)} tests to run:")
@@ -173,7 +174,7 @@ def run_tests(verbose, tests):
 
     for i in tests:
         test_id = TEST_TABLE[i][0]
-        test_success = run_test(i, verbose)
+        test_success = run_test(i, verbose, build_config)
         
         if test_success:
             print(f"{color_print.GREEN}Test {test_id} succeeded!")
@@ -200,6 +201,7 @@ def main(args):
 
     # Parse args
     verbose = False
+    debug = True
     tests = {}
 
     for arg in args:
@@ -214,6 +216,8 @@ def main(args):
             tests = [i for i in range(len(TEST_TABLE)) if TEST_TABLE[i][1]]
         elif arg == "--slow":
             tests = [i for i in range(len(TEST_TABLE)) if not TEST_TABLE[i][1]]
+        elif arg == "--release":
+            debug = False
         else:
             print(f"{color_print.RED}Unrecognized flag: {arg}")
             print()
@@ -223,7 +227,8 @@ def main(args):
     if len(tests) == 0:
         tests = [i for i in range(len(TEST_TABLE))]
 
-    success = run_tests(verbose, tests)
+    build_config = "Debug" if debug else "Release"
+    success = run_tests(verbose, tests, build_config)
 
     color_print.destroy()
 
