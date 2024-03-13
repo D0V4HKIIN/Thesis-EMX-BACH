@@ -225,9 +225,9 @@ bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
 
   const double templateMerit = testFit(templateStamps, templateImg, scienceImg, clData.tImgBuf, clData.sImgBuf, mask, clData, clData.tmpl, args);
   const double scienceMerit = testFit(sciStamps, scienceImg, templateImg, clData.sImgBuf, clData.tImgBuf, mask, clData, clData.sci, args);
-  if(args.verbose)
-    std::cout << "template merit value = " << templateMerit
-              << ", science merit value = " << scienceMerit << std::endl;
+  
+  std::cout << "template merit value = " << templateMerit
+            << ", science merit value = " << scienceMerit << std::endl;
 
   bool convTemplate = scienceMerit > templateMerit;
 

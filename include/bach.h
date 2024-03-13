@@ -10,6 +10,7 @@ struct ClStampsData {
     cl::Buffer w;
     cl::Buffer q;
     cl::Buffer b;
+    int stampCount;
 };
 
 struct ClData {

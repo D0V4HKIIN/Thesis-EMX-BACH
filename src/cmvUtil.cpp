@@ -105,6 +105,8 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   clData.queue.enqueueWriteBuffer(stampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int2) * subStampCoords.size(), subStampCoords.data());
   clData.queue.enqueueWriteBuffer(stampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int) * subStampCounts.size(), subStampCounts.data());
 
+  stampData.stampCount = stamps.size();
+
   // Convolve stamps on Y
   cl::Buffer yConvTmp(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * stamps.size() * clData.gaussCount * (2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1));
   

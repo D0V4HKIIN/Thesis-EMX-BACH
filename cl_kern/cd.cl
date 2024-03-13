@@ -1,3 +1,17 @@
+#define MASK_BAD_PIX_VAL (1 << 0)
+#define MASK_SAT_PIXEL (1 << 1)
+#define MASK_LOW_PIXEL (1 << 2)
+#define MASK_NAN_PIXEL (1 << 3)
+#define MASK_BAD_CONV (1 << 4)
+#define MASK_INPUT_MASK (1 << 5)
+#define MASK_OK_CONV (1 << 6)
+#define MASK_BAD_INPUT (1 << 7)
+#define MASK_BAD_PIXEL_T (1 << 8)
+#define MASK_SKIP_T (1 << 9)
+#define MASK_BAD_PIXEL_S (1 << 10)
+#define MASK_SKIP_S (1 << 11)
+#define MASK_BAD_OUTPUT (1 << 12)
+
 void kernel createTestVec(global const double* b,
                           global double *vec,
                           const long bCount) {
@@ -368,5 +382,157 @@ void kernel sumKernel(const global double *in,
         }
 
         out[gid / 32] = sum;
+    }
+}
+
+double getBackground(const long x, const long y, global const double *sol, const long width, const long height,
+                     const long bgOrder, const long bgCount, const long nBgComp) {
+    double xf = (x - 0.5 * width) / (0.5 * width);
+    double yf = (y - 0.5 * height) / (0.5 * height);
+
+    double bg = 0.0;
+    int k = nBgComp + 1;
+
+    double ax = 1.0;
+
+    for (int i = 0; i <= bgOrder; i++) {
+        double ay = 1.0;
+
+        for (int j = 0; j <= bgOrder - i; j++) {
+            bg += sol[k++] * ax * ay;
+
+            ay *= yf;
+        }
+
+        ax *= xf;
+    }
+
+    return bg;
+}
+
+void kernel calcSigBg(global const double *sol, global const int2 *subStampCoords, global const int *subStampCounts,
+                      global double *bgs,
+                      const long maxSubStamps, const long width, const long height, const long bgOrder, const long bgCount, const long nBgComp) {
+    int stampId = get_global_id(0);
+
+    int ssCount = subStampCounts[stampId];
+
+    double bg = 0.0;
+
+    if (ssCount > 0) {
+        int ssx = subStampCoords[stampId * maxSubStamps].x;
+        int ssy = subStampCoords[stampId * maxSubStamps].y;
+
+        bg = getBackground(ssx, ssy, sol, width, height,
+                           bgOrder, bgCount, nBgComp);
+    }
+
+    bgs[stampId] = bg;
+}
+
+void kernel makeModel(global const double *w, global const double *kernSol, global const int2 *subStampCoords, global const int *subStampCounts,
+                      global float *model,
+                      const long nPsf, const long kernelOrder, const long wRows, const long wColumns, const long maxSubStamps,
+                      const long width, const long height, const long modelSize) {
+    int j = get_global_id(0);
+    int stampId = get_global_id(1);
+
+    int ssCount = subStampCounts[stampId];
+
+    float m0 = 0.0;
+
+    if (ssCount > 0) {
+        int ssx = subStampCoords[stampId * maxSubStamps].x;
+        int ssy = subStampCoords[stampId * maxSubStamps].y;
+
+        double xf = (ssx - width * 0.5) / (width * 0.5);
+        double yf = (ssy - height * 0.5) / (height * 0.5);
+
+        m0 = kernSol[1] * w[stampId * wRows * wColumns + j];
+
+        for (int i = 1, k = 2; i < nPsf; i++) {
+            double coeff = 0.0;
+            double ax = 1.0;
+
+            for (int x = 0; x <= kernelOrder; x++) {
+                double ay = 1.0;
+
+                for (int y = 0; y <= kernelOrder - x; y++) {
+                    double s0 = kernSol[k++]; 
+                    coeff += s0 * ax * ay;
+                    ay *= yf;
+                }
+
+                ax *= xf;
+            }
+
+            m0 += coeff * w[stampId * wRows * wColumns + i * wColumns + j];
+        }
+    }    
+
+    model[stampId * modelSize + j] = m0;
+}
+
+void kernel calcSig(global const float *model, global const double *bg, global const double *tImg, global const double *sImg, global const int2 *subStampCoords,
+                    global double *sig, global int *sigCount, global ushort *mask,
+                    const long width, const long subStampWidth, const long maxSubStamps, const long modelSize, const long reduceCount) {
+    int gi = get_global_id(0);
+    int stampId = get_global_id(1);
+
+    int li = get_local_id(0);
+
+    int gx = gi % subStampWidth;
+    int gy = gi / subStampWidth;
+
+    local double localSig[32];
+    local int localSigCount;
+
+    if (li == 0) {
+        localSigCount = 0;
+    }
+
+    double s0 = 0.0;
+
+    // TODO: check if there exists sub-stamps
+
+    if (gx < subStampWidth && gy < subStampWidth) {
+        int ssx = subStampCoords[stampId * maxSubStamps].x;
+        int ssy = subStampCoords[stampId * maxSubStamps].y;
+
+        int absX = gx - subStampWidth / 2 + ssx;
+        int absY = gy - subStampWidth / 2 + ssy;
+        
+        int intIndex = gx + gy * subStampWidth;
+        int absIndex = absX + absY * width;
+
+        double tDat = model[stampId * modelSize + intIndex];
+        double sDat = sImg[absIndex];
+        double diff = tDat - sDat + bg[stampId];
+
+        if ((mask[absIndex] & MASK_BAD_INPUT) == 0 && fabs(sDat) > 1e-10) {
+            if (isnan(tDat) || isnan(sDat)) {
+                mask[absIndex] |= MASK_NAN_PIXEL;
+            }
+            else {
+                atomic_inc(&localSigCount);
+                s0 = diff * diff / (fabs(tImg[absIndex]) + fabs(sDat));
+            }
+        }
+    }
+
+    localSig[li] = s0;
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if (li == 0) {
+        double localSum = 0.0;
+
+        for (int i = 0; i < 32; i++) {
+            localSum += localSig[i];
+        }
+
+        int outId = stampId * reduceCount + gi / get_local_size(0);        
+        sig[outId] = localSum;
+        sigCount[outId] = localSigCount;
     }
 }
