@@ -1,7 +1,7 @@
 #include "bachUtil.h"
 #include "mathUtil.h"
 
-double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ImageMask& mask, ClData& clData, ClStampsData& stampData, const Arguments& args) {
+double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &axis, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData& clData, ClStampsData& stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nBGComp = triNum(args.backgroundOrder + 1);
@@ -177,8 +177,8 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   testStamps = testStamps2;
 
   // Do fit
-  createMatrix(matrix, weights, clData, testStampData, tImg.axis, args);
-  createScProd(testKernSol, weights, sImgBuf, sImg.axis, clData, testStampData, args);
+  createMatrix(matrix, weights, clData, testStampData, axis, args);
+  createScProd(testKernSol, weights, sImgBuf, axis, clData, testStampData, args);
 
   // TEMP: parallel matrix solver is currently very slow, so temporarly use CPU version
 #if true
@@ -212,42 +212,25 @@ double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   std::vector<cl_double> testKernSolCpu(nKernSolComp);
   clData.queue.enqueueReadBuffer(testKernSol, CL_TRUE, 0, sizeof(cl_double) * testKernSolCpu.size(), testKernSolCpu.data());
 #endif
-
-  Kernel testKern(args);
-  testKern.solution = testKernSolCpu;
   
   cl::Buffer kernel(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.fKernelWidth * args.fKernelWidth);
-  kernelMean = makeKernel(kernel, testKernSol, tImg.axis, 0, 0, args, clData);
-  
-  // TEMP: transfer kernel to CPU
-  clData.queue.enqueueReadBuffer(kernel, CL_TRUE, 0, sizeof(cl_double) * testKern.currKernel.size(), testKern.currKernel.data());
+  kernelMean = makeKernel(kernel, testKernSol, axis, 0, 0, args, clData);
 
-  // calc merit value
+  // Calc merit value
   cl::Buffer model(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * testStampCount * args.fSStampWidth * args.fSStampWidth);
   cl::Buffer merits(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount);
-  calcSigs(tImgBuf, sImgBuf, tImg.axis, model, testKernSol, merits, testStampData, clData, args);
+  int meritCount = calcSigs(tImgBuf, sImgBuf, axis, model, testKernSol, merits, testStampData, clData, args);
 
-  // TEMP: transfer data to CPU
-  std::vector<cl_double> meritsCpu(testStampCount);
-  clData.queue.enqueueReadBuffer(merits, CL_TRUE, 0, sizeof(cl_double) * meritsCpu.size(), meritsCpu.data());
-
-  std::vector<double> merit{};  
-
-  for(double sig : meritsCpu) {
-    if(sig != -1 && sig <= 1e10) merit.push_back(sig);
+  if (meritCount == 0) {
+    return 666;
   }
 
-  std::vector<double> correctMerit{};  
-  for(auto& ts : testStamps) {
-    double sig = calcSig(ts, testKern.solution, tImg, sImg, mask, args);
-    if(sig != -1 && sig <= 1e10) correctMerit.push_back(sig);
-  }
+  double meritMean;
+  double meritStdDev;
+  sigmaClip(merits, meritCount, &meritMean, &meritStdDev, 10, clData, args);
 
-  double meritMean, meritStdDev;
-  sigmaClip(merit, meritMean, meritStdDev, 10, args);
-  meritMean /= kernelMean;
-  if(merit.size() > 0) return meritMean;
-  return 666;
+  double normMeritMean = meritMean / kernelMean;
+  return normMeritMean;
 }
 
 void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClData &clData, const ClStampsData &stampData, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args) {
@@ -438,19 +421,22 @@ std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& 
   return res;
 }
 
-void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pair<cl_long, cl_long> &axis,
+int calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pair<cl_long, cl_long> &axis,
               const cl::Buffer &model, const cl::Buffer &kernSol, const cl::Buffer &sigma,
               const ClStampsData &stampData, const ClData &clData, const Arguments& args) {
   static constinit int localSize = 32;
 
   int reduceCount = (args.fSStampWidth * args.fSStampWidth + localSize - 1) / localSize;
   int stampCount = stampData.stampCount;
+  int sigmaCount = 0;
 
   // Create buffers
   cl::Buffer bg(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampCount);
   cl::Buffer sigTemp1(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampCount * reduceCount);
   cl::Buffer sigTemp2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampCount * reduceCount);
-  cl::Buffer sigCount(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stampCount * reduceCount);
+  cl::Buffer sigCount1(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stampCount * reduceCount);
+  cl::Buffer sigCount2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stampCount * reduceCount);
+  cl::Buffer sigCounter(clData.context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, sizeof(cl_int), &sigmaCount);
 
   // Create bg
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
@@ -478,48 +464,44 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
                     cl_long, cl_long, cl_long, cl_long, cl_long> sigmaFunc(clData.program, "calcSig");
   cl::EnqueueArgs sigmaEargs(clData.queue, cl::NDRange(reduceCount * localSize, stampCount), cl::NDRange(localSize, 1));
   cl::Event sigmaEvent = sigmaFunc(sigmaEargs, model, bg, tImgBuf, sImgBuf, stampData.subStampCoords,
-                                   sigTemp1, sigCount, clData.maskBuf, axis.first, args.fSStampWidth,
+                                   sigTemp1, sigCount1, clData.maskBuf, axis.first, args.fSStampWidth,
                                    2 * args.maxKSStamps, args.fSStampWidth * args.fSStampWidth, reduceCount);
 
   sigmaEvent.wait();
 
-  // TEMP: transfer sigma to CPU
-  std::vector<cl_double> sigmaCpu(stampCount * reduceCount);
-  clData.queue.enqueueReadBuffer(sigTemp1, CL_TRUE, 0, sizeof(cl_double) * sigmaCpu.size(), sigmaCpu.data());
+  // Reduce
+  bool isFirst = true;
+  int count = reduceCount;
+  cl::Buffer *sigIn = &sigTemp1;
+  cl::Buffer *sigOut = &sigTemp2;
+  cl::Buffer *sigCountIn = &sigCount1;
+  cl::Buffer *sigCountOut = &sigCount2;
 
-  std::vector<cl_int> sigmaCountCpu(stampCount * reduceCount);
-  clData.queue.enqueueReadBuffer(sigCount, CL_TRUE, 0, sizeof(cl_int) * sigmaCountCpu.size(), sigmaCountCpu.data());
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_long, cl_long> reduceFunc(clData.program, "reduceSig");
 
-  // TEMP: reduce on CPU
-  std::vector<double> sigmaReduced(stampCount);
+  while (count > 1 || isFirst) {
+    int nextCount = (count + localSize - 1) / localSize;
 
-  for (int i = 0; i < stampCount; i++) {
-    double sum = 0.0;
-    int count = 0;
+    cl::EnqueueArgs reduceEargs(clData.queue, cl::NDRange(roundUpToMultiple(count, localSize), stampCount), cl::NDRange(localSize, 1));
+    cl::Event reduceEvent = reduceFunc(reduceEargs, *sigIn, *sigCountIn, *sigOut, *sigCountOut, sigCounter, count, nextCount);
 
-    for (int j = 0; j < reduceCount; j++) {
-      sum += sigmaCpu[i * reduceCount + j];
-      count += sigmaCountCpu[i * reduceCount + j];
-    }
+    count = nextCount;
+    std::swap(sigIn, sigOut);
+    std::swap(sigCountIn, sigCountOut);
 
-    double s{};
-    
-    if (count == 0) {
-      s = -1.0;
-    }
-    else {
-      s = sum / count;
-
-      if (s >= 1e10) {
-        s = -1.0;
-      }
-    }
-
-    sigmaReduced[i] = s;
+    isFirst = false;
   }
 
-  // TEMP: upload to GPU again
-  clData.queue.enqueueWriteBuffer(sigma, CL_TRUE, 0, sizeof(cl_double) * sigmaReduced.size(), sigmaReduced.data());
+  clData.queue.enqueueReadBuffer(sigCounter, CL_TRUE, 0, sizeof(cl_int), &sigmaCount);
+
+  // Copy buffer
+  cl::Event copyEvent{};
+  clData.queue.enqueueCopyBuffer(*sigIn, sigma, 0, 0, sizeof(cl_double) * sigmaCount, nullptr, &copyEvent);
+
+  copyEvent.wait();
+
+  return sigmaCount;
 }
 
 double calcSig(Stamp& s, const std::vector<double>& kernSol, const Image& tImg,

@@ -491,6 +491,8 @@ void kernel calcSig(global const float *model, global const double *bg, global c
         localSigCount = 0;
     }
 
+    barrier(CLK_LOCAL_MEM_FENCE);
+
     double s0 = 0.0;
 
     // TODO: check if there exists sub-stamps
@@ -534,5 +536,64 @@ void kernel calcSig(global const float *model, global const double *bg, global c
         int outId = stampId * reduceCount + gi / get_local_size(0);        
         sig[outId] = localSum;
         sigCount[outId] = localSigCount;
+    }
+}
+
+void kernel reduceSig(global const double *in, global const int *inCount,
+                      global double *out, global int *outCount, global int *sigCounter,
+                      const long count, const long nextCount) {
+    int lid = get_local_id(0);
+    int gid = get_global_id(0);
+    int stampId = get_global_id(1);
+
+    local double localSig[32];
+    local int localCount;
+
+    if (lid == 0) {
+        localCount = 0;
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if (gid < count) {
+        int inId = stampId * count + gid;
+        localSig[lid] = in[inId];
+        atomic_add(&localCount, inCount[inId]);
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if (lid == 0) {
+        double sum = 0.0;
+        int c = min(32, (int)count - gid);
+
+        for (int i = 0; i < c; i++) {
+            sum += localSig[i];
+        }
+
+        if (nextCount == 1) {
+            // Calculate average from sum
+            if (localCount == 0) {
+                sum = -1.0;
+            }
+            else {
+                sum /= localCount;
+
+                if (sum >= 1e10) {
+                    sum = -1.0;
+                }
+            }
+
+            if (sum != -1.0) {
+                int outId = atomic_inc(sigCounter);
+                out[outId] = sum;
+            }
+        }
+        else
+        {
+            int outId = stampId * nextCount + gid / 32;
+            out[outId] = sum;
+            outCount[outId] = localCount;
+        }
     }
 }

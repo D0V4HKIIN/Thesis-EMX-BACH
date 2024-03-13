@@ -223,8 +223,11 @@ bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
   clData.cd.kernelXy = cl::Buffer(clData.context, CL_MEM_READ_ONLY, sizeof(cl_int2) * kernelXy.size());
   clData.queue.enqueueWriteBuffer(clData.cd.kernelXy, CL_TRUE, 0, sizeof(cl_int2) * kernelXy.size(), kernelXy.data());
 
-  const double templateMerit = testFit(templateStamps, templateImg, scienceImg, clData.tImgBuf, clData.sImgBuf, mask, clData, clData.tmpl, args);
-  const double scienceMerit = testFit(sciStamps, scienceImg, templateImg, clData.sImgBuf, clData.tImgBuf, mask, clData, clData.sci, args);
+  const double templateMerit = testFit(templateStamps, templateImg.axis, clData.tImgBuf, clData.sImgBuf, clData, clData.tmpl, args);
+  const double scienceMerit = testFit(sciStamps, scienceImg.axis, clData.sImgBuf, clData.tImgBuf, clData, clData.sci, args);
+
+  // TEMP: return mask to CPU
+  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
   
   std::cout << "template merit value = " << templateMerit
             << ", science merit value = " << scienceMerit << std::endl;
