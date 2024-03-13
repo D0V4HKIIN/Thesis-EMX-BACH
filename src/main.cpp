@@ -39,12 +39,17 @@ int main(int argc, const char* argv[]) {
   ImageMask mask(std::make_pair(0, 0));
 
   std::cout << "\nSetting up openCL..." << std::endl;
-  cl::Device device{getDefaultDevice()};
-  cl::Context context{device};
+  cl::Platform platform = getDefaultPlatform();
+  cl::Device device = getDefaultDevice(platform);
+  cl::Context context(device);
   cl::Program program =
       loadBuildPrograms(context, device, std::filesystem::path(argv[0]).parent_path(),
       "conv.cl", "ini.cl", "sub.cl");
   cl::CommandQueue queue(context, device);
+
+  if (args.verbose) {
+    printVerboseClInfo(platform, device);
+  }
 
   ClData clData { device, context, program, queue };
 
