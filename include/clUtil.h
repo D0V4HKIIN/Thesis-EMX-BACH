@@ -43,7 +43,7 @@ inline void printVerboseClInfo(const cl::Platform &platform, const cl::Device &d
   cl_ulong localMemorySize = device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>();
 
   std::cout << "Max work group size: " << maxWorkGroupSize << std::endl;
-  std::cout << "Max work group size: (";
+  std::cout << "Max work item sizes: (";
 
   for (int i = 0; i < maxWorkItemSizes.size(); i++) {
     std::cout << maxWorkItemSizes[i];

@@ -22,4 +22,5 @@ def init():
         print("'colorama' is not installed. Print will not be colored.")
 
 def destroy():
-    colorama.deinit()
+    if _USE_COLORAMA:
+        colorama.deinit()
