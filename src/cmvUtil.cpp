@@ -88,7 +88,7 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
 
   // TEMP: create sub stamp coordinates and counts (should already be done)
   std::vector<cl_int2> subStampCoords((2 * args.maxKSStamps) * stamps.size(), { 0, 0 });
-  std::vector<cl_int> subStampCounts(stamps.size(), 0);
+  std::vector<cl_int2> subStampCounts(stamps.size(), { 0, 0 });
 
   for (int i = 0; i < stamps.size(); i++) {
     for (int j = 0; j < stamps[i].subStamps.size(); j++) {
@@ -96,14 +96,14 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
       subStampCoords[(i * 2 * args.maxKSStamps + j)].y = stamps[i].subStamps[j].imageCoords.second;
     }
 
-    subStampCounts[i] = stamps[i].subStamps.size();
+    subStampCounts[i].x = stamps[i].subStamps.size();
   }
 
   stampData.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampCoords.size());
-  stampData.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * subStampCounts.size());
+  stampData.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampCounts.size());
 
   clData.queue.enqueueWriteBuffer(stampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int2) * subStampCoords.size(), subStampCoords.data());
-  clData.queue.enqueueWriteBuffer(stampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int) * subStampCounts.size(), subStampCounts.data());
+  clData.queue.enqueueWriteBuffer(stampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int2) * subStampCounts.size(), subStampCounts.data());
 
   stampData.stampCount = stamps.size();
 

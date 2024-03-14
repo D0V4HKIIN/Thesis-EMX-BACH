@@ -64,20 +64,19 @@ void kernel genCdTestStamps(global const double *kernelSums,
     }
 }
 
-void kernel copyTestSubStampsCoords(global const int *in, global const int *testStampIndices,
-                                    global int *out,
+void kernel copyTestSubStampsCoords(global const int2 *in, global const int *testStampIndices,
+                                    global int2 *out,
                                     const long maxSubStamps) {
-    int coordId = get_global_id(0);
-    int subStampId = get_global_id(1);
-    int dstStampId = get_global_id(2);
+    int subStampId = get_global_id(0);
+    int dstStampId = get_global_id(1);
 
     int srcStampId = testStampIndices[dstStampId];
 
-    out[2 * (dstStampId * maxSubStamps + subStampId) + coordId] = in[2 * (srcStampId * maxSubStamps + subStampId) + coordId];
+    out[dstStampId * maxSubStamps + subStampId] = in[srcStampId * maxSubStamps + subStampId];
 }
 
-void kernel copyTestSubStampsCounts(global const int *in, global const int *testStampIndices,
-                                    global int *out) {
+void kernel copyTestSubStampsCounts(global const int2 *in, global const int *testStampIndices,
+                                    global int2 *out) {
     int dstStampId = get_global_id(0);
 
     int srcStampId = testStampIndices[dstStampId];
@@ -410,12 +409,12 @@ double getBackground(const long x, const long y, global const double *sol, const
     return bg;
 }
 
-void kernel calcSigBg(global const double *sol, global const int2 *subStampCoords, global const int *subStampCounts,
+void kernel calcSigBg(global const double *sol, global const int2 *subStampCoords, global const int2 *subStampCounts,
                       global double *bgs,
                       const long maxSubStamps, const long width, const long height, const long bgOrder, const long bgCount, const long nBgComp) {
     int stampId = get_global_id(0);
 
-    int ssCount = subStampCounts[stampId];
+    int ssCount = subStampCounts[stampId].x;
 
     double bg = 0.0;
 
@@ -430,14 +429,14 @@ void kernel calcSigBg(global const double *sol, global const int2 *subStampCoord
     bgs[stampId] = bg;
 }
 
-void kernel makeModel(global const double *w, global const double *kernSol, global const int2 *subStampCoords, global const int *subStampCounts,
+void kernel makeModel(global const double *w, global const double *kernSol, global const int2 *subStampCoords, global const int2 *subStampCounts,
                       global float *model,
                       const long nPsf, const long kernelOrder, const long wRows, const long wColumns, const long maxSubStamps,
                       const long width, const long height, const long modelSize) {
     int j = get_global_id(0);
     int stampId = get_global_id(1);
 
-    int ssCount = subStampCounts[stampId];
+    int ssCount = subStampCounts[stampId].x;
 
     float m0 = 0.0;
 
