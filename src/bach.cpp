@@ -237,6 +237,7 @@ bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
   if(!convTemplate) {
     std::swap(scienceImg, templateImg);
     std::swap(sciStamps, templateStamps);
+    std::swap(clData.sImgBuf, clData.tImgBuf);
     std::swap(clData.sci, clData.tmpl);
   }
   if(args.verbose)
@@ -245,10 +246,11 @@ bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
   return convTemplate;
 }
 
-void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel, const Arguments& args) {
+void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
+         const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const ClData &clData, const ClStampsData &stampData, const Arguments& args) {
   std::cout << "\nFitting kernel..." << std::endl;
 
-  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask, args);
+  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask, tImgBuf, sImgBuf, clData, stampData, args);
 }
 
 double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,

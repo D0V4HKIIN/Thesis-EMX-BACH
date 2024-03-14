@@ -599,34 +599,45 @@ std::vector<float> makeModel(const Stamp& s, const std::vector<double>& kernSol,
   return model;
 }
 
-void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
-               const Image& sImg, ImageMask& mask, const Arguments& args) {
+void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask,
+               const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const ClData &clData, const ClStampsData &stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nBGComp = triNum(args.backgroundOrder + 1);
   const int matSize = nComp1 * nComp2 + nBGComp + 1;
+  const int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
 
-  auto [fittingMatrix, weight] = createMatrix(stamps, tImg.axis, args);
-  std::vector<double> solution = createScProd(stamps, sImg, weight, args);
+  // Create buffers
+  cl::Buffer fitMatrix(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1) * (matSize + 1));
+  cl::Buffer weights(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nComp2 * stampData.stampCount);
+  cl::Buffer solution(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nKernSolComp);
+  cl::Buffer index(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * matSize);
 
-  std::vector<int> index(matSize, 0);
-  double d{};
-  ludcmp(fittingMatrix, matSize, index, d, args);
-  lubksb(fittingMatrix, matSize, index, solution);
+  std::vector<int> index0(matSize, 0);
 
-  k.solution = solution;
-  bool check = checkFitSolution(k, stamps, tImg, sImg, mask, args);
-  while(check) {
-    if(args.verbose) std::cout << "Re-expanding matrix..." << std::endl;
-    auto [fittingMatrix, weight] = createMatrix(stamps, tImg.axis, args);
-    solution = createScProd(stamps, sImg, weight, args);
+  int iteration = 0;
+  bool check{};
 
-    ludcmp(fittingMatrix, matSize, index, d, args);
-    lubksb(fittingMatrix, matSize, index, solution);
+  do
+  {
+    if (args.verbose && iteration > 0) {
+      std::cout << "Re-expanding matrix..." << std::endl;
+    }
+    
+    auto [fittingMatrix0, weight0] = createMatrix(stamps, tImg.axis, args);
+    std::vector<double> solution0 = createScProd(stamps, sImg, weight0, args);
 
-    k.solution = solution;
+    // LU solve
+    double d{};
+    ludcmp(fittingMatrix0, matSize, index0, d, args);
+    lubksb(fittingMatrix0, matSize, index0, solution0);
+
+    k.solution = solution0;
     check = checkFitSolution(k, stamps, tImg, sImg, mask, args);
+
+    iteration++;
   }
+  while (check);
 }
 
 bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,

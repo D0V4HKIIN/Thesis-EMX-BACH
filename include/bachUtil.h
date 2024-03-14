@@ -58,6 +58,7 @@ double getBackground(const int x, const int y, const std::vector<double>& kernSo
                      const std::pair<cl_long, cl_long> imgSize, const Arguments& args);
 std::vector<float> makeModel(const Stamp& s, const std::vector<double>& kernSol,
                              const std::pair<cl_long, cl_long> imgSize, const Arguments& args);
-void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, const Arguments& args);
+void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask,
+               const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const ClData &clData, const ClStampsData &stampData, const Arguments& args);
 bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
                       const Image& sImg, ImageMask& mask, const Arguments& args);

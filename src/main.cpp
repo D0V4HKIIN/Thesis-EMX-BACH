@@ -106,7 +106,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p9 = clock();
 
-  ksc(templateImg, scienceImg, mask, templateStamps, convolutionKernel, args);
+  ksc(templateImg, scienceImg, mask, templateStamps, convolutionKernel, clData.tImgBuf, clData.sImgBuf, clData, clData.tmpl, args);
 
   clock_t p10 = clock();
   if(args.verboseTime) {
