@@ -81,6 +81,35 @@ void convStamp(Stamp& s, const Image& img, const Kernel& k, const int n, const i
   }
 }
 
+void initFillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
+               const ImageMask& mask, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args) {
+  // TEMP: transfer stamp data to GPU (should already be done)
+  std::vector<cl_int2> subStampCoords((2 * args.maxKSStamps) * stamps.size(), { 0, 0 });
+  std::vector<cl_int> currentSubStamps(stamps.size(), 0);
+  std::vector<cl_int> subStampCounts(stamps.size(), 0);
+
+  for (int i = 0; i < stamps.size(); i++) {
+    for (int j = 0; j < stamps[i].subStamps.size(); j++) {
+      subStampCoords[i * (2 * args.maxKSStamps) + j].x = stamps[i].subStamps[j].imageCoords.first;
+      subStampCoords[i * (2 * args.maxKSStamps) + j].y = stamps[i].subStamps[j].imageCoords.second;
+    }
+
+    subStampCounts[i] = stamps[i].subStamps.size();
+  }
+
+  stampData.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampCoords.size());
+  stampData.currentSubStamps = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * currentSubStamps.size());
+  stampData.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * subStampCounts.size());
+
+  clData.queue.enqueueWriteBuffer(stampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int2) * subStampCoords.size(), subStampCoords.data());
+  clData.queue.enqueueWriteBuffer(stampData.currentSubStamps, CL_TRUE, 0, sizeof(cl_int) * currentSubStamps.size(), currentSubStamps.data());
+  clData.queue.enqueueWriteBuffer(stampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int) * subStampCounts.size(), subStampCounts.data());
+
+  stampData.stampCount = stamps.size();
+  
+  fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, k, clData, stampData, args);
+}
+
 void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
                const ImageMask& mask, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args) {
   /* Fills Substamp with gaussian basis convolved images around said substamp
