@@ -110,6 +110,33 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   }
 }
 
+namespace {
+  void transferStampsToGpu(const std::vector<Stamp> &stamps, const ClData &clData, ClStampsData &stampData, const Arguments &args) {
+    std::vector<cl_int2> subStampCoords((2 * args.maxKSStamps) * stamps.size(), { 0, 0 });
+    std::vector<cl_int> currentSubStamps(stamps.size(), 0);
+    std::vector<cl_int> subStampCounts(stamps.size(), 0);
+
+    for (int i = 0; i < stamps.size(); i++) {
+      for (int j = 0; j < stamps[i].subStamps.size(); j++) {
+        subStampCoords[i * (2 * args.maxKSStamps) + j].x = stamps[i].subStamps[j].imageCoords.first;
+        subStampCoords[i * (2 * args.maxKSStamps) + j].y = stamps[i].subStamps[j].imageCoords.second;
+      }
+
+      subStampCounts[i] = stamps[i].subStamps.size();
+    }
+
+    stampData.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampCoords.size());
+    stampData.currentSubStamps = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * currentSubStamps.size());
+    stampData.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * subStampCounts.size());
+
+    clData.queue.enqueueWriteBuffer(stampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int2) * subStampCoords.size(), subStampCoords.data());
+    clData.queue.enqueueWriteBuffer(stampData.currentSubStamps, CL_TRUE, 0, sizeof(cl_int) * currentSubStamps.size(), currentSubStamps.data());
+    clData.queue.enqueueWriteBuffer(stampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int) * subStampCounts.size(), subStampCounts.data());
+
+    stampData.stampCount = stamps.size();
+  }
+}
+
 void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args) {
   std::cout << "\nCalculating matrix variables..." << std::endl;
 
@@ -201,6 +228,10 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   for (int i = 0; i < vec.size(); i++) {
     ((Kernel&)convolutionKernel).kernVec[i / (args.fKernelWidth * args.fKernelWidth)][i % (args.fKernelWidth * args.fKernelWidth)] = vec[i];
   }
+
+  // TEMP: create sub stamp coordinates and counts (should already be done)
+  transferStampsToGpu(templateStamps, clData, clData.tmpl, args);
+  transferStampsToGpu(sciStamps, clData, clData.sci, args);
 
   fillStamps(templateStamps, templateImg, scienceImg, clData.tImgBuf, clData.sImgBuf, mask, convolutionKernel, clData, clData.tmpl, args);
 

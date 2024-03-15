@@ -39,7 +39,7 @@ void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, s
 /* CMV */
 void createB(Stamp& s, const Image& img, const Arguments& args);
 void convStamp(Stamp&s , const Image& img, const Kernel& k, const int n, const int odd, const Arguments& args);
-int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf, const ImageMask& mask, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args);
+void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf, const ImageMask& mask, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args);
 int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k, const Arguments& args);
 
 /* CD && KSC */
