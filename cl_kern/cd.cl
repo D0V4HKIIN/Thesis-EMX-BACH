@@ -75,13 +75,14 @@ void kernel copyTestSubStampsCoords(global const int2 *in, global const int *tes
     out[dstStampId * maxSubStamps + subStampId] = in[srcStampId * maxSubStamps + subStampId];
 }
 
-void kernel copyTestSubStampsCounts(global const int2 *in, global const int *testStampIndices,
-                                    global int2 *out) {
+void kernel copyTestSubStampsCounts(global const int *inCurrents, global const int *inCounts, global const int *testStampIndices,
+                                    global int *outCurrents, global int *outCounts) {
     int dstStampId = get_global_id(0);
 
     int srcStampId = testStampIndices[dstStampId];
 
-    out[dstStampId] = in[srcStampId];
+    outCurrents[dstStampId] = inCurrents[srcStampId];
+    outCounts[dstStampId] = inCounts[srcStampId];
 }
 
 void kernel copyTestStampsW(global const double *in, global const int *testStampIndices,
@@ -409,12 +410,12 @@ double getBackground(const long x, const long y, global const double *sol, const
     return bg;
 }
 
-void kernel calcSigBg(global const double *sol, global const int2 *subStampCoords, global const int2 *subStampCounts,
+void kernel calcSigBg(global const double *sol, global const int2 *subStampCoords, global const int *subStampCounts,
                       global double *bgs,
                       const long maxSubStamps, const long width, const long height, const long bgOrder, const long bgCount, const long nBgComp) {
     int stampId = get_global_id(0);
 
-    int ssCount = subStampCounts[stampId].x;
+    int ssCount = subStampCounts[stampId];
 
     double bg = 0.0;
 
@@ -429,14 +430,14 @@ void kernel calcSigBg(global const double *sol, global const int2 *subStampCoord
     bgs[stampId] = bg;
 }
 
-void kernel makeModel(global const double *w, global const double *kernSol, global const int2 *subStampCoords, global const int2 *subStampCounts,
+void kernel makeModel(global const double *w, global const double *kernSol, global const int2 *subStampCoords, global const int *subStampCounts,
                       global float *model,
                       const long nPsf, const long kernelOrder, const long wRows, const long wColumns, const long maxSubStamps,
                       const long width, const long height, const long modelSize) {
     int j = get_global_id(0);
     int stampId = get_global_id(1);
 
-    int ssCount = subStampCounts[stampId].x;
+    int ssCount = subStampCounts[stampId];
 
     float m0 = 0.0;
 

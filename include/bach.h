@@ -6,7 +6,8 @@
 
 struct ClStampsData {
     cl::Buffer subStampCoords; // (x, y) coordinates
-    cl::Buffer subStampCounts; // (count, current sub-stamp index)
+    cl::Buffer currentSubStamps;
+    cl::Buffer subStampCounts;
     cl::Buffer w;
     cl::Buffer q;
     cl::Buffer b;

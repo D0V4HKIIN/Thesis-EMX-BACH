@@ -78,7 +78,8 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   // some stamps may be removed
   ClStampsData testStampData{};
   testStampData.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * (2 * args.maxKSStamps) * testStampCount);
-  testStampData.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * testStampCount);
+  testStampData.currentSubStamps = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * testStampCount);
+  testStampData.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * testStampCount);
   testStampData.w = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount * clData.wColumns * clData.wRows);
   testStampData.q = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount * clData.qCount * clData.qCount);
   testStampData.b = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount * clData.bCount);
@@ -86,15 +87,16 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
 
   std::vector<cl::Event> testEvents{};
 
-  // Copy substamp coordinates
+  // Copy sub-stamp coordinates
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> copySsCoordsFunc(clData.program, "copyTestSubStampsCoords");
   cl::EnqueueArgs copySsCoordsEargs(clData.queue, cl::NullRange, cl::NDRange(2 * args.maxKSStamps, testStampCount), cl::NullRange);
   testEvents.push_back(copySsCoordsFunc(copySsCoordsEargs, stampData.subStampCoords, testStampIndices, testStampData.subStampCoords, 2 * args.maxKSStamps));
 
   // Copy substamp counts
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer> copySsCountsFunc(clData.program, "copyTestSubStampsCounts");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer> copySsCountsFunc(clData.program, "copyTestSubStampsCounts");
   cl::EnqueueArgs copySsCountsEargs(clData.queue, cl::NullRange, cl::NDRange(testStampCount), cl::NullRange);
-  testEvents.push_back(copySsCountsFunc(copySsCountsEargs, stampData.subStampCounts, testStampIndices, testStampData.subStampCounts));
+  testEvents.push_back(copySsCountsFunc(copySsCountsEargs, stampData.currentSubStamps, stampData.subStampCounts, testStampIndices,
+                                        testStampData.currentSubStamps, testStampData.subStampCounts));
 
   // Copy W
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long> copyWFunc(clData.program, "copyTestStampsW");
@@ -115,13 +117,13 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
 
   // TEMP: read back data
   std::vector<cl_int2> gpuSsCoords(testStampCount * (2 * args.maxKSStamps));
-  std::vector<cl_int2> gpuSsCounts(testStampCount);
+  std::vector<cl_int> gpuSsCounts(testStampCount);
   std::vector<cl_double> gpuW(testStampCount * clData.wColumns * clData.wRows, 0.0);
   std::vector<cl_double> gpuQ(testStampCount * clData.qCount * clData.qCount, 0.0);
   std::vector<cl_double> gpuB(testStampCount * clData.bCount, 0.0);
 
   clData.queue.enqueueReadBuffer(testStampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int2) * gpuSsCoords.size(), gpuSsCoords.data());
-  clData.queue.enqueueReadBuffer(testStampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int2) * gpuSsCounts.size(), gpuSsCounts.data());
+  clData.queue.enqueueReadBuffer(testStampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int) * gpuSsCounts.size(), gpuSsCounts.data());
   clData.queue.enqueueReadBuffer(testStampData.w, CL_TRUE, 0, sizeof(cl_double) * gpuW.size(), gpuW.data());
   clData.queue.enqueueReadBuffer(testStampData.q, CL_TRUE, 0, sizeof(cl_double) * gpuQ.size(), gpuQ.data());
   clData.queue.enqueueReadBuffer(testStampData.b, CL_TRUE, 0, sizeof(cl_double) * gpuB.size(), gpuB.data());
@@ -130,7 +132,7 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   for (int i = 0; i < testStampCount; i++) {
     Stamp s{};
 
-    for (int j = 0; j < gpuSsCounts[i].x; j++) {
+    for (int j = 0; j < gpuSsCounts[i]; j++) {
       SubStamp ss{};
       ss.imageCoords = std::make_pair(gpuSsCoords[i * (2 * args.maxKSStamps) + j].x,
                                       gpuSsCoords[i * (2 * args.maxKSStamps) + j].y);

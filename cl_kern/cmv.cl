@@ -67,7 +67,7 @@ void kernel createKernelVector(global const int2 *kernelXy,
     vec[n * kernelWidth * kernelWidth + v * kernelWidth + u] = vv;
 }
 
-void kernel convStampY(global const double *img, global const int2 *subStampCoords,
+void kernel convStampY(global const double *img, global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                        global const double *filterY,
                        global float *tmp,
                        const long kernelWidth, const long subStampWidth,
@@ -76,25 +76,30 @@ void kernel convStampY(global const double *img, global const int2 *subStampCoor
     int n = get_global_id(1);
     int stampId = get_global_id(2);
 
+    int ssIndex = currentSubStamps[stampId];
+    int ssCount = subStampCounts[stampId];
+
     int halfKernWidth = kernelWidth / 2;
     int halfSubStampWidth = subStampWidth / 2;
-
-    int ssx = subStampCoords[stampId * maxSubStamps].x;
-    int ssy = subStampCoords[stampId * maxSubStamps].y;
 
     int xHalfSize = halfSubStampWidth + halfKernWidth;
     int yHalfSize = halfSubStampWidth;
     int pixelCount = (2 * xHalfSize + 1) * (2 * yHalfSize + 1);
 
-    int j = ssy + pixel / (2 * xHalfSize + 1) - yHalfSize;
-    int i = ssx + pixel % (2 * xHalfSize + 1) - xHalfSize;
-
     float v = 0.0;
 
-    for (int y = -halfKernWidth; y <= halfKernWidth; y++) {
-        int imgIndex = i + (j + y) * width;
-        float imgV = img[imgIndex];
-        v += imgV * filterY[n * kernelWidth + halfKernWidth - y];
+    if (ssIndex < ssCount) {
+        int ssx = subStampCoords[stampId * maxSubStamps + ssIndex].x;
+        int ssy = subStampCoords[stampId * maxSubStamps + ssIndex].y;
+
+        int j = ssy + pixel / (2 * xHalfSize + 1) - yHalfSize;
+        int i = ssx + pixel % (2 * xHalfSize + 1) - xHalfSize;
+
+        for (int y = -halfKernWidth; y <= halfKernWidth; y++) {
+            int imgIndex = i + (j + y) * width;
+            float imgV = img[imgIndex];
+            v += imgV * filterY[n * kernelWidth + halfKernWidth - y];
+        }
     }
 
     tmp[stampId * gaussCount * pixelCount + n * pixelCount + pixel] = v;
