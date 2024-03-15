@@ -42,7 +42,7 @@ void convStamp(Stamp&s , const Image& img, const Kernel& k, const int n, const i
 void initFillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
                const ImageMask& mask, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args);
 void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
-               const ImageMask& mask, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args);
+               const ImageMask& mask, int stampOffset, int stampCount, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args);
 int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k, const Arguments& args);
 
 /* CD && KSC */

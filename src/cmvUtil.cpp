@@ -112,16 +112,16 @@ void initFillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& 
   clData.qCount = args.nPSF + 2;
   clData.bCount = args.nPSF + 2;
 
-  // Create buffers  
+  // Create buffers
   stampData.w = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.wRows * clData.wColumns * stamps.size());
   stampData.q = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * stamps.size());
   stampData.b = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
   
-  fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, k, clData, stampData, args);
+  fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, 0, stamps.size(), k, clData, stampData, args);
 }
 
 void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
-               const ImageMask& mask, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args) {
+               const ImageMask& mask, int stampOffset, int stampCount, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args) {
   /* Fills Substamp with gaussian basis convolved images around said substamp
    * and calculates CMV.
    */
@@ -130,7 +130,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long>
                     yConvFunc(clData.program, "convStampY");
-  cl::EnqueueArgs yConvEargs(clData.queue, cl::NullRange, cl::NDRange((2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1), clData.gaussCount, stamps.size()), cl::NullRange);
+  cl::EnqueueArgs yConvEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange((2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1), clData.gaussCount, stampCount), cl::NullRange);
   cl::Event yConvEvent = yConvFunc(yConvEargs, tImgBuf, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.kernel.filterY, clData.cmv.yConvTmp,
                                    args.fKernelWidth, args.fSStampWidth, sImg.axis.first, clData.gaussCount, 2 * args.maxKSStamps);
 
@@ -138,9 +138,9 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
 
   // Convolve stamps on X
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long,cl_long>
+                    cl_long, cl_long, cl_long, cl_long, cl_long>
                     xConvFunc(clData.program, "convStampX");
-  cl::EnqueueArgs xConvEargs(clData.queue, cl::NullRange, cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount, stamps.size()), cl::NullRange);
+  cl::EnqueueArgs xConvEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount, stampCount), cl::NullRange);
   cl::Event xConvEvent = xConvFunc(xConvEargs, clData.cmv.yConvTmp, clData.kernel.filterX, stampData.w,
                                    args.fKernelWidth, args.fSStampWidth, clData.wRows, clData.wColumns, clData.gaussCount);
 
@@ -148,7 +148,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
 
   // Subtract for odd
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long> oddConvFunc(clData.program, "convStampOdd");
-  cl::EnqueueArgs oddConvEargs(clData.queue, cl::NullRange, cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount, stamps.size()), cl::NullRange);
+  cl::EnqueueArgs oddConvEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount, stampCount), cl::NullRange);
   cl::Event oddConvEvent = oddConvFunc(oddConvEargs, clData.kernel.xy, stampData.w,
                                        clData.wRows, clData.wColumns);
 
@@ -158,7 +158,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
                     bgConvFunc(clData.program, "convStampBg");
-  cl::EnqueueArgs bgConvEargs(clData.queue, cl::NullRange, cl::NDRange(clData.wColumns, clData.wRows - clData.gaussCount, stamps.size()), cl::NullRange);
+  cl::EnqueueArgs bgConvEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange(clData.wColumns, clData.wRows - clData.gaussCount, stampCount), cl::NullRange);
   cl::Event bgConvEvent = bgConvFunc(bgConvEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.bg.xy, stampData.w,
                                      tImg.axis.first, tImg.axis.second, args.fSStampWidth,
                                      clData.wRows, clData.wColumns, clData.gaussCount, 2 * args.maxKSStamps);
@@ -171,7 +171,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   clData.queue.enqueueReadBuffer(stampData.w, CL_TRUE, 0, sizeof(cl_double) * wGpu.size(), wGpu.data());
   
   // TEMP: replace w with GPU data
-  for (int i = 0; i < stamps.size(); i++) {
+  for (int i = stampOffset; i < stampOffset + stampCount; i++) {
     Stamp& s = stamps[i];
     s.W.clear();
 
@@ -187,7 +187,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   // Create Q
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_long, cl_long>
                     qFunc(clData.program, "createQ");
-  cl::EnqueueArgs qEargs(clData.queue, cl::NullRange, cl::NDRange(clData.qCount, clData.qCount, stamps.size()), cl::NullRange);
+  cl::EnqueueArgs qEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange(clData.qCount, clData.qCount, stampCount), cl::NullRange);
   cl::Event qEvent = qFunc(qEargs, stampData.w, stampData.q, clData.wRows, clData.wColumns,
                            clData.qCount, clData.qCount, args.fSStampWidth);
 
@@ -195,7 +195,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
                     bFunc(clData.program, "createB");
-  cl::EnqueueArgs bEargs(clData.queue, cl::NullRange, cl::NDRange(clData.bCount, stamps.size()), cl::NullRange);
+  cl::EnqueueArgs bEargs(clData.queue, cl::NDRange(0, stampOffset), cl::NDRange(clData.bCount, stampCount), cl::NullRange);
   cl::Event bEvent = bFunc(bEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, sImgBuf,
                            stampData.w, stampData.b, clData.wRows, clData.wColumns, clData.bCount,
                            args.fSStampWidth, 2 * args.maxKSStamps, tImg.axis.first);
@@ -207,11 +207,11 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   std::vector<double> gpuQ(clData.qCount * clData.qCount * stamps.size());
   std::vector<double> gpuB(clData.bCount * stamps.size());
 
-  clData.queue.enqueueReadBuffer(stampData.q, CL_TRUE, 0, sizeof(cl_double) * gpuQ.size(), &gpuQ[0]);
-  clData.queue.enqueueReadBuffer(stampData.b, CL_TRUE, 0, sizeof(cl_double) * gpuB.size(), &gpuB[0]);
+  clData.queue.enqueueReadBuffer(stampData.q, CL_TRUE, 0, sizeof(cl_double) * gpuQ.size(), gpuQ.data());
+  clData.queue.enqueueReadBuffer(stampData.b, CL_TRUE, 0, sizeof(cl_double) * gpuB.size(), gpuB.data());
 
   // TEMP: put data back in Q
-  for (int i = 0; i < stamps.size(); i++) {
+  for (int i = stampOffset; i < stampOffset + stampCount; i++) {
     auto& s = stamps[i];
     s.Q.clear();
     
@@ -225,7 +225,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   }
 
   // TEMP: put data back in B
-  for (int i = 0; i < stamps.size(); i++) {
+  for (int i = stampOffset; i < stampOffset + stampCount; i++) {
     auto& s = stamps[i];
     s.B.clear();
 
