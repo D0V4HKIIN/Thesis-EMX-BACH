@@ -201,7 +201,9 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   for (int i = 0; i < vec.size(); i++) {
     ((Kernel&)convolutionKernel).kernVec[i / (args.fKernelWidth * args.fKernelWidth)][i % (args.fKernelWidth * args.fKernelWidth)] = vec[i];
   }
-
+  
+  clData.cmv.yConvTmp = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * std::max(templateStamps.size(), sciStamps.size()) * clData.gaussCount * (2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1));
+  
   initFillStamps(templateStamps, templateImg, scienceImg, clData.tImgBuf, clData.sImgBuf, mask, convolutionKernel, clData, clData.tmpl, args);
 
   initFillStamps(sciStamps, scienceImg, templateImg, clData.sImgBuf, clData.tImgBuf, mask, convolutionKernel, clData, clData.sci, args);

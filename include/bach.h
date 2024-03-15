@@ -34,6 +34,10 @@ struct ClData {
     } kernel;
 
     struct {
+        cl::Buffer yConvTmp;
+    } cmv;
+
+    struct {
         cl::Buffer xy;
     } bg;
 

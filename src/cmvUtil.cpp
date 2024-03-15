@@ -106,6 +106,16 @@ void initFillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& 
   clData.queue.enqueueWriteBuffer(stampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int) * subStampCounts.size(), subStampCounts.data());
 
   stampData.stampCount = stamps.size();
+
+  clData.wColumns = args.fSStampWidth * args.fSStampWidth;
+  clData.wRows = args.nPSF + triNum(args.backgroundOrder + 1);
+  clData.qCount = args.nPSF + 2;
+  clData.bCount = args.nPSF + 2;
+
+  // Create buffers  
+  stampData.w = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.wRows * clData.wColumns * stamps.size());
+  stampData.q = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * stamps.size());
+  stampData.b = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
   
   fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, k, clData, stampData, args);
 }
@@ -117,29 +127,21 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
    */
 
   // Convolve stamps on Y
-  cl::Buffer yConvTmp(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * stamps.size() * clData.gaussCount * (2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1));
-  
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long>
                     yConvFunc(clData.program, "convStampY");
   cl::EnqueueArgs yConvEargs(clData.queue, cl::NullRange, cl::NDRange((2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1), clData.gaussCount, stamps.size()), cl::NullRange);
-  cl::Event yConvEvent = yConvFunc(yConvEargs, tImgBuf, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.kernel.filterY, yConvTmp,
+  cl::Event yConvEvent = yConvFunc(yConvEargs, tImgBuf, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.kernel.filterY, clData.cmv.yConvTmp,
                                    args.fKernelWidth, args.fSStampWidth, sImg.axis.first, clData.gaussCount, 2 * args.maxKSStamps);
 
   yConvEvent.wait();
-
-  // Create W buffer
-  clData.wColumns = args.fSStampWidth * args.fSStampWidth;
-  clData.wRows = args.nPSF + triNum(args.backgroundOrder + 1);
-  
-  stampData.w = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.wRows * clData.wColumns * stamps.size());
 
   // Convolve stamps on X
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long,cl_long>
                     xConvFunc(clData.program, "convStampX");
   cl::EnqueueArgs xConvEargs(clData.queue, cl::NullRange, cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount, stamps.size()), cl::NullRange);
-  cl::Event xConvEvent = xConvFunc(xConvEargs, yConvTmp, clData.kernel.filterX, stampData.w,
+  cl::Event xConvEvent = xConvFunc(xConvEargs, clData.cmv.yConvTmp, clData.kernel.filterX, stampData.w,
                                    args.fKernelWidth, args.fSStampWidth, clData.wRows, clData.wColumns, clData.gaussCount);
 
   xConvEvent.wait();
@@ -181,13 +183,6 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
       }
     }
   }
-
-  // Create Q and B buffers
-  clData.qCount = args.nPSF + 2;
-  clData.bCount = args.nPSF + 2;
-
-  stampData.q = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * stamps.size());
-  stampData.b = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
 
   // Create Q
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_long, cl_long>
