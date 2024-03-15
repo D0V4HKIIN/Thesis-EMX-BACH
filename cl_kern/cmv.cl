@@ -153,7 +153,7 @@ void kernel convStampOdd(global const int2 *kernelXy,
     }
 }
 
-void kernel convStampBg(global const int2 *subStampCoords, global const int2 *bgXY,
+void kernel convStampBg(global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts, global const int2 *bgXY,
                         global double *w,
                         const long width, const long height,
                         const long subStampWidth,
@@ -163,24 +163,33 @@ void kernel convStampBg(global const int2 *subStampCoords, global const int2 *bg
     int bgId = get_global_id(1);
     int stampId = get_global_id(2);
 
-    int ssx = subStampCoords[stampId * maxSubStamps].x;
-    int ssy = subStampCoords[stampId * maxSubStamps].y;
+    int ssIndex = currentSubStamps[stampId];
+    int ssCount = subStampCounts[stampId];
 
-    long halfSubStampWidth = subStampWidth / 2;
+    double a = 0.0;
 
-    long x = ssx - halfSubStampWidth + pixel % subStampWidth;
-    long y = ssy - halfSubStampWidth + pixel / subStampWidth;
+    if (ssIndex < ssCount) {
+        int ssx = subStampCoords[stampId * maxSubStamps + ssIndex].x;
+        int ssy = subStampCoords[stampId * maxSubStamps + ssIndex].y;
 
-    double xf = (x - (width * 0.5f)) / (width * 0.5f);
-    double yf = (y - (height * 0.5f)) / (height * 0.5f);
+        long halfSubStampWidth = subStampWidth / 2;
 
-    int j = bgXY[bgId].x;
-    int k = bgXY[bgId].y;
+        long x = ssx - halfSubStampWidth + pixel % subStampWidth;
+        long y = ssy - halfSubStampWidth + pixel / subStampWidth;
 
-    double ax = pown(xf, j);
-    double ay = pown(yf, k);
+        double xf = (x - (width * 0.5f)) / (width * 0.5f);
+        double yf = (y - (height * 0.5f)) / (height * 0.5f);
 
-    w[stampId * wRows * wColumns + (bgId + gaussCount) * wColumns + pixel] = ax * ay;
+        int j = bgXY[bgId].x;
+        int k = bgXY[bgId].y;
+
+        double ax = pown(xf, j);
+        double ay = pown(yf, k);
+
+        a = ax * ay;
+    }
+
+    w[stampId * wRows * wColumns + (bgId + gaussCount) * wColumns + pixel] = a;
 }
 
 void kernel createQ(global const double *w,
@@ -194,7 +203,6 @@ void kernel createQ(global const double *w,
 
     double q0 = 0.0;
 
-    // Can be optimized as ~50% of the threads are idle and outputs 0.0
     if (i > 0 && j > 0 && j <= i) {
         for(int k = 0; k < subStampWidth * subStampWidth; k++) {
           double w0 = w[stampId * wRows * wColumns + (i - 1) * wColumns + k];
@@ -206,7 +214,7 @@ void kernel createQ(global const double *w,
     q[stampId * qRows * qColumns + i * qColumns + j] = q0;
 }
 
-void kernel createB(global const int2 *subStampCoords,
+void kernel createB(global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                     global const double *img, global const double *w,
                     global double *b,
                     const long wRows, const long wColumns, const long bCount,
@@ -215,13 +223,16 @@ void kernel createB(global const int2 *subStampCoords,
     int i = get_global_id(0);
     int stampId = get_global_id(1);
 
+    int ssIndex = currentSubStamps[stampId];
+    int ssCount = subStampCounts[stampId];
+
     double p0 = 0.0;
 
-    if (i > 0) {
+    if (ssIndex < ssCount && i > 0) {
         int halfSubStampWidth = subStampWidth / 2;
 
-        int ssx = subStampCoords[stampId * maxSubStamps].x;
-        int ssy = subStampCoords[stampId * maxSubStamps].y;
+        int ssx = subStampCoords[stampId * maxSubStamps + ssIndex].x;
+        int ssy = subStampCoords[stampId * maxSubStamps + ssIndex].y;
 
         for(int x = -halfSubStampWidth; x <= halfSubStampWidth; x++) {
             for(int y = -halfSubStampWidth; y <= halfSubStampWidth; y++) {

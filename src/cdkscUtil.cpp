@@ -245,10 +245,11 @@ void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClD
   const int pixStamp = args.fSStampWidth * args.fSStampWidth;
 
   // Create weights
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long> weightFunc(clData.program, "createMatrixWeights");
   cl::EnqueueArgs weightEargs(clData.queue, cl::NullRange, cl::NDRange(nComp2, stampData.stampCount), cl::NullRange);
-  cl::Event weightEvent = weightFunc(weightEargs, stampData.subStampCoords, clData.cd.kernelXy, weights, imgSize.first, imgSize.second, 2 * args.maxKSStamps, nComp2);
+  cl::Event weightEvent = weightFunc(weightEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.cd.kernelXy,
+                                     weights, imgSize.first, imgSize.second, 2 * args.maxKSStamps, nComp2);
 
   weightEvent.wait();
 
@@ -366,11 +367,13 @@ void createScProd(const cl::Buffer &res, const cl::Buffer &weights, const cl::Bu
   const int nBgComp = triNum(args.backgroundOrder + 1);
   const int nKernSolComp = args.nPSF * nComp2 + nBgComp + 1;
   
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long,
                     cl_long, cl_long, cl_long, cl_long, cl_long> prodFunc(clData.program, "createScProd");
   cl::EnqueueArgs prodEargs(clData.queue, cl::NDRange(nKernSolComp));
-  cl::Event prodEvent = prodFunc(prodEargs, img, weights, stampData.b, stampData.w, stampData.subStampCoords, res,
+  cl::Event prodEvent = prodFunc(prodEargs, img, weights, stampData.b, stampData.w,
+                                 stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, res,
                                  imgSize.first, stampData.stampCount, nComp1, nComp2, nBgComp,
                                  clData.bCount, clData.wRows, clData.wColumns, args.fSStampWidth, 2 * args.maxKSStamps);
 
@@ -441,19 +444,19 @@ int calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pa
   cl::Buffer sigCounter(clData.context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, sizeof(cl_int), &sigmaCount);
 
   // Create bg
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long, cl_long> bgFunc(clData.program, "calcSigBg");
   cl::EnqueueArgs bgEargs(clData.queue, cl::NDRange(stampCount));
-  cl::Event bgEvent = bgFunc(bgEargs, kernSol, stampData.subStampCoords, stampData.subStampCounts, bg,
+  cl::Event bgEvent = bgFunc(bgEargs, kernSol, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, bg,
                              2 * args.maxKSStamps, axis.first, axis.second, args.backgroundOrder,
                              triNum(args.backgroundOrder + 1), (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1);
 
   // Create model
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long,
                     cl_long, cl_long, cl_long> modelFunc(clData.program, "makeModel");
   cl::EnqueueArgs modelEargs(clData.queue, cl::NDRange(args.fSStampWidth * args.fSStampWidth, stampCount));
-  cl::Event modelEvent = modelFunc(modelEargs, stampData.w, kernSol, stampData.subStampCoords, stampData.subStampCounts,
+  cl::Event modelEvent = modelFunc(modelEargs, stampData.w, kernSol, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts,
                                    model, args.nPSF, args.kernelOrder, clData.wRows, clData.wColumns, 2 * args.maxKSStamps,
                                    axis.first, axis.second, args.fSStampWidth * args.fSStampWidth);
 
@@ -461,11 +464,13 @@ int calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pa
   modelEvent.wait();
 
   // Create sigmas
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long> sigmaFunc(clData.program, "calcSig");
   cl::EnqueueArgs sigmaEargs(clData.queue, cl::NDRange(reduceCount * localSize, stampCount), cl::NDRange(localSize, 1));
-  cl::Event sigmaEvent = sigmaFunc(sigmaEargs, model, bg, tImgBuf, sImgBuf, stampData.subStampCoords,
+  cl::Event sigmaEvent = sigmaFunc(sigmaEargs, model, bg, tImgBuf, sImgBuf,
+                                   stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts,
                                    sigTemp1, sigCount1, clData.maskBuf, axis.first, args.fSStampWidth,
                                    2 * args.maxKSStamps, args.fSStampWidth * args.fSStampWidth, reduceCount);
 

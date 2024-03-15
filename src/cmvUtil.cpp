@@ -147,11 +147,11 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
   oddConvEvent.wait();
 
   // Compute background
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
                     bgConvFunc(clData.program, "convStampBg");
   cl::EnqueueArgs bgConvEargs(clData.queue, cl::NullRange, cl::NDRange(clData.wColumns, clData.wRows - clData.gaussCount, stamps.size()), cl::NullRange);
-  cl::Event bgConvEvent = bgConvFunc(bgConvEargs, stampData.subStampCoords, clData.bg.xy, stampData.w,
+  cl::Event bgConvEvent = bgConvFunc(bgConvEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.bg.xy, stampData.w,
                                      tImg.axis.first, tImg.axis.second, args.fSStampWidth,
                                      clData.wRows, clData.wColumns, clData.gaussCount, 2 * args.maxKSStamps);
 
@@ -191,11 +191,11 @@ int fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
                            clData.qCount, clData.qCount, args.fSStampWidth);
 
   // Create B
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
                     bFunc(clData.program, "createB");
   cl::EnqueueArgs bEargs(clData.queue, cl::NullRange, cl::NDRange(clData.bCount, stamps.size()), cl::NullRange);
-  cl::Event bEvent = bFunc(bEargs, stampData.subStampCoords, sImgBuf,
+  cl::Event bEvent = bFunc(bEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, sImgBuf,
                            stampData.w, stampData.b, clData.wRows, clData.wColumns, clData.bCount,
                            args.fSStampWidth, 2 * args.maxKSStamps, tImg.axis.first);
 

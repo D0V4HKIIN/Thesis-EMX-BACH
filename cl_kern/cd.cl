@@ -120,25 +120,34 @@ void kernel copyTestStampsB(global const double *in, global const int *testStamp
     out[dstStampId * bCount + i] = in[srcStampId * bCount + i];
 }
 
-void kernel createMatrixWeights(global const int2 *subStampCoords, global const int2 *xy,
+void kernel createMatrixWeights(global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts, global const int2 *xy,
                                 global double *weights,
                                 const long width, const long height, const long maxSubStamps, const long count) {
     int k = get_global_id(0);
     int stampId = get_global_id(1);
 
-    int i = xy[k].x;
-    int j = xy[k].y;
+    int ssIndex = currentSubStamps[stampId];
+    int ssCount = subStampCounts[stampId];
 
-    int x = subStampCoords[stampId * maxSubStamps].x;
-    int y = subStampCoords[stampId * maxSubStamps].y;
+    double a = 0.0;
 
-    double xf = (x - (width * 0.5f)) / (width * 0.5f);
-    double yf = (y - (height * 0.5f)) / (height * 0.5f);
+    if (ssIndex < ssCount) {
+        int i = xy[k].x;
+        int j = xy[k].y;
 
-    double a1 = pown(xf, i);
-    double a2 = pown(yf, j);
+        int x = subStampCoords[stampId * maxSubStamps + ssIndex].x;
+        int y = subStampCoords[stampId * maxSubStamps + ssIndex].y;
 
-    weights[stampId * count + k] = a1 * a2;
+        double xf = (x - (width * 0.5f)) / (width * 0.5f);
+        double yf = (y - (height * 0.5f)) / (height * 0.5f);
+
+        double a1 = pown(xf, i);
+        double a2 = pown(yf, j);
+
+        a = a1 * a2;
+    }
+
+    weights[stampId * count + k] = a;
 }
 
 void kernel createMatrix(global const double *weights, global const double *w, global const double *q,
@@ -256,7 +265,8 @@ void kernel createMatrix(global const double *weights, global const double *w, g
     matrix[row * matrixSize + column] = m0;
 }
 
-void kernel createScProd(const global double *img, const global double *weights, const global double *b, const global double *w, const global int2 *subStampCoords,
+void kernel createScProd(const global double *img, const global double *weights, const global double *b, const global double *w,
+                         const global int2 *subStampCoords, const global int *currentSubStamps, const global int *subStampCounts,
                          global double *res,
                          const long width, const long stampCount, const long nComp1, const long nComp2, const long nBGComp,
                          const long bCount, const long wRows, const long wColumns, const long subStampWidth, const long maxSubStamps) {
@@ -281,17 +291,22 @@ void kernel createScProd(const global double *img, const global double *weights,
 
         for (int stampId = 0; stampId < stampCount; stampId++) {
             double q = 0.0;
+            
+            int ssIndex = currentSubStamps[stampId];
+            int ssCount = subStampCounts[stampId];
 
-            int ssx = subStampCoords[stampId * maxSubStamps].x;
-            int ssy = subStampCoords[stampId * maxSubStamps].y;
+            if (ssIndex < ssCount) {
+                int ssx = subStampCoords[stampId * maxSubStamps + ssIndex].x;
+                int ssy = subStampCoords[stampId * maxSubStamps + ssIndex].y;
 
-            for (int y = -halfSubStampWidth; y <= halfSubStampWidth; y++) {
-                for (int x = -halfSubStampWidth; x <= halfSubStampWidth; x++) {
-                    int index = x + halfSubStampWidth + subStampWidth * (y + halfSubStampWidth);
+                for (int y = -halfSubStampWidth; y <= halfSubStampWidth; y++) {
+                    for (int x = -halfSubStampWidth; x <= halfSubStampWidth; x++) {
+                        int index = x + halfSubStampWidth + subStampWidth * (y + halfSubStampWidth);
 
-                    double w0 = w[stampId * wRows * wColumns + (nComp1 + bgIndex + 1) * wColumns + index];
-                    double i0 = img[x + ssx + (y + ssy) * width];
-                    q += w0 * i0;
+                        double w0 = w[stampId * wRows * wColumns + (nComp1 + bgIndex + 1) * wColumns + index];
+                        double i0 = img[x + ssx + (y + ssy) * width];
+                        q += w0 * i0;
+                    }
                 }
             }
 
@@ -410,18 +425,19 @@ double getBackground(const long x, const long y, global const double *sol, const
     return bg;
 }
 
-void kernel calcSigBg(global const double *sol, global const int2 *subStampCoords, global const int *subStampCounts,
+void kernel calcSigBg(global const double *sol, global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                       global double *bgs,
                       const long maxSubStamps, const long width, const long height, const long bgOrder, const long bgCount, const long nBgComp) {
     int stampId = get_global_id(0);
 
+    int ssIndex = currentSubStamps[stampId];
     int ssCount = subStampCounts[stampId];
 
     double bg = 0.0;
 
-    if (ssCount > 0) {
-        int ssx = subStampCoords[stampId * maxSubStamps].x;
-        int ssy = subStampCoords[stampId * maxSubStamps].y;
+    if (ssIndex < ssCount) {
+        int ssx = subStampCoords[stampId * maxSubStamps + ssIndex].x;
+        int ssy = subStampCoords[stampId * maxSubStamps + ssIndex].y;
 
         bg = getBackground(ssx, ssy, sol, width, height,
                            bgOrder, bgCount, nBgComp);
@@ -430,20 +446,21 @@ void kernel calcSigBg(global const double *sol, global const int2 *subStampCoord
     bgs[stampId] = bg;
 }
 
-void kernel makeModel(global const double *w, global const double *kernSol, global const int2 *subStampCoords, global const int *subStampCounts,
+void kernel makeModel(global const double *w, global const double *kernSol, global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                       global float *model,
                       const long nPsf, const long kernelOrder, const long wRows, const long wColumns, const long maxSubStamps,
                       const long width, const long height, const long modelSize) {
     int j = get_global_id(0);
     int stampId = get_global_id(1);
 
+    int ssIndex = currentSubStamps[stampId];
     int ssCount = subStampCounts[stampId];
 
     float m0 = 0.0;
 
-    if (ssCount > 0) {
-        int ssx = subStampCoords[stampId * maxSubStamps].x;
-        int ssy = subStampCoords[stampId * maxSubStamps].y;
+    if (ssIndex < ssCount) {
+        int ssx = subStampCoords[stampId * maxSubStamps + ssIndex].x;
+        int ssy = subStampCoords[stampId * maxSubStamps + ssIndex].y;
 
         double xf = (ssx - width * 0.5) / (width * 0.5);
         double yf = (ssy - height * 0.5) / (height * 0.5);
@@ -473,13 +490,17 @@ void kernel makeModel(global const double *w, global const double *kernSol, glob
     model[stampId * modelSize + j] = m0;
 }
 
-void kernel calcSig(global const float *model, global const double *bg, global const double *tImg, global const double *sImg, global const int2 *subStampCoords,
+void kernel calcSig(global const float *model, global const double *bg, global const double *tImg, global const double *sImg,
+                    global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                     global double *sig, global int *sigCount, global ushort *mask,
                     const long width, const long subStampWidth, const long maxSubStamps, const long modelSize, const long reduceCount) {
     int gi = get_global_id(0);
     int stampId = get_global_id(1);
 
     int li = get_local_id(0);
+
+    int ssIndex = currentSubStamps[stampId];
+    int ssCount = subStampCounts[stampId];
 
     int gx = gi % subStampWidth;
     int gy = gi / subStampWidth;
@@ -495,11 +516,9 @@ void kernel calcSig(global const float *model, global const double *bg, global c
 
     double s0 = 0.0;
 
-    // TODO: check if there exists sub-stamps
-
-    if (gx < subStampWidth && gy < subStampWidth) {
-        int ssx = subStampCoords[stampId * maxSubStamps].x;
-        int ssy = subStampCoords[stampId * maxSubStamps].y;
+    if (ssIndex < ssCount && gx < subStampWidth && gy < subStampWidth) {
+        int ssx = subStampCoords[stampId * maxSubStamps + ssIndex].x;
+        int ssy = subStampCoords[stampId * maxSubStamps + ssIndex].y;
 
         int absX = gx - subStampWidth / 2 + ssx;
         int absY = gy - subStampWidth / 2 + ssy;
