@@ -92,7 +92,6 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
     double tempMean = sum / prevNPoints;
     double tempStdDev = std::sqrt((sum2 - prevNPoints * tempMean * tempMean) / (prevNPoints - 1));
 
-    prevNPoints = 0;
     double invStdDev = 1.0 / tempStdDev;
 
     int clipCount = 0;
@@ -102,9 +101,9 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
     cl::Event maskEvent = maskFunc(eargs, intMask, clipCountBuf, data, invStdDev, tempMean, args.sigClipAlpha);
     maskEvent.wait();
 
-    clData.queue.enqueueReadBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);;
+    clData.queue.enqueueReadBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);
 
-    prevNPoints = dataCount - clipCount;
+    prevNPoints = currNPoints - clipCount;
     *mean = tempMean;
     *stdDev = tempStdDev;
   }

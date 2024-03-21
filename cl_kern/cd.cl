@@ -559,10 +559,11 @@ void kernel calcSig(global const float *model, global const double *bg, global c
 }
 
 void kernel reduceSig(global const double *in, global const int *inCount,
-                      global double *out, global int *outCount, global int *sigCounter,
+                      global double *out, global int *outCount,
                       const long count, const long nextCount) {
     int lid = get_local_id(0);
     int gid = get_global_id(0);
+    int groupId = get_group_id(0);
     int stampId = get_global_id(1);
 
     local double localSig[32];
@@ -590,6 +591,8 @@ void kernel reduceSig(global const double *in, global const int *inCount,
             sum += localSig[i];
         }
 
+        int outId = stampId * nextCount + groupId;
+
         if (nextCount == 1) {
             // Calculate average from sum
             if (localCount == 0) {
@@ -603,16 +606,53 @@ void kernel reduceSig(global const double *in, global const int *inCount,
                 }
             }
 
-            if (sum != -1.0) {
-                int outId = atomic_inc(sigCounter);
-                out[outId] = sum;
-            }
+            out[outId] = sum;
         }
         else
         {
-            int outId = stampId * nextCount + gid / 32;
             out[outId] = sum;
             outCount[outId] = localCount;
         }
+    }
+}
+
+void kernel removeBadSigs(global const double *in,
+                          global double *out, global int *sigCounter,
+                          const long inCount) {
+    int gid = get_global_id(0);
+    int lid = get_local_id(0);
+    int groupId = get_group_id(0);
+
+    local double localSigs[16];
+    local int localCount;
+    local int firstOutId;
+
+    if (lid == 0) {
+        localCount = 0;
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    int localOutId = -1;
+
+    if (gid < inCount) {
+        double sig = in[gid];
+
+        if (sig >= 0.0) {
+            int localOutId = atomic_inc(&localCount);
+            localSigs[localOutId] = sig;
+        }
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if (lid == 0) {
+        firstOutId = atomic_add(sigCounter, localCount);
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if (lid < localCount) {
+        out[firstOutId + lid] = localSigs[lid];
     }
 }

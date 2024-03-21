@@ -7,6 +7,7 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   const int nBGComp = triNum(args.backgroundOrder + 1);
   const int matSize = nComp1 * nComp2 + nBGComp + 1;
   const int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
+  cl_int meritsCount = 0;
 
   std::vector<int> index1(nKernSolComp);  // Internal between ludcmp and lubksb.
 
@@ -19,6 +20,7 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   cl::Buffer weights(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size() * nComp2);
   cl::Buffer matrix(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1) * (matSize + 1));
   cl::Buffer testKernSol(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nKernSolComp);
+  cl::Buffer meritsCounter(clData.context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, sizeof(cl_int), &meritsCount);
 
   // Create test vec
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> testVecFunc(clData.program, "createTestVec");
@@ -56,7 +58,7 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   sigmaClip(kernelSums, stamps.size(), &kernelMean, &kernelStdev, 10, clData, args);
 
   // Fit stamps, generate test stamps
-  int testStampCount = 0;
+  cl_int testStampCount = 0;
   
   cl::Buffer testStampCountBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int));
   cl::Buffer testStampIndices(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stamps.size());
@@ -221,15 +223,30 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   // Calc merit value
   cl::Buffer model(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * testStampCount * args.fSStampWidth * args.fSStampWidth);
   cl::Buffer merits(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount);
-  int meritCount = calcSigs(tImgBuf, sImgBuf, axis, model, testKernSol, merits, testStampData, clData, args);
+  calcSigs(tImgBuf, sImgBuf, axis, model, testKernSol, merits, testStampData, clData, args);
 
-  if (meritCount == 0) {
+  // Remove bad merits
+  cl::Buffer cleanMerits(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount);
+
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> badMeritsFunc(clData.program, "removeBadSigs");
+  cl::EnqueueArgs badMeritsEargs(clData.queue, cl::NDRange(roundUpToMultiple(testStampCount, 16)), cl::NDRange(16));
+  cl::Event badMeritsEvent = badMeritsFunc(badMeritsEargs, merits, cleanMerits, meritsCounter, testStampCount);
+
+  badMeritsEvent.wait();
+
+  clData.queue.enqueueReadBuffer(meritsCounter, CL_TRUE, 0, sizeof(cl_int), &meritsCount);
+
+  // TEMP: read back to CPU
+  std::vector<cl_double> meritsCpu(meritsCount);
+  clData.queue.enqueueReadBuffer(merits, CL_TRUE, 0, sizeof(cl_double) * meritsCpu.size(), meritsCpu.data());
+
+  if (meritsCount == 0) {
     return 666;
   }
 
   double meritMean;
   double meritStdDev;
-  sigmaClip(merits, meritCount, &meritMean, &meritStdDev, 10, clData, args);
+  sigmaClip(cleanMerits, meritsCount, &meritMean, &meritStdDev, 10, clData, args);
 
   double normMeritMean = meritMean / kernelMean;
   return normMeritMean;
@@ -426,14 +443,13 @@ std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& 
   return res;
 }
 
-int calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pair<cl_long, cl_long> &axis,
+void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pair<cl_long, cl_long> &axis,
               const cl::Buffer &model, const cl::Buffer &kernSol, const cl::Buffer &sigma,
               const ClStampsData &stampData, const ClData &clData, const Arguments& args) {
   static constinit int localSize = 32;
 
   int reduceCount = (args.fSStampWidth * args.fSStampWidth + localSize - 1) / localSize;
   int stampCount = stampData.stampCount;
-  int sigmaCount = 0;
 
   // Create buffers
   cl::Buffer bg(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampCount);
@@ -441,7 +457,6 @@ int calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pa
   cl::Buffer sigTemp2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampCount * reduceCount);
   cl::Buffer sigCount1(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stampCount * reduceCount);
   cl::Buffer sigCount2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stampCount * reduceCount);
-  cl::Buffer sigCounter(clData.context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, sizeof(cl_int), &sigmaCount);
 
   // Create bg
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
@@ -484,14 +499,16 @@ int calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pa
   cl::Buffer *sigCountIn = &sigCount1;
   cl::Buffer *sigCountOut = &sigCount2;
 
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long> reduceFunc(clData.program, "reduceSig");
 
   while (count > 1 || isFirst) {
     int nextCount = (count + localSize - 1) / localSize;
 
     cl::EnqueueArgs reduceEargs(clData.queue, cl::NDRange(roundUpToMultiple(count, localSize), stampCount), cl::NDRange(localSize, 1));
-    cl::Event reduceEvent = reduceFunc(reduceEargs, *sigIn, *sigCountIn, *sigOut, *sigCountOut, sigCounter, count, nextCount);
+    cl::Event reduceEvent = reduceFunc(reduceEargs, *sigIn, *sigCountIn, *sigOut, *sigCountOut, count, nextCount);
+
+    reduceEvent.wait();
 
     count = nextCount;
     std::swap(sigIn, sigOut);
@@ -500,15 +517,11 @@ int calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pa
     isFirst = false;
   }
 
-  clData.queue.enqueueReadBuffer(sigCounter, CL_TRUE, 0, sizeof(cl_int), &sigmaCount);
-
   // Copy buffer
   cl::Event copyEvent{};
-  clData.queue.enqueueCopyBuffer(*sigIn, sigma, 0, 0, sizeof(cl_double) * sigmaCount, nullptr, &copyEvent);
+  clData.queue.enqueueCopyBuffer(*sigIn, sigma, 0, 0, sizeof(cl_double) * stampCount, nullptr, &copyEvent);
 
   copyEvent.wait();
-
-  return sigmaCount;
 }
 
 double calcSig(Stamp& s, const std::vector<double>& kernSol, const Image& tImg,
@@ -529,7 +542,7 @@ double calcSig(Stamp& s, const std::vector<double>& kernSol, const Image& tImg,
       int intIndex = x + y * args.fSStampWidth;
       int absIndex = absX + absY * tImg.axis.first;
       double tDat = tmp[intIndex];
-
+      
       double diff = tDat - sImg[absIndex] + background;
       if(mask.isMasked(absIndex, ImageMask::BAD_INPUT) ||
          std::abs(sImg[absIndex]) <= 1e-10) {
@@ -640,7 +653,11 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
     lubksb(fittingMatrix0, matSize, index0, solution0);
 
     k.solution = solution0;
-    check = checkFitSolution(k, stamps, tImg, sImg, mask, args);
+    
+    // TEMP: transfer kernel solution to GPU
+    clData.queue.enqueueWriteBuffer(solution, CL_TRUE, 0, sizeof(cl_double) * solution0.size(), solution0.data());
+
+    check = checkFitSolution(k, stamps, tImg, sImg, mask, clData, stampData, tImgBuf, sImgBuf, solution, args);
 
     iteration++;
   }
@@ -648,42 +665,64 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
 }
 
 bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
-                      const Image& sImg, ImageMask& mask, const Arguments& args) {
-  std::vector<double> ssValues{};
+                      const Image& sImg, ImageMask& mask, const ClData &clData, const ClStampsData &stampData, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const cl::Buffer &kernSol, const Arguments& args) {
+  cl_int chi2Count = 0;
+  
+  // Create buffers
+  cl::Buffer model(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * stampData.stampCount * args.fSStampWidth * args.fSStampWidth);
+  cl::Buffer sigmaVals(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampData.stampCount);
+  cl::Buffer chi2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampData.stampCount);
+  cl::Buffer invalidatedSubStampsBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_uchar) * stampData.stampCount);
+  cl::Buffer chi2Counter(clData.context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, sizeof(cl_int), &chi2Count);
 
+  // Calculate sigmas
+  calcSigs(tImgBuf, sImgBuf, tImg.axis, model, kernSol, sigmaVals, stampData, clData, args);
+
+  // Find bad sub-stamps
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int> badSsFunc(clData.program, "checkBadSubStamps");
+  cl::EnqueueArgs badSsEargs(clData.queue, cl::NDRange(roundUpToMultiple(stampData.stampCount, 16)), cl::NDRange(16));
+  cl::Event badSsEvent = badSsFunc(badSsEargs, sigmaVals, stampData.subStampCounts, chi2, invalidatedSubStampsBuf, stampData.currentSubStamps, chi2Counter, stampData.stampCount);
+
+  badSsEvent.wait();
+
+  clData.queue.enqueueReadBuffer(chi2Counter, CL_TRUE, 0, sizeof(cl_int), &chi2Count);
+
+  // Read which sub-stamps are bad
+  std::vector<cl_uchar> invalidatedSubStamps(stampData.stampCount);
+  clData.queue.enqueueReadBuffer(invalidatedSubStampsBuf, CL_TRUE, 0, sizeof(cl_uchar) * invalidatedSubStamps.size(), invalidatedSubStamps.data());
+
+  // Remove the bad sub-stamps
   bool check = false;
 
-  for(Stamp& s : stamps) {
-    if(!s.subStamps.empty()) {
-      double sig = calcSig(s, k.solution, tImg, sImg, mask, args);
-
-      if(sig == -1) {
-        s.subStamps.erase(s.subStamps.begin(), next(s.subStamps.begin()));
-        fillStamp(s, tImg, sImg, mask, k, args);
-        check = true;
-      } else {
-        s.stats.chi2 = sig;
-        ssValues.push_back(sig);
-      }
+  for (int i = 0; i < invalidatedSubStamps.size(); i++) {
+    if (invalidatedSubStamps[i] == 1) {
+      stamps[i].subStamps.erase(stamps[i].subStamps.begin(), std::next(stamps[i].subStamps.begin()));
+      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, i, 1, k, clData, stampData, args);
+      check = true;
     }
   }
 
-  double mean = 0.0, stdDev = 0.0;
-  sigmaClip(ssValues, mean, stdDev, 10, args);
+  // Sigma clip
+  double mean = 0.0;
+  double stdDev = 0.0;
+  sigmaClip(chi2, chi2Count, &mean, &stdDev, 10, clData, args);
 
-  if(args.verbose) {
-    std::cout << "Mean sig: " << mean << " stdev: " << stdDev << '\n'
-              << "    Iterating through stamps with sig >"
-              << (mean + args.sigKernFit * stdDev) << std::endl;
-  }
+  // Find bad sub-stamps based on the sigma clip
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_double, cl_double, cl_double> badSsClipFunc(clData.program, "checkBadSubStampsFromSigmaClip");
+  cl::EnqueueArgs badSsClipEargs(clData.queue, cl::NDRange(stampData.stampCount));
+  cl::Event badSsClipEvent = badSsClipFunc(badSsClipEargs, sigmaVals, stampData.subStampCounts, invalidatedSubStampsBuf, stampData.currentSubStamps, mean, stdDev, args.sigKernFit);
 
-  for(Stamp& s : stamps) {
-    if(!s.subStamps.empty()) {
-      if((s.stats.chi2 - mean) > args.sigKernFit * stdDev) {
-        s.subStamps.erase(s.subStamps.begin(), next(s.subStamps.begin()));
-        fillStamp(s, tImg, sImg, mask, k, args);
-        check = true;
-      }
+  badSsClipEvent.wait();
+  
+  // Read which sub-stamps are bad (again)
+  clData.queue.enqueueReadBuffer(invalidatedSubStampsBuf, CL_TRUE, 0, sizeof(cl_uchar) * invalidatedSubStamps.size(), invalidatedSubStamps.data());
+
+  // Remove the bad sub-stamps
+  for (int i = 0; i < invalidatedSubStamps.size(); i++) {
+    if (invalidatedSubStamps[i] == 1) {
+      stamps[i].subStamps.erase(stamps[i].subStamps.begin(), std::next(stamps[i].subStamps.begin()));
+      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, i, 1, k, clData, stampData, args);
+      check = true;
     }
   }
 

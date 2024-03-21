@@ -121,7 +121,7 @@ void initFillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& 
 }
 
 void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
-               const ImageMask& mask, int stampOffset, int stampCount, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args) {
+               const ImageMask& mask, int stampOffset, int stampCount, const Kernel& k, const ClData& clData, const ClStampsData& stampData, const Arguments& args) {
   /* Fills Substamp with gaussian basis convolved images around said substamp
    * and calculates CMV.
    */

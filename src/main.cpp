@@ -44,7 +44,7 @@ int main(int argc, const char* argv[]) {
   cl::Context context(device);
   cl::Program program =
       loadBuildPrograms(context, device, std::filesystem::path(argv[0]).parent_path(),
-      "bash.cl", "cd.cl", "cmv.cl", "conv.cl", "ini.cl", "sub.cl");
+      "bash.cl", "cd.cl", "cmv.cl", "conv.cl", "ini.cl", "ksc.cl", "sub.cl");
   cl::CommandQueue queue(context, device);
 
   if (args.verbose) {
