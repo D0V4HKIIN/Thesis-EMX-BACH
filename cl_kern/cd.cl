@@ -289,13 +289,13 @@ void kernel createScProd(const global double *img, const global double *weights,
     else if (id >= nComp + 2 && id < nComp + 2 + nBGComp) {
         int bgIndex = id - (nComp + 2);
 
-        for (int stampId = 0; stampId < stampCount; stampId++) {
-            double q = 0.0;
-            
+        for (int stampId = 0; stampId < stampCount; stampId++) {            
             int ssIndex = currentSubStamps[stampId];
             int ssCount = subStampCounts[stampId];
 
             if (ssIndex < ssCount) {
+                double q = 0.0;
+
                 int ssx = subStampCoords[stampId * maxSubStamps + ssIndex].x;
                 int ssy = subStampCoords[stampId * maxSubStamps + ssIndex].y;
 
@@ -308,9 +308,9 @@ void kernel createScProd(const global double *img, const global double *weights,
                         q += w0 * i0;
                     }
                 }
-            }
 
-            r0 += q;
+                r0 += q;
+            }
         }
     }
     else if (id == 1) {

@@ -644,18 +644,41 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
       std::cout << "Re-expanding matrix..." << std::endl;
     }
     
+    // Create matrix
+#if false
+    createMatrix(fitMatrix, weights, clData, stampData, tImg.axis, args);
+    createScProd(solution, weights, sImgBuf, tImg.axis, clData, stampData, args);
+    
+    // TEMP: transfer back to CPU
+    std::vector<std::vector<double>> fittingMatrixCpu(matSize + 1, std::vector<double>(matSize + 1));
+    std::vector<cl_double> solutionCpu(nKernSolComp);
+    std::vector<cl_double> fittingMatrixTemp((matSize + 1) * (matSize + 1));
+
+    clData.queue.enqueueReadBuffer(fitMatrix, CL_TRUE, 0, sizeof(cl_double) * fittingMatrixTemp.size(), fittingMatrixTemp.data());
+    clData.queue.enqueueReadBuffer(solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
+    
+    for (int i = 0; i <= matSize; i++) {
+      for (int j = 0; j <= matSize; j++) {
+        fittingMatrixCpu[i][j] = fittingMatrixTemp[i * (matSize + 1) + j];
+      }
+    }
+#else
     auto [fittingMatrix0, weight0] = createMatrix(stamps, tImg.axis, args);
     std::vector<double> solution0 = createScProd(stamps, sImg, weight0, args);
 
+    std::vector<std::vector<double>> fittingMatrixCpu = fittingMatrix0;
+    std::vector<double>solutionCpu = solution0;
+#endif
+
     // LU solve
     double d{};
-    ludcmp(fittingMatrix0, matSize, index0, d, args);
-    lubksb(fittingMatrix0, matSize, index0, solution0);
+    ludcmp(fittingMatrixCpu, matSize, index0, d, args);
+    lubksb(fittingMatrixCpu, matSize, index0, solutionCpu);
 
-    k.solution = solution0;
+    k.solution = solutionCpu;
     
     // TEMP: transfer kernel solution to GPU
-    clData.queue.enqueueWriteBuffer(solution, CL_TRUE, 0, sizeof(cl_double) * solution0.size(), solution0.data());
+    clData.queue.enqueueWriteBuffer(solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
 
     check = checkFitSolution(k, stamps, tImg, sImg, mask, clData, stampData, tImgBuf, sImgBuf, solution, args);
 
