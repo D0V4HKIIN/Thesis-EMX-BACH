@@ -631,7 +631,8 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
   cl::Buffer fitMatrix(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1) * (matSize + 1));
   cl::Buffer weights(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nComp2 * stampData.stampCount);
   cl::Buffer solution(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nKernSolComp);
-  cl::Buffer index(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * matSize);
+  cl::Buffer index(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * (matSize + 1));
+  cl::Buffer vv(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1));
 
   std::vector<int> index0(matSize, 0);
 
@@ -671,9 +672,32 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
 #endif
 
     // LU solve
+#if true
+    // TEMP: transfer matrix to GPU
+    std::vector<cl_double> flatFitMatrix{};
+
+    for (auto& row : fittingMatrixCpu) {
+      for (double value : row) {
+        flatFitMatrix.push_back(value);
+      }
+    }
+
+    clData.queue.enqueueWriteBuffer(fitMatrix, CL_TRUE, 0, sizeof(cl_double) * flatFitMatrix.size(), flatFitMatrix.data());
+
+    // TEMP: transfer solution to GPU
+    clData.queue.enqueueWriteBuffer(solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
+
+    ludcmp(fitMatrix, matSize + 1, 1, index, vv, clData);
+    lubksb(fitMatrix, matSize + 1, 1, index, solution, clData);
+
+    // TEMP: transfer solution back to CPU
+    clData.queue.enqueueReadBuffer(solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
+
+#else
     double d{};
     ludcmp(fittingMatrixCpu, matSize, index0, d, args);
     lubksb(fittingMatrixCpu, matSize, index0, solutionCpu);
+#endif
 
     k.solution = solutionCpu;
     
