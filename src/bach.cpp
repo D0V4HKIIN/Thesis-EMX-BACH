@@ -35,9 +35,6 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
   clData.tImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
   clData.sImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
   clData.maskBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_ushort) * pixelCount);
-  clData.swizzledTImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
-  clData.swizzledSImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
-  clData.swizzledMaskBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_ushort) * pixelCount);
   
   err = clData.queue.enqueueWriteBuffer(clData.tImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &templateImg);
   checkError(err);
@@ -70,12 +67,25 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 
   templateStamps.reserve(args.stampsx * args.stampsy);
   sciStamps.reserve(args.stampsx * args.stampsy);
-
-  clData.tmplStampsBuf   = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.fStampWidth * args.fStampWidth * args.stampsx * args.stampsy);
-  clData.sciStampsBuf    = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.fStampWidth * args.fStampWidth * args.stampsx * args.stampsy);
-  clData.stampsCoordsBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long) * 2 * args.stampsx * args.stampsy);
-  clData.stampsSizesBuf  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long) * 2 * args.stampsx * args.stampsy);
   
+  static constinit int statsCount{5};
+  int subStampMaxCount{2 * args.maxKSStamps};
+
+  clData.tmpl.stampStats     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * statsCount * args.stampsx * args.stampsy);
+  clData.tmpl.stampCoords    = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.tmpl.stampSizes     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.tmpl.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy);
+  clData.tmpl.subStampValues = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy);
+  clData.tmpl.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * args.stampsx * args.stampsy);
+
+  clData.sci.stampStats      = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * statsCount * args.stampsx * args.stampsy);
+  clData.sci.stampCoords     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.sci.stampSizes      = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.sci.subStampCoords  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy);
+  clData.sci.subStampValues  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy);
+  clData.sci.subStampCounts  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * args.stampsx * args.stampsy);
+
+
   createStamps(templateImg, scienceImg, templateStamps, sciStamps, w, h, args, clData);
   if(args.verbose) {
     std::cout << "Stamps created for " << templateImg.name << std::endl;
@@ -101,6 +111,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
         mask.unmask(index, ImageMask::SKIP_S | ImageMask::SKIP_T);
       }
     }
+    clData.queue.enqueueWriteBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h, &mask);
 
     createStamps(templateImg, scienceImg, templateStamps, sciStamps, w, h, args, clData);
 

@@ -14,140 +14,188 @@
 
 #define ZEROVAL ((double)1e-10)
 
-//TODO: Fix swizzling for stampId data
+#define STATS_SIZE (5)
+#define STAT_SKY_EST (0)
+#define STAT_FWHM (1)
+
+#define PRINT_STAMP 19
+
+//TODO: Fix swizzling for stamp data
 
 void kernel createStampBounds(global long *stampsCoords, global long *stampsSizes,
-                          const int nStampsX, const int nStampsY, const long fullStampWidth, 
-                          const long w, const long h) {
-  const int id = get_global_id(0);
-  const int stampx = id % nStampsX;
-  const int stampy = id / nStampsX;
+                              const int nStampsX, const int nStampsY, const long fullStampWidth, 
+                              const long w, const long h) {
+    const int id = get_global_id(0);
+    const int stampX = id % nStampsX;
+    const int stampY = id / nStampsX;
 
 
-  long startx = stampx * w / nStampsX;
-  long starty = stampy * h / nStampsY;
-  
-  long stopx = min(startx + fullStampWidth, w);
-  long stopy = min(starty + fullStampWidth, h);
-
-  long stampw = stopx - startx;
-  long stamph = stopy - starty;
-
-  stampsCoords[2*id + 0] = startx;
-  stampsCoords[2*id + 1] = starty;
-  stampsSizes[2*id + 0] = stampw;
-  stampsSizes[2*id + 1] = stamph;
-}
-
-// void kernel sampleStamp(global const double *img, global const ushort *mask,
-//                         global const double *rng, 
-//                         global const long *stampsCoords, global const long *stampsSizes,
-//                         global double *values, volatile global int *valueCounters,
-//                         const int nValues, const int paddedNValues, const long w) {
-
-//   int sample = get_global_id(0);
-//   int stampId =  get_global_id(1);
-
-//   int randX = (int)floor(rng[2*sample + 0] * (int)stampsSizes[2*stampId + 0]);
-//   int randY = (int)floor(rng[2*sample + 1] * (int)stampsSizes[2*stampId + 1]);
-  
-//   // Random pixel in stampId in Image coords.
-//   int xI = randX + stampsCoords[2*stampId+0];
-//   int yI = randY + stampsCoords[2*stampId+1];
-//   int indexI = xI + yI * w;
-  
-//   if(mask[indexI] == 0 && fabs(img[indexI]) > ZEROVAL) {
+    long startX = stampX * w / nStampsX;
+    long startY = stampY * h / nStampsY;
     
+    long stopX = min(startX + fullStampWidth, w);
+    long stopY = min(startY + fullStampWidth, h);
+
+    long stampW = stopX - startX;
+    long stampH = stopY - startY;
+
+    stampsCoords[2*id + 0] = startX;
+    stampsCoords[2*id + 1] = startY;
+    stampsSizes[2*id + 0] = stampW;
+    stampsSizes[2*id + 1] = stampH;
+}
+double checkSStamp(global const double *img, global ushort *mask,
+                   const double skyEst, const double fwhm, const long imgW,
+                   const int2 sstampCoords, const long hSStampWidth,
+                   const long2 stampCoords, const long2 stampSize,
+                   const double threshHigh, const double threshKernFit,
+                   const ushort badMask, const ushort badPixelMask) {
+    double retVal = 0.0;
+    int stamp = get_global_id(0);
+
+    long startX = max(sstampCoords.x - hSStampWidth, stampCoords.x);
+    long startY = max(sstampCoords.y - hSStampWidth, stampCoords.y);
+    long endX   = min(sstampCoords.x + hSStampWidth, stampCoords.x + stampSize.x - 1);
+    long endY   = min(sstampCoords.y + hSStampWidth, stampCoords.y + stampSize.y - 1);
     
-//     long stamp_offset = stampId*paddedNValues;
-//     int sample_offset = atomic_inc(&valueCounters[stampId]);
-//     if (sample_offset < nValues) values[stamp_offset + sample_offset] = img[indexI];
-//     else atomic_dec(&valueCounters[stampId]);
-//   }
-// }
+    for(int y = startY; y <= endY; y++) {
+        for(int x = startX; x <= endX; x++) {
+            
+            int absCoords = x + y * imgW;
+            if (x == 305 && y == 87) printf("%hd ", mask[absCoords]);
+            if ((mask[absCoords] & badMask) > 0) {
+                return 0.0;
+            }
 
-void kernel sampleStamp(global const double *img, global const ushort *mask,
-                        global int *stampCounter, global const double *rng, 
-                        global const long *stampsCoords, global const long *stampsSizes,
-                        global double *values, volatile global int *valueCounters,
-                        const int stamps, const int nValues, const int paddedNValues, const long w) {
-  int id = get_global_id(0);
-
-  // Stop after randomly having selected a pixel numPix times.
-  do {
-    int stampId = atomic_inc(stampCounter);
-    if (stampId >= stamps) return;
-    int numPix = stampsSizes[2*stampId + 0] * stampsSizes[2*stampId + 1];
-    int valuesCount = 0;
-    for(int iter = 0; valuesCount < nValues && iter < numPix; iter++) {
-      int randX = (int)floor(rng[2*iter + 0] * (int)stampsSizes[2*stampId + 0]);
-      int randY = (int)floor(rng[2*iter + 1] * (int)stampsSizes[2*stampId + 1]);
-      
-      // Random pixel in stampId in stampId coords.
-      // Random pixel in stampId in Image coords.
-      int xI = randX + stampsCoords[2*stampId + 0];
-      int yI = randY + stampsCoords[2*stampId + 1];
-      int indexI = xI + yI * w;
-
-      if(mask[indexI] > 0 || fabs(img[indexI]) <= ZEROVAL) {
-        continue;
-      }
-
-      values[stampId*paddedNValues+valuesCount++] = img[indexI];
+            double imgValue = img[absCoords];
+            if(imgValue > threshHigh) {
+                mask[absCoords] |= badPixelMask;
+                return 0.0;
+            }
+            
+            double kernFit = (imgValue - skyEst) / fwhm;
+            if((imgValue - skyEst) / fwhm > threshKernFit) {
+                retVal += imgValue;
+            }
+        }
     }
-    valueCounters[stampId] = valuesCount;
-  } while (*stampCounter < stamps);
+    return retVal;
 }
 
-static void exchange(global double *i, global double *j)
-{
-	double k;
-	k = *i;
-	*i = *j;
-	*j = k;
-}
+void kernel findSubStamps(global const double* img, global ushort *mask, 
+                          global const long2 *stampsCoords, global const long2 *stampsSizes,
+                          global const double *stampsStats,
+                          global int2 *sstampsCoords, global double *sstampsValues,
+                          global int *sstampsCounts,
+                          const double threshHigh, const double threshKernFit,
+                          const long imgW, const int fStampWidth, const int hSStampWidth,
+                          const int maxSStamps, const int maxStamps, const ushort badMask, const ushort badPixelMask, const ushort skipMask,
+                          local int2 *localSubStampCoords, local double *localSubStampValues) {
+    int stamp      = get_global_id(0);
+    int localStamp = get_local_id(0);
+    if (stamp >= maxStamps) return;
 
-void kernel sortSamples(const long j, const long k,
-                        global double* values, const long paddedNValues) {
-  int id = get_global_id(0);                        
- 
-  const long i = id % paddedNValues;
-  const long stampId = id / paddedNValues;
-  int ixj=i^j; // Calculate indexing!
-  if ((ixj)>i)
-  {
-    if ((i&k)==0 && values[id] > values[stampId * paddedNValues + ixj]) {
-      exchange(&values[id], &values[stampId * paddedNValues + ixj]);
+    double skyEst = stampsStats[STATS_SIZE * stamp + STAT_SKY_EST];
+    double fwhm = stampsStats[STATS_SIZE * stamp + STAT_FWHM];
+    double floor = skyEst + threshKernFit * fwhm;
+    double dfrac = 0.9;
+    
+    long2 stampCoords = stampsCoords[stamp];
+    long2 stampSize =  stampsSizes[stamp];
+
+    int sstampCounter = 0;
+    while(sstampCounter < maxSStamps) {
+        double lowestPSFLim = max(floor, skyEst + (threshHigh - skyEst) * dfrac);
+        for(long y = 0; y < fStampWidth; y++) {
+            long absy = y + stampCoords.y;
+            for(long x = 0; x < fStampWidth; x++) {
+                long absx = x + stampCoords.x;
+                long absCoords  = absx + (absy * imgW);
+                
+                if ((mask[absCoords] & badMask) > 0) {
+                    continue;
+                }
+
+                double imgValue = img[absCoords];
+                if(imgValue > threshHigh) {
+                    mask[absCoords] |= badPixelMask;
+                    continue;
+                }
+                
+                if((imgValue - skyEst) * (1.0 / fwhm) < threshKernFit) {
+                    continue;
+                }
+
+                if(imgValue > lowestPSFLim) {  // good candidate found
+                    double maxVal = 0;
+                    int2  maxCoords;
+                    maxCoords.x = (int)absx;
+                    maxCoords.y = (int)absy;
+                    long startX = max(absx - hSStampWidth, stampCoords.x);
+                    long startY = max(absy - hSStampWidth, stampCoords.y);
+                    long endX   = min(absx + hSStampWidth, stampCoords.x + fStampWidth - 1);
+                    long endY   = min(absy + hSStampWidth, stampCoords.y + fStampWidth - 1);
+                                        
+                    for(long ky = startY; ky <= endY; ky++) {
+                        for(long kx = startX; kx <= endX; kx++) {
+                            
+                            long kCoords = kx + (ky * imgW);
+                            double kImgValue = img[kCoords];
+                            if ((mask[kCoords] & badMask) > 0) {
+                                continue;
+                            }
+
+                            if(kImgValue >= threshHigh) {
+                                mask[kCoords] |= badPixelMask;
+                                continue;
+                            }
+                            if((kImgValue - skyEst) * (1.0 / fwhm) < threshKernFit) {
+                                continue;
+                            }
+
+                            if(kImgValue > maxVal) {
+                                maxVal = kImgValue;
+                                maxCoords.x = (int)kx;
+                                maxCoords.y = (int)ky;
+                            }
+                        }
+                    }
+                    
+                    maxVal = checkSStamp(img, mask, skyEst, fwhm, imgW,
+                                         maxCoords, hSStampWidth,
+                                         stampCoords, stampSize,
+                                         threshHigh, threshKernFit,
+                                         badMask, badPixelMask);
+                    
+                    if(maxVal == 0.0) continue;
+                
+                    localSubStampCoords[localStamp * maxSStamps + sstampCounter] = maxCoords;
+                    localSubStampValues[localStamp * maxSStamps + sstampCounter] = maxVal;
+                    sstampCounter++;
+    
+                    long startX2 = max((long)(maxCoords.x - hSStampWidth), stampCoords.x);
+                    long startY2 = max((long)(maxCoords.y - hSStampWidth), stampCoords.y);
+                    long endX2 = min((long)(maxCoords.x + hSStampWidth), stampCoords.x + stampSize.x - 1);
+                    long endY2 = min((long)(maxCoords.y + hSStampWidth), stampCoords.y + stampSize.y - 1);
+
+                    for(int y = startY2; y <= endY2; y++) {
+                        for(int x = startX2; x <= endX2; x++) {
+                            mask[x + y*imgW] |= skipMask;
+                        }
+                    }
+                }
+                if(sstampCounter >= maxSStamps) break;
+                }
+            if(sstampCounter >= maxSStamps) break;
+        }
+        if(lowestPSFLim == floor) break;
+        dfrac -= 0.2;
     }
-    if ((i&k)!=0 && values[id] < values[stampId * paddedNValues + ixj]) {
-      exchange(&values[id], &values[stampId * paddedNValues + ixj]);
+
+    sstampsCounts[stamp] = sstampCounter;
+    for(int i = 0; i < sstampCounter; i++) {
+        sstampsCoords[stamp * maxSStamps + i] = localSubStampCoords[localStamp*maxSStamps + i];
+        sstampsValues[stamp * maxSStamps + i] = localSubStampValues[localStamp*maxSStamps + i];
     }
-  }
 }
 
-
-void kernel maskSamples(global const double *img, global ushort *mask, 
-                        global const long *stampsCoords, global const long *stampsSizes,
-                        global double *goodPixels, global int *goodPixelCounters,
-                        const long w){
-  int id = get_global_id(0);
-  int stampId = get_global_id(1);
-  long stampPixelCount = get_global_size(0);
-  
-  int x = id % stampsSizes[2*stampId + 0];
-  int y = id / stampsSizes[2*stampId + 0];
-  
-  int xI = x + stampsCoords[2*stampId + 0];
-  int yI = x + stampsCoords[2*stampId + 1];
-  int indexI = xI + yI*w;
-  
-  if (isnan(img[indexI])) {
-    mask[indexI] |= (MASK_NAN_PIXEL | MASK_BAD_INPUT);
-  }
-
-  if (mask[indexI] == 0 && img[indexI] > ZEROVAL) {
-    long stamp_offset = stampId*stampPixelCount;
-    int sample_offset = atomic_inc(&goodPixelCounters[stampId]);
-    goodPixels[stamp_offset + sample_offset] = img[indexI];
-  }
-}
