@@ -185,7 +185,7 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   createScProd(testKernSol, weights, sImgBuf, axis, clData, testStampData, args);
 
   // TEMP: parallel matrix solver is currently very slow, so temporarly use CPU version
-#if true
+#if false
   // TEMP: transfer matrix back to CPU
   std::vector<cl_double> matrixCpu2((matSize + 1) * (matSize + 1));
   clData.queue.enqueueReadBuffer(matrix, CL_TRUE, 0, sizeof(cl_double) * matrixCpu2.size(), matrixCpu2.data());
@@ -668,7 +668,7 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
     std::vector<double> solution0 = createScProd(stamps, sImg, weight0, args);
 
     std::vector<std::vector<double>> fittingMatrixCpu = fittingMatrix0;
-    std::vector<double>solutionCpu = solution0;
+    std::vector<double> solutionCpu = solution0;
 #endif
 
     // LU solve
