@@ -484,15 +484,13 @@ void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::
     }
 
     // Step 4
-    //cl::EnqueueArgs eargs4(clData.queue, cl::NDRange(1, 0), cl::NDRange(matrixSize - 1, stampCount), cl::NullRange);
-    cl::EnqueueArgs eargs4(clData.queue, cl::NDRange(stampCount));
+    cl::EnqueueArgs eargs4(clData.queue, cl::NDRange(1, 0), cl::NDRange(matrixSize - 1, stampCount), cl::NullRange);
     cl::Event event4 = func4(eargs4, *inMaxIs, matrix, vv, index, j, matrixSize);
 
     event4.wait();
 
     // Step 5
-    //cl::EnqueueArgs eargs5(clData.queue, cl::NDRange(j + 1, 0), cl::NDRange(matrixSize - (j + 1), stampCount), cl::NullRange);
-    cl::EnqueueArgs eargs5(clData.queue, cl::NDRange(stampCount));
+    cl::EnqueueArgs eargs5(clData.queue, cl::NDRange(j + 1, 0), cl::NDRange(matrixSize - (j + 1), stampCount), cl::NullRange);
     cl::Event event5 = func5(eargs5, matrix, j, matrixSize);
 
     event5.wait();

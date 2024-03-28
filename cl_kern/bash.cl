@@ -152,7 +152,7 @@ void kernel ludcmp3Reduce(global const double *inBigs, global const int *inMaxIs
     }
 }
 
-/*void kernel ludcmp4(global const int* maxIs,
+void kernel ludcmp4(global const int* maxIs,
                     global double *matrix, global double *vv, global int *index,
                     const long j, const long matrixSize) {
     int k = get_global_id(0);
@@ -176,36 +176,9 @@ void kernel ludcmp3Reduce(global const double *inBigs, global const int *inMaxIs
     if (k == 1) {
         index[firstIId + j] = maxI;
     }
-}*/
-
-void kernel ludcmp4(global const int* maxIs,
-                    global double *matrix, global double *vv, global int *index,
-                    const long j, const long matrixSize) {
-    int stampId = get_global_id(0);
-
-    for (int k = 1; k <= matrixSize; k++) {
-        int firstMtxId = stampId * matrixSize * matrixSize;
-        int firstIId = stampId * matrixSize;
-
-        int maxI = maxIs[stampId];
-        
-        if (j != maxI) {
-            double temp = matrix[firstMtxId + maxI * matrixSize + k];
-            matrix[firstMtxId + maxI * matrixSize + k] = matrix[firstMtxId + j * matrixSize + k];
-            matrix[firstMtxId + j * matrixSize + k] = temp;
-
-            if (k == 1) {
-                vv[stampId * matrixSize + maxI] = vv[stampId * matrixSize + j];
-            }
-        }
-
-        if (k == 1) {
-            index[firstIId + j] = maxI;
-        }
-    }
 }
 
-/*void kernel ludcmp5(global double *matrix,
+void kernel ludcmp5(global double *matrix,
                     const long j, const long matrixSize) {
     int i = get_global_id(0);
     int stampId = get_global_id(1);
@@ -222,28 +195,6 @@ void kernel ludcmp4(global const int* maxIs,
     if (j != matrixSize - 1) {
         double dum = 1.0 / m0;
         matrix[firstMtxId + i * matrixSize + j] *= dum;
-    }
-}*/
-
-void kernel ludcmp5(global double *matrix,
-                    const long j, const long matrixSize) {
-    int stampId = get_global_id(0);
-
-    int firstMtxId = stampId * matrixSize * matrixSize;
-
-    for (int i = j + 1; i <= matrixSize; i++) {
-        double m0 = matrix[firstMtxId + j * matrixSize + j];
-
-        if (m0 == 0.0) {
-            m0 = 1e-20;
-            matrix[firstMtxId + j * matrixSize + j] = m0;
-        }
-
-        if (j != matrixSize - 1) {
-            double dum = 1.0 / m0;
-            //if (j == 1 && i == 6) { printf("stamp = %i -> %.17f\n", stampId, m0); }
-            matrix[firstMtxId + i * matrixSize + j] *= dum;
-        }
     }
 }
 
