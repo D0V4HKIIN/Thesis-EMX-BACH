@@ -78,6 +78,31 @@ void kernel ludcmp2(global double *matrix,
 void kernel ludcmp3(global const double *vv,
                     global double *matrix, global double *outBigs, global int *outMaxIs, local double *localDums,
                     const long j, const long matrixSize, const long reduceCount) {
+    int stampId = get_global_id(0);
+    
+    int firstMtxId = stampId * matrixSize * matrixSize;
+    int firstVId = stampId * matrixSize;
+    int firstIId = stampId * matrixSize;
+
+    double big = 0.0;
+    int maxI = 0;
+    
+    for (int i = j; i < matrixSize; i++) {
+        double sum = matrix[firstMtxId + i * matrixSize + j];
+        double dum = vv[firstVId + i] * fabs(sum);
+
+        if (dum >= big) {
+            big = dum;
+            maxI = i;
+        }
+    }
+
+    outMaxIs[stampId] = maxI;
+}
+
+/*void kernel ludcmp3(global const double *vv,
+                    global double *matrix, global double *outBigs, global int *outMaxIs, local double *localDums,
+                    const long j, const long matrixSize, const long reduceCount) {
     int i = get_global_id(0);
     int li = get_local_id(0);
     int groupId = get_group_id(0);
@@ -150,7 +175,7 @@ void kernel ludcmp3Reduce(global const double *inBigs, global const int *inMaxIs
         outBigs[stampId * reduceCount + groupId] = big;
         outMaxIs[stampId * reduceCount + groupId] = maxI;
     }
-}
+}*/
 
 /*void kernel ludcmp4(global const int* maxIs,
                     global double *matrix, global double *vv, global int *index,
@@ -221,9 +246,6 @@ void kernel ludcmp4(global const int* maxIs,
 
     if (j != matrixSize - 1) {
         double dum = 1.0 / m0;
-            if (j == 1 && i == 6) {
-                printf("stamp = %i -> %.17f\n", stampId, m0);
-            }
         matrix[firstMtxId + i * matrixSize + j] *= dum;
     }
 }*/
