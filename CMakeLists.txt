@@ -95,6 +95,7 @@ set(Header_Files
     "include/fitsUtil.h"
     "include/bachUtil.h"
     "include/datatypeUtil.h"
+    "include/mathUtil.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
