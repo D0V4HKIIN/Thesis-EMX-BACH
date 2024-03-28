@@ -21,8 +21,6 @@
 #define STAT_DIFF (3)
 #define STAT_CHI2 (4)
 
-#define PRINT_STAMP 41
-
 //TODO: Fix swizzling for stamp data
 
 void kernel createStampBounds(global long *stampsCoords, global long *stampsSizes,
@@ -61,29 +59,16 @@ double checkSStamp(global const double *img, global ushort *mask,
     long endX   = min(sstampCoords.x + hSStampWidth, stampCoords.x + stampSize.x - 1);
     long endY   = min(sstampCoords.y + hSStampWidth, stampCoords.y + stampSize.y - 1);
     
-    // if (stamp == PRINT_STAMP) {
-    //     printf("Checking (%ld, ", sstampCoords.x);
-    //     printf("%ld): ", sstampCoords.y);
-    // }
     for(int y = startY; y <= endY; y++) {
         for(int x = startX; x <= endX; x++) {
             
             int absCoords = x + y * imgW;
-            // if (x == 305 && y == 87) printf("%hd ", mask[absCoords]);
             if ((mask[absCoords] & badMask) > 0) {
-                // if (stamp == PRINT_STAMP){
-                //     printf("Has overlap/bad pixel at (%d, ", x);
-                //     printf("%d)\n", y);
-                // }
                 return 0.0;
             }
 
             double imgValue = img[absCoords];
             if(imgValue > threshHigh) {
-                // if (stamp == PRINT_STAMP){
-                //     printf("Has NEW bad pixel at (%d, ", x);
-                //     printf("%d)\n", y);
-                // }
                 mask[absCoords] |= badPixelMask;
                 return 0.0;
             }
@@ -94,10 +79,6 @@ double checkSStamp(global const double *img, global ushort *mask,
             }
         }
     }
-    // if (stamp == PRINT_STAMP ){
-    //     if (retVal > 0.0) printf("Clean\n");
-    //     else printf("Not above threshKernFit\n");
-    // }
     return retVal;
 }
 
@@ -135,11 +116,6 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
     double skyEst = stampsStats[STATS_SIZE * stamp + STAT_SKY_EST];
     double fwhm = stampsStats[STATS_SIZE * stamp + STAT_FWHM];
 
-    // if(stamp == PRINT_STAMP){
-    //     if (skyEst == 0) printf("bad skyEst\n");
-    //     if (fwhm == 0.) printf("bad FWHM\n");
-    // }
-
     double floor = skyEst + threshKernFit * fwhm;
     double dfrac = 0.9;
     
@@ -147,13 +123,6 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
     long2 stampSize =  stampsSizes[stamp];
 
     int sstampCounter = 0;
-    // if (stamp == PRINT_STAMP){
-    //     printf("stamp %d: (", stamp);
-    //     printf("%d-", stampCoords.x);
-    //     printf("%d, ", stampCoords.x+stampSize.x);
-    //     printf("%d-", stampCoords.y);
-    //     printf("%d)\n", stampCoords.y+stampSize.y);
-    // }
     while(sstampCounter < maxSStamps) {
         double lowestPSFLim = max(floor, skyEst + (threshHigh - skyEst) * dfrac);
         for(long y = 0; y < fStampWidth; y++) {
@@ -171,13 +140,7 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
                     mask[absCoords] |= badPixelMask;
                     continue;
                 }
-                
-                
-                // if (absx <= 1856 && absx >= 1841 && absy == 506){
-                //     printf("(%d, ", absx);
-                //     printf("%d): kernFit: ", absy);
-                //     printf("%f\n", (imgValue - skyEst) * (1.0 / fwhm));
-                // }
+
                 if((imgValue - skyEst) * (1.0 / fwhm) < threshKernFit) {
                     continue;
                 }
@@ -191,12 +154,6 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
                     long startY = max(absy - hSStampWidth, stampCoords.y);
                     long endX   = min(absx + hSStampWidth, stampCoords.x + fStampWidth - 1);
                     long endY   = min(absy + hSStampWidth, stampCoords.y + fStampWidth - 1);
-                    // if (stamp == PRINT_STAMP){
-                    //     printf("candidate at (%ld", startX);
-                    //     printf("-%ld, ", endX);
-                    //     printf("%ld", startY);
-                    //     printf("-%ld)\n", endY);
-                    // }
                     
                     for(long ky = startY; ky <= endY; ky++) {
                         for(long kx = startX; kx <= endX; kx++) {
@@ -231,12 +188,6 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
                     
                     if(maxVal == 0.0) continue;
                 
-                    // if (stamp == PRINT_STAMP){
-                    //     printf("new substamp at (%ld, ", maxCoords.x);
-                    //     printf("%ld): ", maxCoords.y);
-                    //     printf("%f\n", maxVal);
-                    // }
-
                     localSubStampCoords[localStamp * maxSStamps + sstampCounter] = maxCoords;
                     localSubStampValues[localStamp * maxSStamps + sstampCounter] = maxVal;
                     sstampCounter++;
