@@ -71,16 +71,16 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   static constinit int statsCount{5};
   int subStampMaxCount{2 * args.maxKSStamps};
 
-  clData.tmpl.stampStats     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * statsCount * args.stampsx * args.stampsy);
   clData.tmpl.stampCoords    = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
   clData.tmpl.stampSizes     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.tmpl.stampStats     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * statsCount * args.stampsx * args.stampsy);
   clData.tmpl.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy);
   clData.tmpl.subStampValues = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy);
   clData.tmpl.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * args.stampsx * args.stampsy);
 
-  clData.sci.stampStats      = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * statsCount * args.stampsx * args.stampsy);
   clData.sci.stampCoords     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
   clData.sci.stampSizes      = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.sci.stampStats      = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * statsCount * args.stampsx * args.stampsy);
   clData.sci.subStampCoords  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy);
   clData.sci.subStampValues  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy);
   clData.sci.subStampCounts  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * args.stampsx * args.stampsy);
@@ -95,6 +95,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   /* == Check Template Stamps  ==*/
   double filledTempl{};
   double filledScience{};
+  
   identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args, clData);
   if(filledTempl < 0.1 || filledScience < 0.1) {
     if(args.verbose)

@@ -5,7 +5,7 @@
 
 extern double ran1(int *idum);
 
-void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience, const Arguments& args, const ClData& clData) {
+void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience, const Arguments& args, ClData& clData) {
   std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
 
   assert(templStamps.size() == scienceStamps.size());
@@ -20,56 +20,21 @@ void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, s
   std::cout << "findSStamps (science)" << std::endl;
   findSStamps(scienceStamps, scienceImage, mask, false, args, clData.sImgBuf, clData.sci, clData);
   
-
   int oldCount = templStamps.size();
-
-  templStamps.erase(std::remove_if(templStamps.begin(), templStamps.end(),
-                              [](Stamp& s) { return s.subStamps.empty(); }),
-               templStamps.end());
-  scienceStamps.erase(std::remove_if(scienceStamps.begin(), scienceStamps.end(),
-                              [](Stamp& s) { return s.subStamps.empty(); }),
-               scienceStamps.end());
-  
-  std::vector<cl_long2> templStampCoords(templStamps.size());
-  std::vector<cl_long2> templStampSizes(templStamps.size());
-  std::vector<cl_long2> scienceStampCoords(scienceStamps.size());
-  std::vector<cl_long2> scienceStampSizes(scienceStamps.size());
-
-
-  for(size_t i{0}; i < templStamps.size(); i++) {
-    auto&& stamp{templStamps[i]};
-    templStampCoords[i].x = stamp.coords.first;
-    templStampCoords[i].y = stamp.coords.second;
-    templStampSizes[i].x = stamp.size.first;
-    templStampSizes[i].y = stamp.size.second;
-  }
-
-  for(size_t i{0}; i < scienceStamps.size(); i++) {
-    auto&& stamp{scienceStamps[i]};
-    scienceStampCoords[i].x = stamp.coords.first;
-    scienceStampCoords[i].y = stamp.coords.second;
-    scienceStampSizes[i].x = stamp.size.first;
-    scienceStampSizes[i].y = stamp.size.second;
-  }
-
-  std::vector<cl::Event> writeEvents(4);
-  clData.queue.enqueueWriteBuffer(clData.tmpl.stampCoords, CL_FALSE , 0, sizeof(cl_long2) * templStamps.size(), &templStampCoords[0], nullptr, &writeEvents[0]);
-  clData.queue.enqueueWriteBuffer(clData.tmpl.stampSizes, CL_FALSE, 0, sizeof(cl_long2) * templStamps.size(), &templStampSizes[0], nullptr, &writeEvents[1]);
-  clData.queue.enqueueWriteBuffer(clData.sci.stampCoords, CL_FALSE, 0, sizeof(cl_long2) * scienceStamps.size(),  &scienceStampCoords[0], nullptr, &writeEvents[2]);
-  clData.queue.enqueueWriteBuffer(clData.sci.stampSizes, CL_FALSE, 0, sizeof(cl_long2) * scienceStamps.size(),  &scienceStampSizes[0], nullptr, &writeEvents[3]);
-  cl::Event::waitForEvents(writeEvents);
+  int newTemplCount{removeEmptyStamps(templStamps, args, clData.tmpl, clData)};
+  int newScienceCount{removeEmptyStamps(scienceStamps, args, clData.sci, clData)};
 
   if (filledTempl != nullptr) {
-    *filledTempl = static_cast<double>(templStamps.size()) / oldCount;
+    *filledTempl = static_cast<double>(newTemplCount) / oldCount;
   }
 
   if (filledScience != nullptr) {
-    *filledScience = static_cast<double>(scienceStamps.size()) / oldCount;
+    *filledScience = static_cast<double>(newScienceCount) / oldCount;
   }
 
   if(args.verbose) {
-    std::cout << "Non-Empty template stamps: " << templStamps.size() << std::endl;
-    std::cout << "Non-Empty science stamps: " << scienceStamps.size() << std::endl;
+    std::cout << "Non-Empty template stamps: " << newTemplCount << std::endl;
+    std::cout << "Non-Empty science stamps: " << newScienceCount << std::endl;
   }
 }
 
@@ -153,7 +118,7 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
     skipMask     = ImageMask::SKIP_S;
   }
   
-  cl_int maxSStamps = 2 * args.maxKSStamps;
+  cl_int maxSStamps{2 * args.maxKSStamps};
 
   static constinit int localSize{8};
 
@@ -207,29 +172,75 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
                                    sstampValues[offset]);
     }
 
-    if(stamp.subStamps.size() == 0) {
-      if(args.verbose)
-        std::cout << "No suitable substamps found in stamp " << index
-                  << std::endl;
-      index++;
-      continue;
+    if(args.verbose) {
+      if(sstampCounts[index] == 0) {
+        std::cout << "No suitable substamps found in stamp " << index << std::endl;
+      }   
+      else {
+        std::cout << "Added " << sstampCounts[index]
+                  << " substamps to stamp " << index << std::endl;
+      }
     }
-    int keepSStampCount = std::min<int>(stamp.subStamps.size(), args.maxKSStamps);
-    std::partial_sort(
-      stamp.subStamps.begin(),
-      stamp.subStamps.begin() + keepSStampCount,
-      stamp.subStamps.end(),
-      std::greater<SubStamp>()
-      );
-
-    if (stamp.subStamps.size() > keepSStampCount) {
-      stamp.subStamps.erase(stamp.subStamps.begin() + keepSStampCount, stamp.subStamps.end());
-    }
-
-    if(args.verbose)
-      std::cout << "Added " << stamp.subStamps.size() << " substamps to stamp "
-                << index << std::endl;
     index++;
   }
   return 0;
+}
+
+int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStampsData& stampsData, const ClData& clData) {
+  
+  static constinit int statsSize{5};
+  int maxSStamps{2 * args.maxKSStamps};
+  cl::Buffer filteredStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * stamps.size()};
+  cl::Buffer filteredStampSizes{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * stamps.size()};
+  cl::Buffer filteredStampStats{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * statsSize * stamps.size()};
+  cl::Buffer filteredSubStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * maxSStamps * stamps.size()};
+  cl::Buffer filteredSubStampValues{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * maxSStamps * stamps.size()};
+  cl::Buffer filteredSubStampCounts{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * maxSStamps * stamps.size()};
+
+  cl::Buffer keepCounter{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int)};
+  cl::Buffer keepIndeces{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stamps.size()};
+  
+  cl::EnqueueArgs eargsMark{clData.queue,cl::NDRange{stamps.size()}};
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>
+  markFunc(clData.program, "markStampsToKeep");
+
+  cl::EnqueueArgs eargsRemove{clData.queue,cl::NDRange{stamps.size()}};  
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, 
+                    cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer, 
+                    cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl_int>
+  removeFunc(clData.program, "removeEmptyStamps");
+
+  cl_int zero{0};
+  clData.queue.enqueueWriteBuffer(keepCounter, CL_TRUE, 0, sizeof(cl_int), &zero);
+
+  cl::Event markEvent = markFunc(eargsMark, stampsData.subStampCounts, keepIndeces, keepCounter);
+  markEvent.wait();
+  
+  cl::Event removeEvent = removeFunc(eargsRemove, 
+      stampsData.stampCoords, stampsData.stampSizes, stampsData.stampStats,
+      stampsData.subStampCounts, stampsData.subStampCoords, stampsData.subStampValues,
+      filteredStampCoords, filteredStampSizes, filteredStampStats,
+      filteredSubStampCounts, filteredSubStampCoords, filteredSubStampValues,
+      keepIndeces, keepCounter, args.maxKSStamps);
+  removeEvent.wait();
+  
+  stampsData.stampCoords = filteredStampCoords;
+  stampsData.stampSizes = filteredStampSizes;
+  stampsData.stampStats = filteredStampStats;
+  stampsData.subStampCoords = filteredSubStampCoords;
+  stampsData.subStampValues = filteredSubStampValues;
+  stampsData.subStampCounts = filteredSubStampCounts;
+  
+  cl_int newSize{0};
+  clData.queue.enqueueReadBuffer(keepCounter, CL_TRUE, 0, sizeof(cl_int), &newSize);
+  
+  stamps.erase(std::remove_if(stamps.begin(), stamps.end(),
+                              [](Stamp& s) { return s.subStamps.empty(); }),
+               stamps.end());
+
+  assert(newSize == stamps.size());
+  
+  return newSize;
 }
