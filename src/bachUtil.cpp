@@ -423,18 +423,18 @@ void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::
   cl::KernelFunctor<cl::Buffer, cl_long, cl_long> func1(clData.program, "ludcmp1");
   cl::KernelFunctor<cl::Buffer, cl_long, cl_long> func2(clData.program, "ludcmp2");
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_long, cl_long, cl_long> func3(clData.program, "ludcmp3");
-  //cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_long, cl_long> funcReduce(clData.program, "ludcmp3Reduce");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_long, cl_long> funcReduce(clData.program, "ludcmp3Reduce");
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long> func4(clData.program, "ludcmp4");
   cl::KernelFunctor<cl::Buffer, cl_long, cl_long> func5(clData.program, "ludcmp5");
 
   // Create buffers
   static constexpr int localSize = 32;
-  int reduceCount = (matrixSize + localSize - 1) / localSize;
+  int maxReduceCount = (matrixSize + localSize - 1) / localSize;
 
-  cl::Buffer bigs(clData.context, CL_MEM_READ_WRITE, reduceCount * stampCount * sizeof(cl_double));
-  cl::Buffer bigs2(clData.context, CL_MEM_READ_WRITE, reduceCount * stampCount * sizeof(cl_double));
-  cl::Buffer maxIs(clData.context, CL_MEM_READ_WRITE, reduceCount * stampCount * sizeof(cl_int));
-  cl::Buffer maxIs2(clData.context, CL_MEM_READ_WRITE, reduceCount * stampCount * sizeof(cl_int));
+  cl::Buffer bigs(clData.context, CL_MEM_READ_WRITE, maxReduceCount * stampCount * sizeof(cl_double));
+  cl::Buffer bigs2(clData.context, CL_MEM_READ_WRITE, maxReduceCount * stampCount * sizeof(cl_double));
+  cl::Buffer maxIs(clData.context, CL_MEM_READ_WRITE, maxReduceCount * stampCount * sizeof(cl_int));
+  cl::Buffer maxIs2(clData.context, CL_MEM_READ_WRITE, maxReduceCount * stampCount * sizeof(cl_int));
 
   for (int j = 1; j < matrixSize; j++) {
     // Step 1
@@ -456,12 +456,10 @@ void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::
     std::vector<cl_double> mCpu4(matrixSize * matrixSize * stampCount);
     clData.queue.enqueueReadBuffer(matrix, CL_TRUE, 0, sizeof(cl_double) * mCpu4.size(), mCpu4.data());
 
-    // Step 3: reduce biggest index
-    cl::EnqueueArgs eargs3(clData.queue, cl::NDRange(stampCount));
-    cl::Event event3 = func3(eargs3, vv, matrix, bigs, maxIs, cl::Local(localSize * sizeof(cl_double)), j, matrixSize, reduceCount);
-
-    event3.wait();
-    /*cl::EnqueueArgs eargs3(clData.queue, cl::NDRange(j, 0), cl::NDRange(roundUpToMultiple(matrixSize - j, localSize), stampCount), cl::NDRange(localSize, 1));
+    // Step 3: reduce biggest index    
+    int reduceCount = ((matrixSize - j)  + localSize - 1) / localSize;
+    
+    cl::EnqueueArgs eargs3(clData.queue, cl::NDRange(j, 0), cl::NDRange(roundUpToMultiple(matrixSize - j, localSize), stampCount), cl::NDRange(localSize, 1));
     cl::Event event3 = func3(eargs3, vv, matrix, bigs, maxIs, cl::Local(localSize * sizeof(cl_double)), j, matrixSize, reduceCount);
 
     event3.wait();
@@ -483,13 +481,12 @@ void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::
       std::swap(inMaxIs, outMaxIs);
 
       reduceCount = nextReduceCount;
-    }*/
+    }
 
     // Step 4
     //cl::EnqueueArgs eargs4(clData.queue, cl::NDRange(1, 0), cl::NDRange(matrixSize - 1, stampCount), cl::NullRange);
     cl::EnqueueArgs eargs4(clData.queue, cl::NDRange(stampCount));
-    //cl::Event event4 = func4(eargs4, *inMaxIs, matrix, vv, index, j, matrixSize);
-    cl::Event event4 = func4(eargs4, maxIs, matrix, vv, index, j, matrixSize);
+    cl::Event event4 = func4(eargs4, *inMaxIs, matrix, vv, index, j, matrixSize);
 
     event4.wait();
 
