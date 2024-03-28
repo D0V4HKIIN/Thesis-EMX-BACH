@@ -23,7 +23,7 @@
 
 //TODO: Fix swizzling for stamp data
 
-void kernel createStampBounds(global long *stampsCoords, global long *stampsSizes,
+void kernel createStampBounds(global long *stampCoords, global long *stampSizes,
                               const int nStampsX, const int nStampsY, const long fullStampWidth, 
                               const long w, const long h) {
     const int id = get_global_id(0);
@@ -40,11 +40,16 @@ void kernel createStampBounds(global long *stampsCoords, global long *stampsSize
     long stampW = stopX - startX;
     long stampH = stopY - startY;
 
-    stampsCoords[2*id + 0] = startX;
-    stampsCoords[2*id + 1] = startY;
-    stampsSizes[2*id + 0] = stampW;
-    stampsSizes[2*id + 1] = stampH;
+    stampCoords[2*id + 0] = startX;
+    stampCoords[2*id + 1] = startY;
+    stampSizes[2*id + 0] = stampW;
+    stampSizes[2*id + 1] = stampH;
 }
+
+void kernel calcStats(global const double *img, global ushort *mask) {
+    
+}
+
 double checkSStamp(global const double *img, global ushort *mask,
                    const double skyEst, const double fwhm, const long imgW,
                    const int2 sstampCoords, const long hSStampWidth,
@@ -101,10 +106,10 @@ void sortSubStamps(int substampCount, local int2 *coords, local double *values)
 }
 
 void kernel findSubStamps(global const double* img, global ushort *mask, 
-                          global const long2 *stampsCoords, global const long2 *stampsSizes,
-                          global const double *stampsStats,
-                          global int2 *sstampsCoords, global double *sstampsValues,
-                          global int *sstampsCounts,
+                          global const long2 *stampCoords, global const long2 *stampSizes,
+                          global const double *stampStats,
+                          global int2 *sstampCoords, global double *sstampValues,
+                          global int *sstampCounts,
                           const double threshHigh, const double threshKernFit,
                           const long imgW, const int fStampWidth, const int hSStampWidth,
                           const int maxSStamps, const int maxStamps, const ushort badMask, const ushort badPixelMask, const ushort skipMask,
@@ -113,14 +118,14 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
     int localStamp = get_local_id(0);
     if (stamp >= maxStamps) return;
 
-    double skyEst = stampsStats[STATS_SIZE * stamp + STAT_SKY_EST];
-    double fwhm = stampsStats[STATS_SIZE * stamp + STAT_FWHM];
+    double skyEst = stampStats[STATS_SIZE * stamp + STAT_SKY_EST];
+    double fwhm = stampStats[STATS_SIZE * stamp + STAT_FWHM];
 
     double floor = skyEst + threshKernFit * fwhm;
     double dfrac = 0.9;
     
-    long2 stampCoords = stampsCoords[stamp];
-    long2 stampSize =  stampsSizes[stamp];
+    long2 stampCoords = stampCoords[stamp];
+    long2 stampSize =  stampSizes[stamp];
 
     int sstampCounter = 0;
     while(sstampCounter < maxSStamps) {
@@ -215,14 +220,14 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
         &localSubStampCoords[localStamp*maxSStamps], 
         &localSubStampValues[localStamp*maxSStamps]);
 
-    sstampsCounts[stamp] = min(sstampCounter, maxSStamps / 2);
+    sstampCounts[stamp] = min(sstampCounter, maxSStamps / 2);
     for(int i = 0; i < sstampCounter; i++) {
-        sstampsCoords[stamp * maxSStamps + i] = localSubStampCoords[localStamp*maxSStamps + i];
-        sstampsValues[stamp * maxSStamps + i] = localSubStampValues[localStamp*maxSStamps + i];
+        sstampCoords[stamp * maxSStamps + i] = localSubStampCoords[localStamp*maxSStamps + i];
+        sstampValues[stamp * maxSStamps + i] = localSubStampValues[localStamp*maxSStamps + i];
     }
     for (int i = sstampCounter; i<maxSStamps; i++) {
-        sstampsCoords[stamp * maxSStamps + i] = (int2)(INT_MAX, INT_MAX);
-        sstampsValues[stamp * maxSStamps + i] = -INFINITY;
+        sstampCoords[stamp * maxSStamps + i] = (int2)(INT_MAX, INT_MAX);
+        sstampValues[stamp * maxSStamps + i] = -INFINITY;
     }
 }
 
