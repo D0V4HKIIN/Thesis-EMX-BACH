@@ -37,13 +37,10 @@ cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int 
 void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience, const Arguments& args);
 
 /* CMV */
-void createB(Stamp& s, const Image& img, const Arguments& args);
-void convStamp(Stamp&s , const Image& img, const Kernel& k, const int n, const int odd, const Arguments& args);
 void initFillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
                const ImageMask& mask, const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args);
 void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
                const ImageMask& mask, int stampOffset, int stampCount, const Kernel& k, const ClData& clData, const ClStampsData& stampData, const Arguments& args);
-int fillStamp(Stamp& s, const Image& tImg, const Image& sImg, const ImageMask& mask, const Kernel& k, const Arguments& args);
 
 /* CD && KSC */
 double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &axis, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData& clData, ClStampsData& stampData, const Arguments& args);
@@ -56,11 +53,8 @@ std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& 
 void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pair<cl_long, cl_long> &axis,
               const cl::Buffer &model, const cl::Buffer &kernSol, const cl::Buffer &sigma,
               const ClStampsData &stampData, const ClData &clData, const Arguments& args);
-double calcSig(Stamp& s, const std::vector<double>& kernSol, const Image& tImg, const Image& sImg, ImageMask& mask, const Arguments& args);
 double getBackground(const int x, const int y, const std::vector<double>& kernSol,
                      const std::pair<cl_long, cl_long> imgSize, const Arguments& args);
-std::vector<float> makeModel(const Stamp& s, const std::vector<double>& kernSol,
-                             const std::pair<cl_long, cl_long> imgSize, const Arguments& args);
 void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask,
                const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const ClData &clData, const ClStampsData &stampData, const Arguments& args);
 bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,

@@ -28,7 +28,7 @@ void maskInput(ImageMask& mask, const ClData& clData, const Arguments& args) {
     static_cast<int>(args.hKernelWidth * args.inSpreadMaskFactor));
   spreadEvent.wait();
   
-  // For now, return the image mask to the CPU
+  // TEMP: For now, return the image mask to the CPU
   cl_int err = clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
     sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
   checkError(err);

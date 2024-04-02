@@ -159,35 +159,6 @@ struct Stamp {
   double operator[](size_t index) const { return data[index]; }
 
   double pixels() const { return size.first * size.second; }
-
-  void createQ(const Arguments& args) {
-    /* Does Equation 2.12 which create the left side of the Equation Ma=B */
-    Q = std::vector<std::vector<double>>(
-        args.nPSF + 2, std::vector<double>(args.nPSF + 2, 0.0));
-
-    for(int i = 0; i < args.nPSF; i++) {
-      for(int j = 0; j <= i; j++) {
-        double q = 0.0;
-        for(int k = 0; k < args.fSStampWidth * args.fSStampWidth; k++) {
-          q += W[i][k] * W[j][k];
-        }
-        Q[i + 1][j + 1] = q;
-      }
-    }
-
-    for(int i = 0; i < args.nPSF; i++) {
-      double p0 = 0.0;
-      for(int k = 0; k < args.fSStampWidth * args.fSStampWidth; k++) {
-        p0 += W[i][k] * W[args.nPSF][k];
-      }
-      Q[args.nPSF + 1][i + 1] = p0;
-    }
-
-    double q = 0.0;
-    for(int k = 0; k < args.fSStampWidth * args.fSStampWidth; k++)
-      q += W[args.nPSF][k] * W[args.nPSF][k];
-    Q[args.nPSF + 1][args.nPSF + 1] = q;
-  }
 };
 
 struct Image {
