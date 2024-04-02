@@ -672,7 +672,7 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
 #endif
 
     // LU solve
-#if true
+#if false
     // TEMP: transfer matrix to GPU
     std::vector<cl_double> flatFitMatrix{};
 
