@@ -13,51 +13,55 @@
 #define MASK_BAD_OUTPUT (1 << 12)
 
 void kernel maskInput(global const double *tmplImg, global const double *sciImg, global ushort *mask,
-                      const long w, const long h, const long borderSize,
+                      const int w, const int h, const int borderSize,
                       const double threshHigh, const double threshLow) {
   const int id = get_global_id(0);
-  const long x = id % w;
-  const long y = id / w;
+  const int x = id % w;
+  const int y = id / w;
 
-  if (x >= 0 && x < w && y >= 0 && y < h) {
+  if (x < w && y < h) {
     ushort m = 0;
 
     double t = tmplImg[id];
     double s = sciImg[id];
-
-    m |= (t == 0.0 || s == 0.0) * (MASK_BAD_INPUT | MASK_BAD_PIX_VAL);
-    m |= (t >= threshHigh || s >= threshHigh) * (MASK_BAD_INPUT | MASK_SAT_PIXEL);
-    m |= (t <= threshLow || s <= threshLow) * (MASK_BAD_INPUT | MASK_LOW_PIXEL);
-    m |= (x < borderSize || x >= w - borderSize || y < borderSize || y >= h - borderSize) *
-      (MASK_BAD_PIXEL_S | MASK_BAD_PIXEL_T);
+    
+    m |= select(0, MASK_BAD_INPUT | MASK_BAD_PIX_VAL, t == 0.0 || s == 0.0);
+    m |= select(0, MASK_BAD_INPUT | MASK_SAT_PIXEL, t >= threshHigh || s >= threshHigh);
+    m |= select(0, MASK_BAD_INPUT | MASK_LOW_PIXEL, t <= threshLow || s <= threshLow);
+    m |= select(0, MASK_BAD_PIXEL_S | MASK_BAD_PIXEL_T, x < borderSize || x >= w - borderSize || y < borderSize || y >= h - borderSize);
 
     mask[id] = m;
   }
 }
 
-void kernel spreadMask(global ushort *mask, const long w, const long h, const long spreadWidth) {
-  const int id = get_global_id(0);
-  const long x = id % w;
-  const long y = id / w;
+void kernel spreadMask(global ushort *mask, const int w, const int h, const int spreadWidth) {
+  const int x = get_global_id(0);
+  const int y = get_global_id(1);
+  const int id = x + w * y;
 
-  if (x >= 0 && x < w && y >= 0 && y < h) {
-    if ((mask[id] & MASK_BAD_INPUT) != 0) {
-      long w2 = spreadWidth / 2;
+  int w2 = spreadWidth / 2;
 
-      long sx = max(x - w2, 0l);
-      long sy = max(y - w2, 0l);
-      long ex = min(x + w2, w - 1);
-      long ey = min(y + w2, h - 1);
+  if (x < w && y < h && (mask[id] & MASK_BAD_INPUT) == 0) {
+    int sx = max(x - w2, 0);
+    int sy = max(y - w2, 0);
+    int ex = min(x + w2, w - 1);
+    int ey = min(y + w2, h - 1);
 
-      for (int y2 = sy; y2 <= ey; y2++) {
-        for (int x2 = sx; x2 <= ex; x2++) {
-          long id2 = y2 * w + x2;
+    bool isOk = false;
 
-          if ((mask[id2] & MASK_BAD_INPUT) == 0) {
-            mask[id2] |= MASK_OK_CONV;
-          }
+    for (int y2 = sy; y2 <= ey; y2++) {
+      for (int x2 = sx; x2 <= ex; x2++) {
+        int id2 = y2 * w + x2;
+
+        if ((mask[id2] & MASK_BAD_INPUT) != 0) {
+          isOk = true;
+          break;
         }
       }
+    }
+
+    if (isOk) {
+      mask[id] |= MASK_OK_CONV;
     }
   }
 }

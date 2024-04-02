@@ -10,28 +10,25 @@ void checkError(const cl_int err) {
 }
 
 void maskInput(ImageMask& mask, const ClData& clData, const Arguments& args) {
-  cl::EnqueueArgs eargs{clData.queue, cl::NullRange, cl::NDRange(mask.axis.first * mask.axis.second), cl::NullRange};
-
   // Create mask from input data
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_double, cl_double>
-      maskFunc(clData.program, "maskInput");
-  cl::Event maskEvent = maskFunc(eargs, clData.tImgBuf, clData.sImgBuf, clData.maskBuf,
-    mask.axis.first, mask.axis.second, args.hSStampWidth + args.hKernelWidth,
-    args.threshHigh, args.threshLow);
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int, cl_double, cl_double> maskFunc(clData.program, "maskInput");
+  cl::EnqueueArgs maskEargs(clData.queue, cl::NDRange(mask.axis.first * mask.axis.second));
+  cl::Event maskEvent = maskFunc(maskEargs, clData.tImgBuf, clData.sImgBuf, clData.maskBuf,
+                                 mask.axis.first, mask.axis.second, args.hSStampWidth + args.hKernelWidth,
+                                 args.threshHigh, args.threshLow);
   maskEvent.wait();
 
   // Spread mask
-  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl_long>
-      spreadFunc(clData.program, "spreadMask");
-  cl::Event spreadEvent = spreadFunc(eargs, clData.maskBuf,
-    mask.axis.first, mask.axis.second,
-    static_cast<int>(args.hKernelWidth * args.inSpreadMaskFactor));
+  int spreadWidth = static_cast<int>(args.hKernelWidth * args.inSpreadMaskFactor);
+  cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl_int> spreadFunc(clData.program, "spreadMask");
+  cl::EnqueueArgs spreadEargs(clData.queue, cl::NDRange(mask.axis.first, mask.axis.second));
+  cl::Event spreadEvent = spreadFunc(spreadEargs, clData.maskBuf,
+                                     mask.axis.first, mask.axis.second,
+                                     spreadWidth);
   spreadEvent.wait();
   
   // TEMP: For now, return the image mask to the CPU
-  cl_int err = clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
-    sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
-  checkError(err);
+  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
 }
 
 void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args) {
