@@ -23,25 +23,23 @@ void kernel ludcmpBig(global const double *matrix,
     vv[stampId * matrixSize + i] = v;
 }
 
-/*void kernel ludcmp1(global double *matrix,
-                    const long j, const long matrixSize) {
+void kernel ludcmp1(global double *matrix,
+                    const long j, const long k, const long matrixSize) {
     int i = get_global_id(0);
     int stampId = get_global_id(1);
 
     int firstMtxId = stampId * matrixSize * matrixSize;
 
-    double sum = matrix[firstMtxId + i * matrixSize + j];
+    barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
-    for (int k = 1; k < i; k++) {
-        double m0 = matrix[firstMtxId + i * matrixSize + k];
-        double m1 = matrix[firstMtxId + k * matrixSize + j];
-        sum -= m0 * m1;
+    if (k < i) {
+        double prod = matrix[firstMtxId + i * matrixSize + k] * matrix[firstMtxId + k * matrixSize + j];
+
+        matrix[firstMtxId + i * matrixSize + j] -= prod;
     }
+}
 
-    matrix[firstMtxId + i * matrixSize + j] = sum;
-}*/
-
-void kernel ludcmp1(global double *matrix,
+void kernel ludcmp1Old(global double *matrix,
                     const long j, const long matrixSize) {
     int stampId = get_global_id(0);
 

@@ -420,7 +420,7 @@ void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::
 
 #if true
   // Create kernel functors
-  cl::KernelFunctor<cl::Buffer, cl_long, cl_long> func1(clData.program, "ludcmp1");
+  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl_long> func1(clData.program, "ludcmp1");
   cl::KernelFunctor<cl::Buffer, cl_long, cl_long> func2(clData.program, "ludcmp2");
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_long, cl_long, cl_long> func3(clData.program, "ludcmp3");
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_long, cl_long> funcReduce(clData.program, "ludcmp3Reduce");
@@ -436,25 +436,43 @@ void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::
   cl::Buffer maxIs(clData.context, CL_MEM_READ_WRITE, maxReduceCount * stampCount * sizeof(cl_int));
   cl::Buffer maxIs2(clData.context, CL_MEM_READ_WRITE, maxReduceCount * stampCount * sizeof(cl_int));
 
+  clock_t sum1 = 0;
+  clock_t sum2 = 0;
+  clock_t sum3 = 0;
+
   for (int j = 1; j < matrixSize; j++) {
+    clock_t start1 = clock();
     // Step 1
     if (j > 1) {
+      for (int k = 1; k < j; k++) {
+        cl::EnqueueArgs eargs1(clData.queue, cl::NDRange(1, 0), cl::NDRange(j - 1, stampCount), cl::NullRange);
+        cl::Event event1 = func1(eargs1, matrix, j, k, matrixSize);
+
+        event1.wait();
+      }
+    }
+
+    // Print and compare the matrices
+
+    /*if (j > 1) {
       //cl::EnqueueArgs eargs1(clData.queue, cl::NDRange(1, 0), cl::NDRange(j - 1, stampCount), cl::NullRange);
       cl::EnqueueArgs eargs1(clData.queue, cl::NDRange(stampCount));
       cl::Event event1 = func1(eargs1, matrix, j, matrixSize);
 
       event1.wait();
-    }
+    }*/
 
     // Step 2
+    sum1 += clock() - start1;
+    clock_t start2 = clock();
     //cl::EnqueueArgs eargs2(clData.queue, ...);
     cl::EnqueueArgs eargs2(clData.queue, cl::NDRange(stampCount));
     cl::Event event2 = func2(eargs2, matrix, j, matrixSize);
 
     event2.wait();
-      
-    std::vector<cl_double> mCpu4(matrixSize * matrixSize * stampCount);
-    clData.queue.enqueueReadBuffer(matrix, CL_TRUE, 0, sizeof(cl_double) * mCpu4.size(), mCpu4.data());
+
+    sum2 += clock() - start2;
+    clock_t start3 = clock();
 
     // Step 3: reduce biggest index    
     int reduceCount = ((matrixSize - j)  + localSize - 1) / localSize;
@@ -494,6 +512,7 @@ void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::
     cl::Event event5 = func5(eargs5, matrix, j, matrixSize);
 
     event5.wait();
+    sum3 += clock() - start3;
   }
 #else
   // Rest of LU-decomposition
@@ -503,6 +522,10 @@ void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::
 
   restEvent.wait();
 #endif
+
+  std::cout << "1: " << sum1 << std::endl;
+  std::cout << "2: " << sum2 << std::endl;
+  std::cout << "3: " << sum3 << std::endl;
 }
 
 void lubksb(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &result, const ClData &clData) {
