@@ -670,19 +670,5 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
     }
   }
 
-  int cnt = 0;
-  for(auto s : stamps) {
-    if(!s.subStamps.empty()) cnt++;
-  }
-  if(args.verbose) {
-    std::cout << "We use " << cnt << " sub-stamps" << std::endl;
-    std::cout << "Remaining sub-stamps are:" << std::endl;
-    for(auto s : stamps) {
-      if(!s.subStamps.empty()) {
-        std::cout << "x = " << s.coords.first << ", y = " << s.coords.second
-                  << std::endl;
-      }
-    }
-  }
   return check;
 }

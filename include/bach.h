@@ -25,9 +25,7 @@ struct ClData {
     cl::Buffer maskBuf;
 
     struct {
-        cl::Buffer gauss;
         cl::Buffer xy;
-        cl::Buffer bg;
         cl::Buffer filterX;
         cl::Buffer filterY;
         cl::Buffer vec;

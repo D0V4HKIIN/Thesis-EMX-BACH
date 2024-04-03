@@ -114,32 +114,28 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   std::cout << "\nCalculating matrix variables..." << std::endl;
 
   // Generate kernel stats
-  std::vector<int> kernelGauss{};
+  std::vector<int> kernelGaussCpu{};
   std::vector<cl_int2> kernelXy{};
 
   for(int gauss = 0; gauss < args.dg.size(); gauss++) {
     for(int x = 0; x <= args.dg[gauss]; x++) {
       for(int y = 0; y <= args.dg[gauss] - x; y++) {
-        kernelGauss.push_back(gauss);
+        kernelGaussCpu.push_back(gauss);
         kernelXy.push_back({ x, y });
       }
     }
   }
 
-  clData.gaussCount = kernelGauss.size();
+  clData.gaussCount = kernelGaussCpu.size();
 
   // Upload kernel status to GPU
-  clData.kernel.gauss = cl::Buffer(clData.context, CL_MEM_READ_ONLY, sizeof(cl_int) * kernelGauss.size());
+  cl::Buffer kernelGauss(clData.context, CL_MEM_READ_ONLY, sizeof(cl_int) * kernelGaussCpu.size());
   clData.kernel.xy = cl::Buffer(clData.context, CL_MEM_READ_ONLY, sizeof(cl_int2) * kernelXy.size());
-  clData.kernel.bg = cl::Buffer(clData.context, CL_MEM_READ_ONLY, sizeof(cl_float) * args.bg.size());
+  cl::Buffer kernelBg(clData.context, CL_MEM_READ_ONLY, sizeof(cl_float) * args.bg.size());
 
-  cl_int err;
-  err = clData.queue.enqueueWriteBuffer(clData.kernel.gauss, CL_TRUE, 0, sizeof(cl_int) * kernelGauss.size(), &kernelGauss[0]);
-  checkError(err);
-  err = clData.queue.enqueueWriteBuffer(clData.kernel.xy, CL_TRUE, 0, sizeof(cl_int2) * kernelXy.size(), &kernelXy[0]);
-  checkError(err);
-  err = clData.queue.enqueueWriteBuffer(clData.kernel.bg, CL_TRUE, 0, sizeof(cl_float) * args.bg.size(), &args.bg[0]);
-  checkError(err);
+  clData.queue.enqueueWriteBuffer(kernelGauss, CL_TRUE, 0, sizeof(cl_int) * kernelGaussCpu.size(), kernelGaussCpu.data());
+  clData.queue.enqueueWriteBuffer(clData.kernel.xy, CL_TRUE, 0, sizeof(cl_int2) * kernelXy.size(), kernelXy.data());
+  clData.queue.enqueueWriteBuffer(kernelBg, CL_TRUE, 0, sizeof(cl_float) * args.bg.size(), args.bg.data());
 
   // Generate background X/Y
   std::vector<cl_int2> bgXY;
@@ -151,8 +147,7 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   }
 
   clData.bg.xy = cl::Buffer(clData.context, CL_MEM_READ_ONLY, sizeof(cl_int2) * bgXY.size());
-  err = clData.queue.enqueueWriteBuffer(clData.bg.xy, CL_TRUE, 0, sizeof(cl_int2) * bgXY.size(), bgXY.data());
-  checkError(err);
+  clData.queue.enqueueWriteBuffer(clData.bg.xy, CL_TRUE, 0, sizeof(cl_int2) * bgXY.size(), bgXY.data());
 
   // Create kernel filter
   clData.kernel.filterX = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.gaussCount * args.fKernelWidth);
@@ -161,8 +156,8 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long>
       filterFunc(clData.program, "createKernelFilter");
   cl::EnqueueArgs filterEargs(clData.queue, cl::NullRange, cl::NDRange(clData.gaussCount), cl::NullRange);
-  cl::Event filterEvent = filterFunc(filterEargs, clData.kernel.gauss, clData.kernel.xy,
-                                     clData.kernel.bg, clData.kernel.filterX, clData.kernel.filterY,
+  cl::Event filterEvent = filterFunc(filterEargs, kernelGauss, clData.kernel.xy,
+                                     kernelBg, clData.kernel.filterX, clData.kernel.filterY,
                                      args.fKernelWidth);
   filterEvent.wait();
 
@@ -177,30 +172,6 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
                                clData.kernel.vec, args.fKernelWidth);
 
   vecEvent.wait();
-
-  // TEMP: return data to CPU
-  std::vector<double> filterX(clData.gaussCount * args.fKernelWidth, 0.0);
-  std::vector<double> filterY(clData.gaussCount * args.fKernelWidth, 0.0);
-  std::vector<double> vec(clData.gaussCount * args.fKernelWidth * args.fKernelWidth, 0.0);
-  
-  err = clData.queue.enqueueReadBuffer(clData.kernel.filterX, CL_TRUE, 0, sizeof(cl_double) * filterX.size(), &filterX[0]);
-  checkError(err);
-  err = clData.queue.enqueueReadBuffer(clData.kernel.filterY, CL_TRUE, 0, sizeof(cl_double) * filterY.size(), &filterY[0]);
-  checkError(err);
-  err = clData.queue.enqueueReadBuffer(clData.kernel.vec, CL_TRUE, 0, sizeof(cl_double) * vec.size(), &vec[0]);
-  checkError(err);
-
-  for (int i = 0; i < filterX.size(); i++) {
-    ((Kernel&)convolutionKernel).filterX[i / args.fKernelWidth][i % args.fKernelWidth] = filterX[i];
-  }
-  
-  for (int i = 0; i < filterY.size(); i++) {
-    ((Kernel&)convolutionKernel).filterY[i / args.fKernelWidth][i % args.fKernelWidth] = filterY[i];
-  }
-
-  for (int i = 0; i < vec.size(); i++) {
-    ((Kernel&)convolutionKernel).kernVec[i / (args.fKernelWidth * args.fKernelWidth)][i % (args.fKernelWidth * args.fKernelWidth)] = vec[i];
-  }
   
   clData.cmv.yConvTmp = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * std::max(templateStamps.size(), sciStamps.size()) * clData.gaussCount * (2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1));
   
