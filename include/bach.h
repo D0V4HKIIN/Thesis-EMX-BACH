@@ -61,7 +61,7 @@ bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
 void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
          const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData &clData, const ClStampsData &stampData, const Arguments& args);
 double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
-          const ClData &clData, const Arguments& args);
+            ClData &clData, const Arguments& args);
 void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg, bool convTemplate, double kernSum,
-         const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue, const Arguments& args);
+         const ClData &clData, const Arguments& args);
 void fin(const Image &convImg, const Image &diffImg, const Arguments& args);

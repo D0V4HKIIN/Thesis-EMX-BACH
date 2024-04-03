@@ -126,7 +126,7 @@ int main(int argc, const char* argv[]) {
   clock_t p13 = clock();
 
   Image diffImg{"sub.fits", templateImg.axis, args.outPath};
-  sub(convImg, scienceImg, mask, diffImg, convTemplate, kernSum, context, program, queue, args);
+  sub(convImg, scienceImg, mask, diffImg, convTemplate, kernSum, clData, args);
 
   clock_t p14 = clock();
   if(args.verboseTime) {

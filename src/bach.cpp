@@ -227,7 +227,7 @@ void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 }
 
 double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
-          const ClData &clData, const Arguments& args) {
+            ClData &clData, const Arguments& args) {
   std::cout << "\nConvolving..." << std::endl;
   
   const auto [w, h] = templateImg.axis;
@@ -284,7 +284,7 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
   // Convolve
   cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_long, cl_long, cl_long, cl_long, cl_double> convFunc(clData.program, "conv");
-  cl::EnqueueArgs eargs(clData.queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange);
+  cl::EnqueueArgs eargs(clData.queue, cl::NDRange(w * h));
   cl::Event convEvent = convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, clData.kernel.solution,
                                  w, h, args.backgroundOrder, (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1, scaleConv ? invKernSum : 1.0);
   convEvent.wait();
@@ -299,6 +299,8 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
 
   maskAfterEvent.wait();
 
+  clData.maskBuf = outMaskBuf;
+
   // TEMP: transfer mask back to CPU
   clData.queue.enqueueReadBuffer(outMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h, &mask);
 
@@ -306,47 +308,31 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
 }
 
 void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg, bool convTemplate, double kernSum,
-         const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue, const Arguments& args) {
+         const ClData &clData, const Arguments& args) {
   std::cout << "\nSubtracting images..." << std::endl;
 
   const auto [w, h] = scienceImg.axis;
   bool scaleConv = args.normalizeTemplate && convTemplate ||
                    !args.normalizeTemplate && !convTemplate;
 
-  cl::Buffer convImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
-  cl::Buffer diffImgBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
-  cl::Buffer sImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
+  cl::Buffer convImgBuf(clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
+  cl::Buffer diffImgBuf(clData.context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
+  cl::Buffer sImgBuf(clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
 
-  cl_int err{};
   // Write necessary data for subtraction
-  err = queue.enqueueWriteBuffer(convImgBuf, CL_TRUE, 0,
-                                 sizeof(cl_double) * w * h, &convImg);
-  err = queue.enqueueWriteBuffer(sImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h,
-                                 &scienceImg);
-  checkError(err);
+  clData.queue.enqueueWriteBuffer(convImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &convImg);
+  clData.queue.enqueueWriteBuffer(sImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &scienceImg);
   
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_double, cl_double> subFunc(program,
-                                                                       "sub");
-  cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange};
-  cl::Event subEvent = subFunc(eargs, sImgBuf, convImgBuf, diffImgBuf, args.fKernelWidth, w, h,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long,
+                    cl_double, cl_double> subFunc(clData.program, "sub");
+  cl::EnqueueArgs eargs(clData.queue, cl::NDRange(w * h));
+  cl::Event subEvent = subFunc(eargs, sImgBuf, convImgBuf, clData.maskBuf, diffImgBuf, args.fKernelWidth, w, h,
                                scaleConv ? kernSum : 1.0, scaleConv ? -(1.0 / kernSum) : 1.0);
   subEvent.wait();
 
   // Read data from subtraction
-  err = queue.enqueueReadBuffer(diffImgBuf, CL_TRUE, 0,
-                                sizeof(cl_double) * w * h, &diffImg);
-  checkError(err);
-
-  for (int y = args.hKernelWidth; y < diffImg.axis.second - args.hKernelWidth; y++) {
-    for (int x = args.hKernelWidth; x < diffImg.axis.first - args.hKernelWidth; x++) {
-      int index = y * diffImg.axis.first + x;
-
-      if (mask.isMasked(index, ImageMask::BAD_OUTPUT)) {
-        diffImg.data[index] = 1e-30f;
-      }
-    }
-  }
-} 
+  clData.queue.enqueueReadBuffer(diffImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &diffImg);
+}
 
 void fin(const Image &convImg, const Image &diffImg, const Arguments& args) {
   std::cout << "\nWriting output..." << std::endl;
