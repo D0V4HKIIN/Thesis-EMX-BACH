@@ -401,7 +401,7 @@ void kernel sumKernel(const global double *in,
 }
 
 double getBackground(const long x, const long y, global const double *sol, const long width, const long height,
-                     const long bgOrder, const long bgCount, const long nBgComp) {
+                     const long bgOrder, const long nBgComp) {
     double xf = (x - 0.5 * width) / (0.5 * width);
     double yf = (y - 0.5 * height) / (0.5 * height);
 
@@ -427,7 +427,7 @@ double getBackground(const long x, const long y, global const double *sol, const
 
 void kernel calcSigBg(global const double *sol, global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                       global double *bgs,
-                      const long maxSubStamps, const long width, const long height, const long bgOrder, const long bgCount, const long nBgComp) {
+                      const long maxSubStamps, const long width, const long height, const long bgOrder, const long nBgComp) {
     int stampId = get_global_id(0);
 
     int ssIndex = currentSubStamps[stampId];
@@ -439,8 +439,7 @@ void kernel calcSigBg(global const double *sol, global const int2 *subStampCoord
         int ssx = subStampCoords[stampId * maxSubStamps + ssIndex].x;
         int ssy = subStampCoords[stampId * maxSubStamps + ssIndex].y;
 
-        bg = getBackground(ssx, ssy, sol, width, height,
-                           bgOrder, bgCount, nBgComp);
+        bg = getBackground(ssx, ssy, sol, width, height, bgOrder, nBgComp);
     }
 
     bgs[stampId] = bg;

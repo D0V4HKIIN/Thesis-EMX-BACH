@@ -227,7 +227,7 @@ void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 }
 
 double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
-          const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue, const Arguments& args) {
+          const ClData &clData, const Arguments& args) {
   std::cout << "\nConvolving..." << std::endl;
   
   const auto [w, h] = templateImg.axis;
@@ -264,61 +264,32 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
   }
 
   mask.clear();
-  ImageMask convMask(scienceImg.axis);
-  
-  for (int y = 0; y < convMask.axis.second; y++) {
-    for (int x = 0; x < convMask.axis.first; x++) {
-      int index = y * convMask.axis.first + x;
 
-      if (templateImg[index] == 0.0) {
-        convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
-      }
+  // Declare all the buffers which will be need in opencl operations.  
+  cl::Buffer convMaskBuf(clData.context, CL_MEM_READ_ONLY, sizeof(cl_ushort) * w * h);
+  cl::Buffer kernBuf(clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * convKernels.size());
+  cl::Buffer convImgBuf(clData.context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
+  cl::Buffer outMaskBuf(clData.context, CL_MEM_WRITE_ONLY, sizeof(cl_ushort) * w * h);
 
-      if (templateImg[index] >= args.threshHigh) {
-        convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
-      }
-
-      if (templateImg[index] <= args.threshLow) {
-        convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
-      }
-    }
-  }
-
-  // Declare all the buffers which will be need in opencl operations.
-  cl::Buffer tImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
-  
-  cl::Buffer convMaskBuf(context, CL_MEM_READ_ONLY, sizeof(cl_ushort) * w * h);
-  cl::Buffer kernBuf(context, CL_MEM_READ_ONLY,
-                     sizeof(cl_double) * convKernels.size());
-  cl::Buffer convImgBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
-  cl::Buffer outMaskBuf(context, CL_MEM_WRITE_ONLY, sizeof(cl_ushort) * w * h);
-
-  cl_int err{};
   // Write necessary data for convolution
-  err = queue.enqueueWriteBuffer(kernBuf, CL_TRUE, 0,
-                                 sizeof(cl_double) * convKernels.size(),
-                                 &convKernels[0]);
-  checkError(err);
-  err = queue.enqueueWriteBuffer(tImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h,
-                                 &templateImg);
-  checkError(err);
-  err = queue.enqueueWriteBuffer(convMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h,
-                                 &convMask);
-  checkError(err);
+  clData.queue.enqueueWriteBuffer(kernBuf, CL_TRUE, 0, sizeof(cl_double) * convKernels.size(), convKernels.data());
+  
+  // Create convolution mask
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double> createMaskFunc(clData.program, "createConvMask");
+  cl::EnqueueArgs createMaskEargs(clData.queue, cl::NDRange(w, h));
+  cl::Event createMaskEvent = createMaskFunc(createMaskEargs, clData.tImgBuf, convMaskBuf, w, args.threshHigh, args.threshLow);
 
+  createMaskEvent.wait();
+
+  // Convolve
   cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long,
                     cl_long>
-      convFunc{program, "conv"};
-  cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange};
-  cl::Event convEvent = convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, w, h);
+      convFunc(clData.program, "conv");
+  cl::EnqueueArgs eargs(clData.queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange);
+  cl::Event convEvent = convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, w, h);
   convEvent.wait();
 
-  err = queue.enqueueReadBuffer(convImgBuf, CL_TRUE, 0,
-                                sizeof(cl_double) * w * h, &convImg);
-  checkError(err);
-  err = queue.enqueueReadBuffer(outMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h,
-                                 &mask);
-  checkError(err);
+  clData.queue.enqueueReadBuffer(convImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &convImg);
 
   // Add background and scale by kernel sum for output of convoluted image.
   for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
@@ -328,23 +299,14 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
     }
   }
 
-  for (int y = 0; y < convMask.axis.second; y++) {
-    for (int x = 0; x < convMask.axis.first; x++) {
-      int index = y * convMask.axis.first + x;
+  // Mask after convolve
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double> maskAfterFunc(clData.program, "maskAfterConv");
+  cl::EnqueueArgs maskAfterEargs(clData.queue, cl::NDRange(w, h));
+  cl::Event maskAfterEvent = maskAfterFunc(maskAfterEargs, clData.sImgBuf, outMaskBuf, w, args.threshHigh, args.threshLow);
 
-      if (scienceImg[index] == 0.0) {
-        mask.maskPix(x, y, ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
-      }
+  maskAfterEvent.wait();
 
-      if (scienceImg[index] >= args.threshHigh) {
-        mask.maskPix(x, y, ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
-      }
-
-      if (scienceImg[index] <= args.threshLow) {
-        mask.maskPix(x, y, ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
-      }
-    }
-  }
+  clData.queue.enqueueReadBuffer(outMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h, &mask);
 
   if (scaleConv) {
     for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {

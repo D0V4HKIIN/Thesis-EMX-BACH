@@ -20,7 +20,9 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   cl::Buffer weights(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size() * nComp2);
   cl::Buffer matrix(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1) * (matSize + 1));
   cl::Buffer testKernSol(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nKernSolComp);
-  cl::Buffer meritsCounter(clData.context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, sizeof(cl_int), &meritsCount);
+  cl::Buffer meritsCounter(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int));
+
+  clData.queue.enqueueWriteBuffer(meritsCounter, CL_TRUE, 0, sizeof(cl_int), &meritsCount);
 
   // Create test vec
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> testVecFunc(clData.program, "createTestVec");
@@ -433,11 +435,11 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
 
   // Create bg
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long, cl_long, cl_long> bgFunc(clData.program, "calcSigBg");
+                    cl_long, cl_long, cl_long, cl_long, cl_long> bgFunc(clData.program, "calcSigBg");
   cl::EnqueueArgs bgEargs(clData.queue, cl::NDRange(stampCount));
   cl::Event bgEvent = bgFunc(bgEargs, kernSol, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, bg,
                              2 * args.maxKSStamps, axis.first, axis.second, args.backgroundOrder,
-                             triNum(args.backgroundOrder + 1), (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1);
+                             (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1);
 
   // Create model
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
@@ -617,7 +619,9 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
   cl::Buffer sigmaVals(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampData.stampCount);
   cl::Buffer chi2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampData.stampCount);
   cl::Buffer invalidatedSubStampsBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_uchar) * stampData.stampCount);
-  cl::Buffer chi2Counter(clData.context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, sizeof(cl_int), &chi2Count);
+  cl::Buffer chi2Counter(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int));
+
+  clData.queue.enqueueWriteBuffer(chi2Counter, CL_TRUE, 0, sizeof(cl_int), &chi2Count);
 
   // Calculate sigmas
   calcSigs(tImgBuf, sImgBuf, tImg.axis, model, kernSol, sigmaVals, stampData, clData, args);

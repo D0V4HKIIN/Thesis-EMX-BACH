@@ -12,6 +12,22 @@
 #define MASK_SKIP_S (1 << 11)
 #define MASK_BAD_OUTPUT (1 << 12)
 
+void kernel createConvMask(global const double *img, global ushort *mask,
+                           const int w, const double threshHigh, const double threshLow) {
+  int x = get_global_id(0);
+  int y = get_global_id(1);
+
+  int id = x + y * w;
+  double t = img[id];
+  ushort m = 0;
+
+  m |= select(0, MASK_BAD_INPUT | MASK_BAD_PIX_VAL, t == 0.0);
+  m |= select(0, MASK_BAD_INPUT | MASK_SAT_PIXEL, t >= threshHigh);
+  m |= select(0, MASK_BAD_INPUT | MASK_LOW_PIXEL, t <= threshLow);
+
+  mask[id] = m;
+}
+
 void kernel conv(global const double *convKern, const long convWidth, const long xSteps,
                  global const double *image, global double *outimg,
                  global const ushort *convMask, global ushort *outMask,
@@ -75,4 +91,20 @@ void kernel conv(global const double *convKern, const long convWidth, const long
   } else {
     outimg[id] = 1e-30;
   }
+}
+
+void kernel maskAfterConv(global const double *img, global ushort *mask,
+                          const int w, const double threshHigh, const double threshLow) {
+  int x = get_global_id(0);
+  int y = get_global_id(1);
+
+  int id = x + y * w;
+  double t = img[id];
+  ushort m = 0;
+
+  m |= select(0, MASK_BAD_OUTPUT | MASK_BAD_INPUT | MASK_BAD_PIX_VAL, t == 0.0);
+  m |= select(0, MASK_BAD_OUTPUT | MASK_BAD_INPUT | MASK_SAT_PIXEL, t >= threshHigh);
+  m |= select(0, MASK_BAD_OUTPUT | MASK_BAD_INPUT | MASK_LOW_PIXEL, t <= threshLow);
+
+  mask[id] |= m;
 }

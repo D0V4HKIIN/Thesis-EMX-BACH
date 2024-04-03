@@ -114,7 +114,7 @@ int main(int argc, const char* argv[]) {
   clock_t p11 = clock();
 
   Image convImg{args.outName, templateImg.axis, args.outPath};
-  double kernSum = conv(templateImg, scienceImg, mask, convImg, convolutionKernel, convTemplate, context, program, queue, args);
+  double kernSum = conv(templateImg, scienceImg, mask, convImg, convolutionKernel, convTemplate, clData, args);
 
   clock_t p12 = clock();
   if(args.verboseTime) {
