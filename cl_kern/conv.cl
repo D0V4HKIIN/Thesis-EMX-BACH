@@ -30,8 +30,8 @@ void kernel createConvMask(global const double *img, global ushort *mask,
 
 void kernel conv(global const double *convKern, const long convWidth, const long xSteps,
                  global const double *image, global double *outimg,
-                 global const ushort *convMask, global ushort *outMask,
-                 const long w, const long h) {
+                 global const ushort *convMask, global ushort *outMask, global const double *kernSolution,
+                 const long w, const long h, const long bgOrder, const long nBgComp, const double invKernMult) {
   const int id = get_global_id(0);
   double acc = 0.0;
   const long x = id % w;
@@ -69,6 +69,9 @@ void kernel conv(global const double *convKern, const long convWidth, const long
         }
       }
     }
+
+    acc += getBackground(x, y, kernSolution, w, h, bgOrder, nBgComp);
+    acc *= invKernMult;
 
     outimg[id] = acc;
 

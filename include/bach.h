@@ -29,6 +29,7 @@ struct ClData {
         cl::Buffer filterX;
         cl::Buffer filterY;
         cl::Buffer vec;
+        cl::Buffer solution;
     } kernel;
 
     struct {
@@ -58,7 +59,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args);
 bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, ClData &clData, const Arguments& args);
 void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
-         const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const ClData &clData, const ClStampsData &stampData, const Arguments& args);
+         const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData &clData, const ClStampsData &stampData, const Arguments& args);
 double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
           const ClData &clData, const Arguments& args);
 void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg, bool convTemplate, double kernSum,

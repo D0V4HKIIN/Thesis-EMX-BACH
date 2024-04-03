@@ -220,7 +220,7 @@ bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
 }
 
 void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
-         const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const ClData &clData, const ClStampsData &stampData, const Arguments& args) {
+         const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData &clData, const ClStampsData &stampData, const Arguments& args) {
   std::cout << "\nFitting kernel..." << std::endl;
 
   fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask, tImgBuf, sImgBuf, clData, stampData, args);
@@ -282,22 +282,15 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
   createMaskEvent.wait();
 
   // Convolve
-  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long,
-                    cl_long>
-      convFunc(clData.program, "conv");
+  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_long, cl_long, cl_long, cl_long, cl_double> convFunc(clData.program, "conv");
   cl::EnqueueArgs eargs(clData.queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange);
-  cl::Event convEvent = convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, w, h);
+  cl::Event convEvent = convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, clData.kernel.solution,
+                                 w, h, args.backgroundOrder, (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1, scaleConv ? invKernSum : 1.0);
   convEvent.wait();
 
+  // TEMP: transfer convoluted image back to CPU
   clData.queue.enqueueReadBuffer(convImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &convImg);
-
-  // Add background and scale by kernel sum for output of convoluted image.
-  for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
-    for(int x = args.hKernelWidth; x < w - args.hKernelWidth; x++) {
-      convImg.data[x + y * w] +=
-          getBackground(x, y, convolutionKernel.solution, templateImg.axis, args);
-    }
-  }
 
   // Mask after convolve
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double> maskAfterFunc(clData.program, "maskAfterConv");
@@ -306,15 +299,8 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
 
   maskAfterEvent.wait();
 
+  // TEMP: transfer mask back to CPU
   clData.queue.enqueueReadBuffer(outMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h, &mask);
-
-  if (scaleConv) {
-    for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
-      for(int x = args.hKernelWidth; x < w - args.hKernelWidth; x++) {
-        convImg.data[x + y * w] *= invKernSum;
-      }
-    }
-  }
 
   return kernSum;
 }

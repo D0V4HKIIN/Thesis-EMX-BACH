@@ -519,7 +519,7 @@ double getBackground(const int x, const int y, const std::vector<double>& kernSo
 }
 
 void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask,
-               const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const ClData &clData, const ClStampsData &stampData, const Arguments& args) {
+               const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData &clData, const ClStampsData &stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nBGComp = triNum(args.backgroundOrder + 1);
@@ -529,7 +529,7 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
   // Create buffers
   cl::Buffer fitMatrix(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1) * (matSize + 1));
   cl::Buffer weights(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nComp2 * stampData.stampCount);
-  cl::Buffer solution(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nKernSolComp);
+  clData.kernel.solution = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nKernSolComp);
   cl::Buffer index(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * (matSize + 1));
   cl::Buffer vv(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1));
 
@@ -601,9 +601,9 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
     k.solution = solutionCpu;
     
     // TEMP: transfer kernel solution to GPU
-    clData.queue.enqueueWriteBuffer(solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
+    clData.queue.enqueueWriteBuffer(clData.kernel.solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
 
-    check = checkFitSolution(k, stamps, tImg, sImg, mask, clData, stampData, tImgBuf, sImgBuf, solution, args);
+    check = checkFitSolution(k, stamps, tImg, sImg, mask, clData, stampData, tImgBuf, sImgBuf, clData.kernel.solution, args);
 
     iteration++;
   }
