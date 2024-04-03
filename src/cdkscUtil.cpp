@@ -644,8 +644,23 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
 
   for (int i = 0; i < invalidatedSubStamps.size(); i++) {
     if (invalidatedSubStamps[i] == 1) {
-      stamps[i].subStamps.erase(stamps[i].subStamps.begin(), std::next(stamps[i].subStamps.begin()));
-      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, i, 1, k, clData, stampData, args);
+      // Count concecutive invalidated sub-stamps, so that
+      // multiple new sub-stamps can be filled at the same time
+      int firstIndex = i;
+      int count = 1;
+
+      while (firstIndex + count < invalidatedSubStamps.size() && invalidatedSubStamps[i + 1] == 1) {
+        count++;
+        i++;
+      }
+
+      // TEMP: delete bad sub-stamps on CPU
+      for (int j = 0; j < count; j++) {
+        Stamp &s = stamps[firstIndex + j];
+        s.subStamps.erase(s.subStamps.begin(), std::next(s.subStamps.begin()));
+      }
+
+      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, firstIndex, count, k, clData, stampData, args);
       check = true;
     }
   }
@@ -668,8 +683,23 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
   // Remove the bad sub-stamps
   for (int i = 0; i < invalidatedSubStamps.size(); i++) {
     if (invalidatedSubStamps[i] == 1) {
-      stamps[i].subStamps.erase(stamps[i].subStamps.begin(), std::next(stamps[i].subStamps.begin()));
-      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, i, 1, k, clData, stampData, args);
+      // Count concecutive invalidated sub-stamps, so that
+      // multiple new sub-stamps can be filled at the same time
+      int firstIndex = i;
+      int count = 1;
+
+      while (firstIndex + count < invalidatedSubStamps.size() && invalidatedSubStamps[i + 1] == 1) {
+        count++;
+        i++;
+      }
+
+      // TEMP: delete bad sub-stamps on CPU
+      for (int j = 0; j < count; j++) {
+        Stamp &s = stamps[firstIndex + j];
+        s.subStamps.erase(s.subStamps.begin(), std::next(s.subStamps.begin()));
+      }
+      
+      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, firstIndex, count, k, clData, stampData, args);
       check = true;
     }
   }
