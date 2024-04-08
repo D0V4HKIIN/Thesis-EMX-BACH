@@ -1,10 +1,9 @@
 void kernel checkBadSubStamps(global const double *in, global const int *subStampCounts,
-                              global double *out, global uchar *invalidated, global int *currentSubStamps, global int *chi2Counter,
+                              global double *out, global uchar *invalidated, global int *currentSubStamps, global int *chi2Counter, local double *localSigs,
                               const int count) {
     int gid = get_global_id(0);
     int lid = get_local_id(0);
 
-    local double localSigs[16];
     local int localCount;
     local int firstChi2Id;
 

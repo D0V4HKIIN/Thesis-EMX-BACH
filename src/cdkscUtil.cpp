@@ -628,9 +628,12 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
   calcSigs(tImgBuf, sImgBuf, tImg.axis, model, kernSol, sigmaVals, stampData, clData, args);
 
   // Find bad sub-stamps
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int> badSsFunc(clData.program, "checkBadSubStamps");
-  cl::EnqueueArgs badSsEargs(clData.queue, cl::NDRange(roundUpToMultiple(stampData.stampCount, 16)), cl::NDRange(16));
-  cl::Event badSsEvent = badSsFunc(badSsEargs, sigmaVals, stampData.subStampCounts, chi2, invalidatedSubStampsBuf, stampData.currentSubStamps, chi2Counter, stampData.stampCount);
+  static constexpr int badLocalSize = 16;
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int> badSsFunc(clData.program, "checkBadSubStamps");
+  cl::EnqueueArgs badSsEargs(clData.queue, cl::NDRange(roundUpToMultiple(stampData.stampCount, badLocalSize)), cl::NDRange(badLocalSize));
+  cl::Event badSsEvent = badSsFunc(badSsEargs, sigmaVals, stampData.subStampCounts,
+                                   chi2, invalidatedSubStampsBuf, stampData.currentSubStamps, chi2Counter,
+                                   cl::Local(badLocalSize * sizeof(cl_double)), stampData.stampCount);
 
   badSsEvent.wait();
 
