@@ -51,7 +51,7 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
   cl::Buffer sum2Buf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * reduceCount);
 
   cl::KernelFunctor<cl::Buffer> initMaskFunc(clData.program, "sigmaClipInitMask");
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long> calcFunc(clData.program, "sigmaClipCalc");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl::LocalSpaceArg> calcFunc(clData.program, "sigmaClipCalc");
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_double, cl_double, cl_double> maskFunc(clData.program, "sigmaClipMask");
   
   cl::EnqueueArgs calcEargs(clData.queue, cl::NullRange, cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
@@ -76,7 +76,7 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
     currNPoints = prevNPoints;
         
     // Calculate mean and standard deviation    
-    cl::Event calcEvent = calcFunc(calcEargs, sumBuf, sum2Buf, data, intMask, dataCount);
+    cl::Event calcEvent = calcFunc(calcEargs, sumBuf, sum2Buf, data, intMask, dataCount, cl::Local(localSize * sizeof(cl_double)));
     calcEvent.wait();
     
     // Can be optimized to use a tree structure instead of reducing on CPU
@@ -532,7 +532,7 @@ double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, cons
   double xf = (x - hWidth) / hWidth;
   double yf = (y - hHeight) / hHeight;
 
-  static constinit int localCount = 32;
+  static constexpr int localCount = 32;
 
   // Create buffers
   cl::Buffer kernCoeffs(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.nPSF);
@@ -549,9 +549,10 @@ double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, cons
   coeffEvent.wait();
 
   // Create kernel
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long> kernelFunc(clData.program, "makeKernel");
-  cl::EnqueueArgs kernelEargs(clData.queue, cl::NDRange(roundUpToMultiple(args.fKernelWidth * args.fKernelWidth, localCount)), cl::NDRange(localCount));
-  cl::Event kernelEvent = kernelFunc(kernelEargs, kernCoeffs, clData.kernel.vec, kernel, args.nPSF, args.fKernelWidth);
+  static constexpr int kernelLocalSize = 16;
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int, cl_int> kernelFunc(clData.program, "makeKernel");
+  cl::EnqueueArgs kernelEargs(clData.queue, cl::NDRange(roundUpToMultiple(args.fKernelWidth * args.fKernelWidth, kernelLocalSize)), cl::NDRange(kernelLocalSize));
+  cl::Event kernelEvent = kernelFunc(kernelEargs, kernCoeffs, clData.kernel.vec, kernel, cl::Local(kernelLocalSize * sizeof(cl_double)), args.nPSF, args.fKernelWidth);
   
   kernelEvent.wait();
 

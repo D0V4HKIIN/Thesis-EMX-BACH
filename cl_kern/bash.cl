@@ -134,12 +134,10 @@ void kernel sigmaClipInitMask(global uchar *mask) {
 
 void kernel sigmaClipCalc(global double *sum, global double *sum2,
                           global const double *data, global const uchar *mask,
-                          const long count) {
+                          const long count, local double *localD) {
     int gid = get_global_id(0);
     int lid = get_local_id(0);
     int groupId = get_group_id(0);
-
-    local double localD[32];
 
     if (gid < count) {
         double d = 0.0;

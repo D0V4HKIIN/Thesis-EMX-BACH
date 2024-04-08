@@ -148,7 +148,7 @@ void kernel convStampOdd(global const int2 *kernelXy,
     int dy = (y / 2) * 2 - y;
 
     // Not optimal, a lot of threads will do nothing
-    if (n > 0 && dx == 0 && dy == 0) {
+    if (dx == 0 && dy == 0) {
         w[stampId * wRows * wColumns + n * wColumns + pixel] -= w[stampId * wRows * wColumns + pixel];
     }
 }

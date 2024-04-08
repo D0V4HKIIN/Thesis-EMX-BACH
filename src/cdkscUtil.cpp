@@ -43,7 +43,7 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
 
   // Save kernel sums
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int> kernelSumFunc(clData.program, "saveKernelSums");
-  cl::EnqueueArgs kernelSumEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size()), cl::NullRange);
+  cl::EnqueueArgs kernelSumEargs(clData.queue, cl::NDRange(stamps.size()));
   cl::Event kernelSumEvent = kernelSumFunc(kernelSumEargs, testVec, kernelSums, args.nPSF + 2);
 
   kernelSumEvent.wait();
@@ -59,10 +59,10 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   clData.queue.enqueueWriteBuffer(testStampCountBuf, CL_TRUE, 0, sizeof(cl_int), &testStampCount);
 
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_double, cl_double, cl_double> testStampFunc(clData.program, "genCdTestStamps");
-  cl::EnqueueArgs testStampEargs(clData.queue, cl::NullRange, cl::NDRange(stamps.size()), cl::NullRange);
+                    cl_double, cl_double, cl_double, cl_int> testStampFunc(clData.program, "genCdTestStamps");
+  cl::EnqueueArgs testStampEargs(clData.queue, cl::NDRange(roundUpToMultiple(stamps.size(), 8)), cl::NDRange(8));
   cl::Event testStampEvent = testStampFunc(testStampEargs, kernelSums, testStampIndices, testStampCountBuf,
-                                           kernelMean, kernelStdev, args.sigKernFit);
+                                           kernelMean, kernelStdev, args.sigKernFit, stamps.size());
 
   clData.queue.enqueueReadBuffer(testStampCountBuf, CL_TRUE, 0, sizeof(cl_int), &testStampCount);
 

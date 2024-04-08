@@ -68,7 +68,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
 
   // Subtract for odd
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long> oddConvFunc(clData.program, "convStampOdd");
-  cl::EnqueueArgs oddConvEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount, stampCount), cl::NullRange);
+  cl::EnqueueArgs oddConvEargs(clData.queue, cl::NDRange(0, 1, stampOffset), cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount - 1, stampCount), cl::NullRange);
   cl::Event oddConvEvent = oddConvFunc(oddConvEargs, clData.kernel.xy, stampData.w,
                                        clData.wRows, clData.wColumns);
 

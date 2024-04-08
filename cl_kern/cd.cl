@@ -53,13 +53,42 @@ void kernel saveKernelSums(global const double *vec,
 
 void kernel genCdTestStamps(global const double *kernelSums,
                             global int *testStampIndices, global int *testStampCount,
-                            const double kernelMean, const double kernelStdev, const double sigKernFit) {
+                            const double kernelMean, const double kernelStdev, const double sigKernFit, const int stampCount) {
     int stampId = get_global_id(0);
+    int lstampId = get_local_id(0);
 
-    double diff = fabs((kernelSums[stampId] - kernelMean) / kernelStdev);
+    local int localTestStampCount;
 
-    if (diff < sigKernFit) {
-        int index = atomic_inc(testStampCount);
+    if (lstampId == 0) {
+        localTestStampCount = 0;
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    bool keepStamp = false;
+    int localIndex = 0;
+
+    if (stampId < stampCount) {
+        double diff = fabs((kernelSums[stampId] - kernelMean) / kernelStdev);
+        keepStamp = diff < sigKernFit;
+
+        if (keepStamp) {
+            localIndex = atomic_inc(&localTestStampCount);
+        }
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    local int firstGlobalId;
+
+    if (lstampId == 0) {
+        firstGlobalId = atomic_add(testStampCount, localTestStampCount);
+    }
+    
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if (keepStamp) {
+        int index = firstGlobalId + localIndex;
         testStampIndices[index] = stampId;
     }
 }
@@ -354,9 +383,12 @@ void kernel makeKernelCoeffs(const global double *kernSol,
 }
 
 void kernel makeKernel(const global double *kernCoeffs, const global double *kernVec,
-                       global double *kern,
-                       const long nPsf, const long kernelWidth) {
+                       global double *kern, local double *localCoeffs,
+                       const int nPsf, const int kernelWidth) {
     int i = get_global_id(0);
+
+    int li = get_local_id(0);
+    int lsize = get_local_size(0);
 
     int count = kernelWidth * kernelWidth;
 
