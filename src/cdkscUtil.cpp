@@ -205,11 +205,12 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   calcSigs(tImgBuf, sImgBuf, axis, model, testKernSol, merits, testStampData, clData, args);
 
   // Remove bad merits
+  static constexpr int badLocalSize = 16;
   cl::Buffer cleanMerits(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount);
 
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> badMeritsFunc(clData.program, "removeBadSigs");
-  cl::EnqueueArgs badMeritsEargs(clData.queue, cl::NDRange(roundUpToMultiple(testStampCount, 16)), cl::NDRange(16));
-  cl::Event badMeritsEvent = badMeritsFunc(badMeritsEargs, merits, cleanMerits, meritsCounter, testStampCount);
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_long> badMeritsFunc(clData.program, "removeBadSigs");
+  cl::EnqueueArgs badMeritsEargs(clData.queue, cl::NDRange(roundUpToMultiple(testStampCount, badLocalSize)), cl::NDRange(badLocalSize));
+  cl::Event badMeritsEvent = badMeritsFunc(badMeritsEargs, merits, cleanMerits, meritsCounter, cl::Local(badLocalSize * sizeof(cl_double)), testStampCount);
 
   badMeritsEvent.wait();
 
@@ -421,7 +422,7 @@ std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& 
 void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pair<cl_long, cl_long> &axis,
               const cl::Buffer &model, const cl::Buffer &kernSol, const cl::Buffer &sigma,
               const ClStampsData &stampData, const ClData &clData, const Arguments& args) {
-  static constinit int localSize = 32;
+  static constexpr int localSize = 32;
 
   int reduceCount = (args.fSStampWidth * args.fSStampWidth + localSize - 1) / localSize;
   int stampCount = stampData.stampCount;
@@ -456,12 +457,12 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
   // Create sigmas
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg,
                     cl_long, cl_long, cl_long, cl_long, cl_long> sigmaFunc(clData.program, "calcSig");
   cl::EnqueueArgs sigmaEargs(clData.queue, cl::NDRange(reduceCount * localSize, stampCount), cl::NDRange(localSize, 1));
   cl::Event sigmaEvent = sigmaFunc(sigmaEargs, model, bg, tImgBuf, sImgBuf,
                                    stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts,
-                                   sigTemp1, sigCount1, clData.maskBuf, axis.first, args.fSStampWidth,
+                                   sigTemp1, sigCount1, clData.maskBuf, cl::Local(localSize * sizeof(cl_double)), axis.first, args.fSStampWidth,
                                    2 * args.maxKSStamps, args.fSStampWidth * args.fSStampWidth, reduceCount);
 
   sigmaEvent.wait();
@@ -474,14 +475,14 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
   cl::Buffer *sigCountIn = &sigCount1;
   cl::Buffer *sigCountOut = &sigCount2;
 
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg,
                     cl_long, cl_long> reduceFunc(clData.program, "reduceSig");
 
   while (count > 1 || isFirst) {
     int nextCount = (count + localSize - 1) / localSize;
 
     cl::EnqueueArgs reduceEargs(clData.queue, cl::NDRange(roundUpToMultiple(count, localSize), stampCount), cl::NDRange(localSize, 1));
-    cl::Event reduceEvent = reduceFunc(reduceEargs, *sigIn, *sigCountIn, *sigOut, *sigCountOut, count, nextCount);
+    cl::Event reduceEvent = reduceFunc(reduceEargs, *sigIn, *sigCountIn, *sigOut, *sigCountOut, cl::Local(localSize * sizeof(cl_double)), count, nextCount);
 
     reduceEvent.wait();
 

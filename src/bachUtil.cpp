@@ -562,7 +562,7 @@ double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, cons
 
   copyEvent.wait();
 
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> sumFunc(clData.program, "sumKernel");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_long> sumFunc(clData.program, "sumKernel");
   int sumCount = args.fKernelWidth * args.fKernelWidth;
 
   cl::Buffer* src = &kernelSum;
@@ -570,7 +570,7 @@ double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, cons
 
   while (sumCount > 1) {
     cl::EnqueueArgs sumEargs(clData.queue, cl::NDRange(roundUpToMultiple(sumCount, localCount)), cl::NDRange(localCount));
-    cl::Event sumEvent = sumFunc(sumEargs, *src, *dst, sumCount);
+    cl::Event sumEvent = sumFunc(sumEargs, *src, *dst, cl::Local(localCount * sizeof(cl_double)), sumCount);
     
     sumEvent.wait();
 

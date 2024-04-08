@@ -417,14 +417,11 @@ void kernel makeKernel(const global double *kernCoeffs, const global double *ker
 }
 
 void kernel sumKernel(const global double *in,
-                      global double *out,
+                      global double *out, local double *localKern,
                       const long count) {
     int gid = get_global_id(0);
     int lid = get_local_id(0);
-    
-    int outid = count / 32;
-
-    local double localKern[32];
+    int groupId = get_group_id(0);
 
     if (gid < count) {
         localKern[lid] = in[gid];
@@ -433,14 +430,14 @@ void kernel sumKernel(const global double *in,
     barrier(CLK_LOCAL_MEM_FENCE);
 
     if (lid == 0) {
-        int localCount = min(32, (int)count - gid);
+        int localCount = min((int)get_local_size(0), (int)count - gid);
         double sum = 0.0;
 
         for (int i = 0; i < localCount; i++) {
             sum += localKern[i];
         }
 
-        out[gid / 32] = sum;
+        out[groupId] = sum;
     }
 }
 
@@ -535,7 +532,7 @@ void kernel makeModel(global const double *w, global const double *kernSol, glob
 
 void kernel calcSig(global const float *model, global const double *bg, global const double *tImg, global const double *sImg,
                     global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
-                    global double *sig, global int *sigCount, global ushort *mask,
+                    global double *sig, global int *sigCount, global ushort *mask, local double *localSig,
                     const long width, const long subStampWidth, const long maxSubStamps, const long modelSize, const long reduceCount) {
     int gi = get_global_id(0);
     int stampId = get_global_id(1);
@@ -548,7 +545,6 @@ void kernel calcSig(global const float *model, global const double *bg, global c
     int gx = gi % subStampWidth;
     int gy = gi / subStampWidth;
 
-    local double localSig[32];
     local int localSigCount;
 
     if (li == 0) {
@@ -591,7 +587,7 @@ void kernel calcSig(global const float *model, global const double *bg, global c
     if (li == 0) {
         double localSum = 0.0;
 
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < get_local_size(0); i++) {
             localSum += localSig[i];
         }
 
@@ -602,14 +598,13 @@ void kernel calcSig(global const float *model, global const double *bg, global c
 }
 
 void kernel reduceSig(global const double *in, global const int *inCount,
-                      global double *out, global int *outCount,
+                      global double *out, global int *outCount, local double *localSig,
                       const long count, const long nextCount) {
     int lid = get_local_id(0);
     int gid = get_global_id(0);
     int groupId = get_group_id(0);
     int stampId = get_global_id(1);
 
-    local double localSig[32];
     local int localCount;
 
     if (lid == 0) {
@@ -628,7 +623,7 @@ void kernel reduceSig(global const double *in, global const int *inCount,
 
     if (lid == 0) {
         double sum = 0.0;
-        int c = min(32, (int)count - gid);
+        int c = min((int)get_local_size(0), (int)count - gid);
 
         for (int i = 0; i < c; i++) {
             sum += localSig[i];
@@ -660,13 +655,12 @@ void kernel reduceSig(global const double *in, global const int *inCount,
 }
 
 void kernel removeBadSigs(global const double *in,
-                          global double *out, global int *sigCounter,
+                          global double *out, global int *sigCounter, local double *localSigs,
                           const long inCount) {
     int gid = get_global_id(0);
     int lid = get_local_id(0);
     int groupId = get_group_id(0);
 
-    local double localSigs[16];
     local int localCount;
     local int firstOutId;
 
