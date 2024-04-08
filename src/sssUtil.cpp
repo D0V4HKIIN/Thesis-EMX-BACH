@@ -120,7 +120,7 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
   
   cl_int maxSStamps{2 * args.maxKSStamps};
 
-  static constinit int localSize{8};
+  constexpr int localSize{1};
 
   cl::EnqueueArgs eargsFindSStamps(clData.queue, cl::NDRange(roundUpToMultiple(stamps.size(), localSize)), cl::NDRange(localSize));
   cl::KernelFunctor<cl::Buffer, cl::Buffer,
@@ -163,7 +163,7 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
     {
       size_t offset{index * maxSStamps + i};
       std::pair<cl_int, cl_int> imageCoords{sstampCoords[offset].x, sstampCoords[offset].y};
-      static constinit std::pair<cl_int, cl_int> stampCoords(
+      constexpr std::pair<cl_int, cl_int> stampCoords(
         std::numeric_limits<cl_int>::max(),
         std::numeric_limits<cl_int>::max()
       );
@@ -188,7 +188,7 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
 
 int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStampsData& stampsData, const ClData& clData) {
   
-  static constinit int statsSize{5};
+  static constexpr int statsSize{5};
   int maxSStamps{2 * args.maxKSStamps};
   cl::Buffer filteredStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * stamps.size()};
   cl::Buffer filteredStampSizes{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * stamps.size()};

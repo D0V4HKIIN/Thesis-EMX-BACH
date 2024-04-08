@@ -45,6 +45,152 @@ void kernel createStampBounds(global long *stampsCoords, global long *stampsSize
     stampsSizes[2*id + 0] = stampW;
     stampsSizes[2*id + 1] = stampH;
 }
+
+
+#define M1 259200
+#define IA1 7141
+#define IC1 54773
+#define RM1 (1.0/M1)
+#define M2 134456
+#define IA2 8121
+#define IC2 28411
+#define RM2 (1.0/M2)
+#define M3 243000
+#define IA3 4561
+#define IC3 51349
+double ran1(int *idum, long *ix1, long *ix2, long *ix3, double *r, int *iff) {
+    double temp;
+    int j;
+    /* void nrerror(char *error_text); */
+    
+    if (*idum < 0 || *iff == 0) {
+        *iff=1;
+        *ix1=(IC1-(*idum)) % M1;
+        *ix1=(IA1*(*ix1)+IC1) % M1;
+        *ix2=*ix1 % M2;
+        *ix1=(IA1*(*ix1)+IC1) % M1;
+        *ix3=(*ix1) % M3;
+        for (j=1;j<=97;j++) {
+            *ix1=(IA1*(*ix1)+IC1) % M1;
+            *ix2=(IA2*(*ix2)+IC2) % M2;
+            r[j]=((*ix1)+(*ix2)*RM2)*RM1;
+        }
+        *idum=1;
+    }
+    *ix1=(IA1*(*ix1)+IC1) % M1;
+    *ix2=(IA2*(*ix2)+IC2) % M2;
+    *ix3=(IA3*(*ix3)+IC3) % M3;
+    j=1 + ((97*(*ix3))/M3);
+    /* if (j > 97 || j < 1) nrerror("RAN1: This cannot happen."); */
+    temp=r[j];
+    r[j]=(*ix1+(*ix2)*RM2)*RM1;
+    return temp;
+}
+
+void kernel sampleStamp(global const double *img, global const ushort *mask, 
+                        global const long2 *stampsCoords, global const long2 *stampsSizes,
+                        global double *samples, global int *sampleCounts,
+                        const long w, const int nSamples) {
+    
+    int stamp = get_global_id(0);
+    long2 stampCoords = stampsCoords[stamp];
+    long2 stampSize = stampsSizes[stamp];
+    int stampNumPix = stampSize.x * stampSize.y;
+    int sampleCounter = 0;
+
+    int idum = -666;
+    long ix1,ix2,ix3;
+    double r[98];
+    int iff=0;
+
+    for(int iter = 0; sampleCounter < nSamples && iter < stampNumPix; iter++) {
+        int randX = (int)floor(ran1(&idum, &ix1, &ix2, &ix3, r, &iff) * (int)stampSize.x);
+        int randY = (int)floor(ran1(&idum, &ix1, &ix2, &ix3, r, &iff) * (int)stampSize.y);
+        
+        int xI = randX + stampCoords.x;
+        int yI = randY + stampCoords.y;
+        int indexI = xI + yI*w;
+
+        if(mask[indexI] > 0 || fabs(img[indexI]) <= ZEROVAL) {
+        continue;
+        }
+
+        samples[stamp * nSamples + sampleCounter++] = img[indexI];
+    }
+
+    sampleCounts[stamp] = sampleCounter;
+    for (int i = sampleCounter; i < nSamples; i++) {
+        samples[stamp * nSamples + i] = 0;
+    }
+}
+
+void kernel pad(global const double *buffer, global double *paddedBuffer,
+                const int n, const int paddedN){
+    int idx = get_global_id(0);
+    int stamp  = get_global_id(1);
+
+    paddedBuffer[stamp * paddedN + idx] =
+        idx < n ? buffer[stamp * n + idx] : INFINITY;
+}
+
+static void exchangeDouble(global double *i, global double *j)
+{
+	double k;
+	k = *i;
+	*i = *j;
+	*j = k;
+}
+
+void kernel sortSamples(global double *paddedSamples, int paddedNSamples, const int j, const int k){
+    int id = get_global_id(0);                        
+    
+    const long i = id % paddedNSamples;
+    const long stamp = id / paddedNSamples;
+    const int ixj=i^j; // Calculate indexing!
+    if ((ixj)>i)
+    {
+        if ((i&k)==0 && paddedSamples[id] > paddedSamples[stamp * paddedNSamples + ixj]) {
+        exchangeDouble(&paddedSamples[id], &paddedSamples[stamp * paddedNSamples + ixj]);
+        }
+        if ((i&k)!=0 && paddedSamples[id] < paddedSamples[stamp * paddedNSamples + ixj]) {
+        exchangeDouble(&paddedSamples[id], &paddedSamples[stamp * paddedNSamples + ixj]);
+        }
+    }
+}
+
+void kernel maskStamp(global const double *img, global ushort *mask, 
+                      global const long2 *stampCoords, 
+                      global double *goodPixels, global int *goodPixelCounts,
+                      const int fullStampWidth, const int w, const int h){
+    int indexS = get_global_id(0);
+    int stamp  = get_global_id(1);
+
+    long2 coords = stampCoords[stamp];
+
+    int x = indexS % fullStampWidth;
+    int y = indexS / fullStampWidth;
+
+    int xI = x + coords.x;
+    int yI = y + coords.y;
+    int indexI = xI + yI*w;
+
+    if (xI >= w || yI >= h) return;
+    
+    double pixel = img[indexI];
+    if (mask[indexI] > 0 || pixel <= ZEROVAL) return;
+
+    if (isnan(pixel)) {
+        mask[indexI] |= (ushort)(MASK_NAN_PIXEL | MASK_BAD_INPUT);
+        return;
+    }
+
+    long stampOffset = stamp * get_global_size(0);
+    long pixelOffset = atomic_inc(&goodPixelCounts[stamp]);
+    
+    goodPixels[stampOffset + pixelOffset] = pixel;
+
+}
+
 double checkSStamp(global const double *img, global ushort *mask,
                    const double skyEst, const double fwhm, const long imgW,
                    const int2 sstampCoords, const long hSStampWidth,
@@ -82,7 +228,7 @@ double checkSStamp(global const double *img, global ushort *mask,
     return retVal;
 }
 
-void sortSubStamps(int substampCount, local int2 *coords, local double *values)
+void sortSubStamps(const int substampCount, local int2 *coords, local double *values)
 {
     int i = 1;
     while (i < substampCount) {
@@ -239,7 +385,7 @@ void kernel removeEmptyStamps(global const long2 *stampCoords, global const long
                               global long2 *filteredStampCoords, global long2 *filteredStampSizes,
                               global double *filteredStampStats, global int *filteredSubStampCounts,
                               global int2 *filteredSubStampCoords, global double *filteredSubStampValues,
-                              global const int *keepIndeces, global const int *keepCounter, int maxKSStamps) {
+                              global const int *keepIndeces, global const int *keepCounter, const int maxKSStamps) {
     int stamp = get_global_id(0);
     if(stamp >= *keepCounter) return;
     

@@ -68,7 +68,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   templateStamps.reserve(args.stampsx * args.stampsy);
   sciStamps.reserve(args.stampsx * args.stampsy);
   
-  static constinit int statsCount{5};
+  constexpr int statsCount{5};
   int subStampMaxCount{2 * args.maxKSStamps};
 
   clData.tmpl.stampCoords    = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
