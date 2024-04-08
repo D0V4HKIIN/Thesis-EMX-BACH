@@ -51,7 +51,7 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
   cl::Buffer sum2Buf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * reduceCount);
 
   cl::KernelFunctor<cl::Buffer> initMaskFunc(clData.program, "sigmaClipInitMask");
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl::LocalSpaceArg> calcFunc(clData.program, "sigmaClipCalc");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl::LocalSpaceArg> calcFunc(clData.program, "sigmaClipCalc");
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_double, cl_double, cl_double> maskFunc(clData.program, "sigmaClipMask");
   
   cl::EnqueueArgs calcEargs(clData.queue, cl::NullRange, cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
@@ -409,14 +409,14 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
 
 void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &vv, const ClData &clData) {
   // Find big values
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> bigFunc(clData.program, "ludcmpBig");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int> bigFunc(clData.program, "ludcmpBig");
   cl::EnqueueArgs bigEargs(clData.queue, cl::NullRange, cl::NDRange(matrixSize, stampCount), cl::NullRange);
   cl::Event bigEvent = bigFunc(bigEargs, matrix, vv, matrixSize);
 
   bigEvent.wait();
 
   // Rest of LU-decomposition
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> restFunc(clData.program, "ludcmpRest");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int> restFunc(clData.program, "ludcmpRest");
   cl::EnqueueArgs restEargs(clData.queue, cl::NullRange, cl::NDRange(stampCount), cl::NullRange);
   cl::Event restEvent = restFunc(restEargs, vv, matrix, index, matrixSize);
 
@@ -424,7 +424,7 @@ void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::
 }
 
 void lubksb(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &result, const ClData &clData) {
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> func(clData.program, "lubksb");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int> func(clData.program, "lubksb");
   cl::EnqueueArgs eargs(clData.queue, cl::NullRange, cl::NDRange(stampCount), cl::NullRange);
   cl::Event event = func(eargs, matrix, index, result, matrixSize);
 
@@ -540,7 +540,7 @@ double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, cons
   cl::Buffer kernelSum2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * ((args.fKernelWidth * args.fKernelWidth + localCount - 1) / localCount));
 
   // Create coefficients
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_int,
                     cl_double, cl_double> coeffFunc(clData.program, "makeKernelCoeffs");
   cl::EnqueueArgs coeffEargs(clData.queue, cl::NDRange(args.nPSF));
   cl::Event coeffEvent = coeffFunc(coeffEargs, kernSolution, kernCoeffs, args.kernelOrder,
@@ -562,7 +562,7 @@ double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, cons
 
   copyEvent.wait();
 
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_long> sumFunc(clData.program, "sumKernel");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int> sumFunc(clData.program, "sumKernel");
   int sumCount = args.fKernelWidth * args.fKernelWidth;
 
   cl::Buffer* src = &kernelSum;

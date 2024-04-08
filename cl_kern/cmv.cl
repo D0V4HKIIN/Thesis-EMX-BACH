@@ -2,7 +2,7 @@ void kernel createKernelFilter(global const int *gauss,
                                global const int2 *kernelXy,
                                global const float *bg,
                                global double *filterX, global double *filterY,
-                               const long kernelWidth) {
+                               const int kernelWidth) {
     int id = get_global_id(0);
 
     int firstFilterId = id * kernelWidth;
@@ -45,7 +45,7 @@ void kernel createKernelFilter(global const int *gauss,
 void kernel createKernelVector(global const int2 *kernelXy,
                                global const double *filterX, global const double *filterY,
                                global double *vec,
-                               const long kernelWidth) {
+                               const int kernelWidth) {
     int u = get_global_id(0);
     int v = get_global_id(1);
     int n = get_global_id(2);
@@ -70,8 +70,8 @@ void kernel createKernelVector(global const int2 *kernelXy,
 void kernel convStampY(global const double *img, global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                        global const double *filterY,
                        global float *tmp,
-                       const long kernelWidth, const long subStampWidth,
-                       const long width, const long gaussCount, const long maxSubStamps) {
+                       const int kernelWidth, const int subStampWidth,
+                       const int width, const int gaussCount, const int maxSubStamps) {
     int pixel = get_global_id(0);
     int n = get_global_id(1);
     int stampId = get_global_id(2);
@@ -107,9 +107,9 @@ void kernel convStampY(global const double *img, global const int2 *subStampCoor
 
 void kernel convStampX(global const float *tmp, global const double *filterX,
                        global double *w, 
-                       const long kernelWidth, const long subStampWidth,
-                       const long wRows, const long wColumns,
-                       const long gaussCount) {
+                       const int kernelWidth, const int subStampWidth,
+                       const int wRows, const int wColumns,
+                       const int gaussCount) {
     int pixel = get_global_id(0);
     int n = get_global_id(1);
     int stampId = get_global_id(2);
@@ -136,7 +136,7 @@ void kernel convStampX(global const float *tmp, global const double *filterX,
 
 void kernel convStampOdd(global const int2 *kernelXy,
                          global double *w,
-                         const long wRows, const long wColumns) {
+                         const int wRows, const int wColumns) {
     int pixel = get_global_id(0);
     int n = get_global_id(1);
     int stampId = get_global_id(2);
@@ -155,10 +155,10 @@ void kernel convStampOdd(global const int2 *kernelXy,
 
 void kernel convStampBg(global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts, global const int2 *bgXY,
                         global double *w,
-                        const long width, const long height,
-                        const long subStampWidth,
-                        const long wRows, const long wColumns,
-                        const long gaussCount, const long maxSubStamps) {
+                        const int width, const int height,
+                        const int subStampWidth,
+                        const int wRows, const int wColumns,
+                        const int gaussCount, const int maxSubStamps) {
     int pixel = get_global_id(0);
     int bgId = get_global_id(1);
     int stampId = get_global_id(2);
@@ -172,10 +172,10 @@ void kernel convStampBg(global const int2 *subStampCoords, global const int *cur
         int ssx = subStampCoords[stampId * maxSubStamps + ssIndex].x;
         int ssy = subStampCoords[stampId * maxSubStamps + ssIndex].y;
 
-        long halfSubStampWidth = subStampWidth / 2;
+        int halfSubStampWidth = subStampWidth / 2;
 
-        long x = ssx - halfSubStampWidth + pixel % subStampWidth;
-        long y = ssy - halfSubStampWidth + pixel / subStampWidth;
+        int x = ssx - halfSubStampWidth + pixel % subStampWidth;
+        int y = ssy - halfSubStampWidth + pixel / subStampWidth;
 
         double xf = (x - (width * 0.5f)) / (width * 0.5f);
         double yf = (y - (height * 0.5f)) / (height * 0.5f);
@@ -194,9 +194,9 @@ void kernel convStampBg(global const int2 *subStampCoords, global const int *cur
 
 void kernel createQ(global const double *w,
                     global double *q,
-                    const long wRows, const long wColumns,
-                    const long qRows, const long qColumns,
-                    const long subStampWidth) {
+                    const int wRows, const int wColumns,
+                    const int qRows, const int qColumns,
+                    const int subStampWidth) {
     int j = get_global_id(0);
     int i = get_global_id(1);
     int stampId = get_global_id(2);
@@ -217,9 +217,9 @@ void kernel createQ(global const double *w,
 void kernel createB(global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                     global const double *img, global const double *w,
                     global double *b,
-                    const long wRows, const long wColumns, const long bCount,
-                    const long subStampWidth, const long maxSubStamps,
-                    const long width) {
+                    const int wRows, const int wColumns, const int bCount,
+                    const int subStampWidth, const int maxSubStamps,
+                    const int width) {
     int i = get_global_id(0);
     int stampId = get_global_id(1);
 

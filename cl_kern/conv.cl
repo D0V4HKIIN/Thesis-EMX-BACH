@@ -28,16 +28,16 @@ void kernel createConvMask(global const double *img, global ushort *mask,
   mask[id] = m;
 }
 
-void kernel conv(global const double *convKern, const long convWidth, const long xSteps,
+void kernel conv(global const double *convKern, const int convWidth, const int xSteps,
                  global const double *image, global double *outimg,
                  global const ushort *convMask, global ushort *outMask, global const double *kernSolution,
-                 const long w, const long h, const long bgOrder, const long nBgComp, const double invKernMult) {
+                 const int w, const int h, const int bgOrder, const int nBgComp, const double invKernMult) {
   const int id = get_global_id(0);
   double acc = 0.0;
-  const long x = id % w;
-  const long y = id / w;
+  const int x = id % w;
+  const int y = id / w;
 
-  long halfConvWidth = convWidth / 2;
+  int halfConvWidth = convWidth / 2;
 
   if(x >= halfConvWidth && x < w - halfConvWidth && y >= halfConvWidth &&
      y < h - halfConvWidth) {
@@ -51,13 +51,13 @@ void kernel conv(global const double *convKern, const long convWidth, const long
     double aks = 0.0;
     double uks = 0.0;
 
-    for(long j = y - halfConvWidth; j <= y + halfConvWidth; j++) {
+    for(int j = y - halfConvWidth; j <= y + halfConvWidth; j++) {
       int jk = y - j + halfConvWidth;
-      for(long i = x - halfConvWidth; i <= x + halfConvWidth; i++) {
+      for(int i = x - halfConvWidth; i <= x + halfConvWidth; i++) {
         int ik = x - i + halfConvWidth;
-        long convIndex = ik + jk * convWidth;
+        int convIndex = ik + jk * convWidth;
         convIndex += convOffset;
-        long imgIndex = i + w * j;
+        int imgIndex = i + w * j;
 
         double kk = convKern[convIndex];
         acc += kk * image[imgIndex];

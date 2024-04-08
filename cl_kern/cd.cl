@@ -14,7 +14,7 @@
 
 void kernel createTestVec(global const double* b,
                           global double *vec,
-                          const long bCount) {
+                          const int bCount) {
     int id = get_global_id(0);
     int stampId = get_global_id(1);
 
@@ -29,7 +29,7 @@ void kernel createTestVec(global const double* b,
 
 void kernel createTestMat(global const double *q,
                           global double *matrix,
-                          const long qCount) {
+                          const int qCount) {
     int j = get_global_id(0);
     int i = get_global_id(1);
     int stampId = get_global_id(2);
@@ -95,7 +95,7 @@ void kernel genCdTestStamps(global const double *kernelSums,
 
 void kernel copyTestSubStampsCoords(global const int2 *in, global const int *testStampIndices,
                                     global int2 *out,
-                                    const long maxSubStamps) {
+                                    const int maxSubStamps) {
     int subStampId = get_global_id(0);
     int dstStampId = get_global_id(1);
 
@@ -116,7 +116,7 @@ void kernel copyTestSubStampsCounts(global const int *inCurrents, global const i
 
 void kernel copyTestStampsW(global const double *in, global const int *testStampIndices,
                             global double *out,
-                            const long wRows, const long wColumns) {
+                            const int wRows, const int wColumns) {
     int i = get_global_id(0);
     int j = get_global_id(1);
     int dstStampId = get_global_id(2);
@@ -128,7 +128,7 @@ void kernel copyTestStampsW(global const double *in, global const int *testStamp
 
 void kernel copyTestStampsQ(global const double *in, global const int *testStampIndices,
                             global double *out,
-                            const long qCount) {
+                            const int qCount) {
     int i = get_global_id(0);
     int j = get_global_id(1);
     int dstStampId = get_global_id(2);
@@ -140,7 +140,7 @@ void kernel copyTestStampsQ(global const double *in, global const int *testStamp
 
 void kernel copyTestStampsB(global const double *in, global const int *testStampIndices,
                             global double *out,
-                            const long bCount) {
+                            const int bCount) {
     int i = get_global_id(0);
     int dstStampId = get_global_id(1);
 
@@ -151,7 +151,7 @@ void kernel copyTestStampsB(global const double *in, global const int *testStamp
 
 void kernel createMatrixWeights(global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts, global const int2 *xy,
                                 global double *weights,
-                                const long width, const long height, const long maxSubStamps, const long count) {
+                                const int width, const int height, const int maxSubStamps, const int count) {
     int k = get_global_id(0);
     int stampId = get_global_id(1);
 
@@ -181,8 +181,8 @@ void kernel createMatrixWeights(global const int2 *subStampCoords, global const 
 
 void kernel createMatrix(global const double *weights, global const double *w, global const double *q,
                          global double *matrix,
-                         const long stampCount, const long matrixSize, const long pixStamp, const long nComp1, const long nComp2,
-                         const long wRows, const long wColumns, const long qCount) {
+                         const int stampCount, const int matrixSize, const int pixStamp, const int nComp1, const int nComp2,
+                         const int wRows, const int wColumns, const int qCount) {
     int column = get_global_id(0);
     int row = get_global_id(1);
 
@@ -297,12 +297,12 @@ void kernel createMatrix(global const double *weights, global const double *w, g
 void kernel createScProd(const global double *img, const global double *weights, const global double *b, const global double *w,
                          const global int2 *subStampCoords, const global int *currentSubStamps, const global int *subStampCounts,
                          global double *res,
-                         const long width, const long stampCount, const long nComp1, const long nComp2, const long nBGComp,
-                         const long bCount, const long wRows, const long wColumns, const long subStampWidth, const long maxSubStamps) {
+                         const int width, const int stampCount, const int nComp1, const int nComp2, const int nBGComp,
+                         const int bCount, const int wRows, const int wColumns, const int subStampWidth, const int maxSubStamps) {
     int id = get_global_id(0);
 
-    long nComp = nComp1 * nComp2;
-    long halfSubStampWidth = subStampWidth / 2;
+    int nComp = nComp1 * nComp2;
+    int halfSubStampWidth = subStampWidth / 2;
                         
     double r0 = 0.0;
     if (id >= 2 && id < nComp + 2) {
@@ -353,7 +353,7 @@ void kernel createScProd(const global double *img, const global double *weights,
 
 void kernel makeKernelCoeffs(const global double *kernSol,
                              global double *coeffs,
-                             const long kernelOrder, const long kernXyCount, const double xf, const double yf) {
+                             const int kernelOrder, const int kernXyCount, const double xf, const double yf) {
     int i = get_global_id(0);
 
     double c0 = 0.0;
@@ -418,7 +418,7 @@ void kernel makeKernel(const global double *kernCoeffs, const global double *ker
 
 void kernel sumKernel(const global double *in,
                       global double *out, local double *localKern,
-                      const long count) {
+                      const int count) {
     int gid = get_global_id(0);
     int lid = get_local_id(0);
     int groupId = get_group_id(0);
@@ -441,8 +441,8 @@ void kernel sumKernel(const global double *in,
     }
 }
 
-double getBackground(const long x, const long y, global const double *sol, const long width, const long height,
-                     const long bgOrder, const long nBgComp) {
+double getBackground(const int x, const int y, global const double *sol, const int width, const int height,
+                     const int bgOrder, const int nBgComp) {
     double xf = (x - 0.5 * width) / (0.5 * width);
     double yf = (y - 0.5 * height) / (0.5 * height);
 
@@ -468,7 +468,7 @@ double getBackground(const long x, const long y, global const double *sol, const
 
 void kernel calcSigBg(global const double *sol, global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                       global double *bgs,
-                      const long maxSubStamps, const long width, const long height, const long bgOrder, const long nBgComp) {
+                      const int maxSubStamps, const int width, const int height, const int bgOrder, const int nBgComp) {
     int stampId = get_global_id(0);
 
     int ssIndex = currentSubStamps[stampId];
@@ -488,8 +488,8 @@ void kernel calcSigBg(global const double *sol, global const int2 *subStampCoord
 
 void kernel makeModel(global const double *w, global const double *kernSol, global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                       global float *model,
-                      const long nPsf, const long kernelOrder, const long wRows, const long wColumns, const long maxSubStamps,
-                      const long width, const long height, const long modelSize) {
+                      const int nPsf, const int kernelOrder, const int wRows, const int wColumns, const int maxSubStamps,
+                      const int width, const int height, const int modelSize) {
     int j = get_global_id(0);
     int stampId = get_global_id(1);
 
@@ -533,7 +533,7 @@ void kernel makeModel(global const double *w, global const double *kernSol, glob
 void kernel calcSig(global const float *model, global const double *bg, global const double *tImg, global const double *sImg,
                     global const int2 *subStampCoords, global const int *currentSubStamps, global const int *subStampCounts,
                     global double *sig, global int *sigCount, global ushort *mask, local double *localSig,
-                    const long width, const long subStampWidth, const long maxSubStamps, const long modelSize, const long reduceCount) {
+                    const int width, const int subStampWidth, const int maxSubStamps, const int modelSize, const int reduceCount) {
     int gi = get_global_id(0);
     int stampId = get_global_id(1);
 
@@ -599,7 +599,7 @@ void kernel calcSig(global const float *model, global const double *bg, global c
 
 void kernel reduceSig(global const double *in, global const int *inCount,
                       global double *out, global int *outCount, local double *localSig,
-                      const long count, const long nextCount) {
+                      const int count, const int nextCount) {
     int lid = get_local_id(0);
     int gid = get_global_id(0);
     int groupId = get_group_id(0);
@@ -656,7 +656,7 @@ void kernel reduceSig(global const double *in, global const int *inCount,
 
 void kernel removeBadSigs(global const double *in,
                           global double *out, global int *sigCounter, local double *localSigs,
-                          const long inCount) {
+                          const int inCount) {
     int gid = get_global_id(0);
     int lid = get_local_id(0);
     int groupId = get_group_id(0);

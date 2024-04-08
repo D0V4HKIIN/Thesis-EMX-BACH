@@ -48,7 +48,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
 
   // Convolve stamps on Y
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long, cl_long>
+                    cl_int, cl_int, cl_int, cl_int, cl_int>
                     yConvFunc(clData.program, "convStampY");
   cl::EnqueueArgs yConvEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange((2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1), clData.gaussCount, stampCount), cl::NullRange);
   cl::Event yConvEvent = yConvFunc(yConvEargs, tImgBuf, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.kernel.filterY, clData.cmv.yConvTmp,
@@ -58,7 +58,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
 
   // Convolve stamps on X
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long, cl_long>
+                    cl_int, cl_int, cl_int, cl_int, cl_int>
                     xConvFunc(clData.program, "convStampX");
   cl::EnqueueArgs xConvEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount, stampCount), cl::NullRange);
   cl::Event xConvEvent = xConvFunc(xConvEargs, clData.cmv.yConvTmp, clData.kernel.filterX, stampData.w,
@@ -67,7 +67,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   xConvEvent.wait();
 
   // Subtract for odd
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long> oddConvFunc(clData.program, "convStampOdd");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_int> oddConvFunc(clData.program, "convStampOdd");
   cl::EnqueueArgs oddConvEargs(clData.queue, cl::NDRange(0, 1, stampOffset), cl::NDRange(args.fSStampWidth * args.fSStampWidth, clData.gaussCount - 1, stampCount), cl::NullRange);
   cl::Event oddConvEvent = oddConvFunc(oddConvEargs, clData.kernel.xy, stampData.w,
                                        clData.wRows, clData.wColumns);
@@ -76,7 +76,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
 
   // Compute background
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
+                    cl_int, cl_int, cl_int, cl_int, cl_int, cl_int, cl_int>
                     bgConvFunc(clData.program, "convStampBg");
   cl::EnqueueArgs bgConvEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange(clData.wColumns, clData.wRows - clData.gaussCount, stampCount), cl::NullRange);
   cl::Event bgConvEvent = bgConvFunc(bgConvEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.bg.xy, stampData.w,
@@ -105,7 +105,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   }
 
   // Create Q
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_long, cl_long>
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int, cl_int, cl_int>
                     qFunc(clData.program, "createQ");
   cl::EnqueueArgs qEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange(clData.qCount, clData.qCount, stampCount), cl::NullRange);
   cl::Event qEvent = qFunc(qEargs, stampData.w, stampData.q, clData.wRows, clData.wColumns,
@@ -113,7 +113,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
 
   // Create B
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long, cl_long, cl_long>
+                    cl_int, cl_int, cl_int, cl_int, cl_int, cl_int>
                     bFunc(clData.program, "createB");
   cl::EnqueueArgs bEargs(clData.queue, cl::NDRange(0, stampOffset), cl::NDRange(clData.bCount, stampCount), cl::NullRange);
   cl::Event bEvent = bFunc(bEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, sImgBuf,

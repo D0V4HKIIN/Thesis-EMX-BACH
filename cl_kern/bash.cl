@@ -1,6 +1,6 @@
 void kernel ludcmpBig(global const double *matrix,
                       global double *vv,
-                      const long matrixSize) {
+                      const int matrixSize) {
     int i = get_global_id(0);
     int stampId = get_global_id(1);
 
@@ -24,7 +24,7 @@ void kernel ludcmpBig(global const double *matrix,
 }
 
 void kernel ludcmpRest(global double *vv, global double *matrix, global int *index,
-                       const long matrixSize) {
+                       const int matrixSize) {
     int stampId = get_global_id(0);
 
     int firstMtxId = stampId * matrixSize * matrixSize;
@@ -88,7 +88,7 @@ void kernel ludcmpRest(global double *vv, global double *matrix, global int *ind
 
 void kernel lubksb(const global double *matrix, const global int *index,
                    global double *result,
-                   const long matrixSize) {
+                   const int matrixSize) {
     int stampId = get_global_id(0);
 
     int firstMtxId = stampId * matrixSize * matrixSize;
@@ -134,7 +134,7 @@ void kernel sigmaClipInitMask(global uchar *mask) {
 
 void kernel sigmaClipCalc(global double *sum, global double *sum2,
                           global const double *data, global const uchar *mask,
-                          const long count, local double *localD) {
+                          const int count, local double *localD) {
     int gid = get_global_id(0);
     int lid = get_local_id(0);
     int groupId = get_group_id(0);

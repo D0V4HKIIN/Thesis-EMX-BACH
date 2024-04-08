@@ -25,12 +25,12 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   clData.queue.enqueueWriteBuffer(meritsCounter, CL_TRUE, 0, sizeof(cl_int), &meritsCount);
 
   // Create test vec
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> testVecFunc(clData.program, "createTestVec");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int> testVecFunc(clData.program, "createTestVec");
   cl::EnqueueArgs testVecEargs(clData.queue, cl::NullRange, cl::NDRange(clData.bCount, stamps.size()), cl::NullRange);
   cl::Event testVecEvent = testVecFunc(testVecEargs, stampData.b, testVec, clData.bCount);
 
   // Create test mat
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_long> testMatFunc(clData.program, "createTestMat");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int> testMatFunc(clData.program, "createTestMat");
   cl::EnqueueArgs testMatEargs(clData.queue, cl::NullRange, cl::NDRange(clData.qCount, clData.qCount, stamps.size()), cl::NullRange);
   cl::Event testMatEvent = testMatFunc(testMatEargs, stampData.q, testMat, clData.qCount);
 
@@ -84,7 +84,7 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   std::vector<cl::Event> testEvents{};
 
   // Copy sub-stamp coordinates
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> copySsCoordsFunc(clData.program, "copyTestSubStampsCoords");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int> copySsCoordsFunc(clData.program, "copyTestSubStampsCoords");
   cl::EnqueueArgs copySsCoordsEargs(clData.queue, cl::NullRange, cl::NDRange(2 * args.maxKSStamps, testStampCount), cl::NullRange);
   testEvents.push_back(copySsCoordsFunc(copySsCoordsEargs, stampData.subStampCoords, testStampIndices, testStampData.subStampCoords, 2 * args.maxKSStamps));
 
@@ -95,17 +95,17 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
                                         testStampData.currentSubStamps, testStampData.subStampCounts));
 
   // Copy W
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long> copyWFunc(clData.program, "copyTestStampsW");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int> copyWFunc(clData.program, "copyTestStampsW");
   cl::EnqueueArgs copyWEargs(clData.queue, cl::NullRange, cl::NDRange(clData.wColumns, clData.wRows, testStampCount), cl::NullRange);
   testEvents.push_back(copyWFunc(copyWEargs, stampData.w, testStampIndices, testStampData.w, clData.wRows, clData.wColumns));
 
   // Copy Q
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> copyQFunc(clData.program, "copyTestStampsQ");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int> copyQFunc(clData.program, "copyTestStampsQ");
   cl::EnqueueArgs copyQEargs(clData.queue, cl::NullRange, cl::NDRange(clData.qCount, clData.qCount, testStampCount), cl::NullRange);
   testEvents.push_back(copyQFunc(copyQEargs, stampData.q, testStampIndices, testStampData.q, clData.qCount));
 
   // Copy B
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long> copyBFunc(clData.program, "copyTestStampsB");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int> copyBFunc(clData.program, "copyTestStampsB");
   cl::EnqueueArgs copyBEargs(clData.queue, cl::NullRange, cl::NDRange(clData.bCount, testStampCount), cl::NullRange);
   testEvents.push_back(copyBFunc(copyBEargs, stampData.b, testStampIndices, testStampData.b, clData.bCount));
 
@@ -208,7 +208,7 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   static constexpr int badLocalSize = 16;
   cl::Buffer cleanMerits(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount);
 
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_long> badMeritsFunc(clData.program, "removeBadSigs");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int> badMeritsFunc(clData.program, "removeBadSigs");
   cl::EnqueueArgs badMeritsEargs(clData.queue, cl::NDRange(roundUpToMultiple(testStampCount, badLocalSize)), cl::NDRange(badLocalSize));
   cl::Event badMeritsEvent = badMeritsFunc(badMeritsEargs, merits, cleanMerits, meritsCounter, cl::Local(badLocalSize * sizeof(cl_double)), testStampCount);
 
@@ -239,7 +239,7 @@ void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClD
 
   // Create weights
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long> weightFunc(clData.program, "createMatrixWeights");
+                    cl_int, cl_int, cl_int, cl_int> weightFunc(clData.program, "createMatrixWeights");
   cl::EnqueueArgs weightEargs(clData.queue, cl::NullRange, cl::NDRange(nComp2, stampData.stampCount), cl::NullRange);
   cl::Event weightEvent = weightFunc(weightEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.cd.kernelXy,
                                      weights, imgSize.first, imgSize.second, 2 * args.maxKSStamps, nComp2);
@@ -248,8 +248,8 @@ void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClD
 
   // Create matrix
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long, cl_long,
-                    cl_long, cl_long, cl_long> matrixFunc(clData.program, "createMatrix");
+                    cl_int, cl_int, cl_int, cl_int, cl_int,
+                    cl_int, cl_int, cl_int> matrixFunc(clData.program, "createMatrix");
   cl::EnqueueArgs matrixEargs(clData.queue, cl::NDRange(matSize + 1, matSize + 1));
   cl::Event matrixEvent = matrixFunc(matrixEargs, weights, stampData.w, stampData.q, matrix,
                                      stampData.stampCount, matSize + 1, pixStamp, nComp1, nComp2,
@@ -362,8 +362,8 @@ void createScProd(const cl::Buffer &res, const cl::Buffer &weights, const cl::Bu
   
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long, cl_long,
-                    cl_long, cl_long, cl_long, cl_long, cl_long> prodFunc(clData.program, "createScProd");
+                    cl_int, cl_int, cl_int, cl_int, cl_int,
+                    cl_int, cl_int, cl_int, cl_int, cl_int> prodFunc(clData.program, "createScProd");
   cl::EnqueueArgs prodEargs(clData.queue, cl::NDRange(nKernSolComp));
   cl::Event prodEvent = prodFunc(prodEargs, img, weights, stampData.b, stampData.w,
                                  stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, res,
@@ -436,7 +436,7 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
 
   // Create bg
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long, cl_long> bgFunc(clData.program, "calcSigBg");
+                    cl_int, cl_int, cl_int, cl_int, cl_int> bgFunc(clData.program, "calcSigBg");
   cl::EnqueueArgs bgEargs(clData.queue, cl::NDRange(stampCount));
   cl::Event bgEvent = bgFunc(bgEargs, kernSol, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, bg,
                              2 * args.maxKSStamps, axis.first, axis.second, args.backgroundOrder,
@@ -444,8 +444,8 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
 
   // Create model
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long, cl_long,
-                    cl_long, cl_long, cl_long> modelFunc(clData.program, "makeModel");
+                    cl_int, cl_int, cl_int, cl_int, cl_int,
+                    cl_int, cl_int, cl_int> modelFunc(clData.program, "makeModel");
   cl::EnqueueArgs modelEargs(clData.queue, cl::NDRange(args.fSStampWidth * args.fSStampWidth, stampCount));
   cl::Event modelEvent = modelFunc(modelEargs, stampData.w, kernSol, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts,
                                    model, args.nPSF, args.kernelOrder, clData.wRows, clData.wColumns, 2 * args.maxKSStamps,
@@ -458,7 +458,7 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg,
-                    cl_long, cl_long, cl_long, cl_long, cl_long> sigmaFunc(clData.program, "calcSig");
+                    cl_int, cl_int, cl_int, cl_int, cl_int> sigmaFunc(clData.program, "calcSig");
   cl::EnqueueArgs sigmaEargs(clData.queue, cl::NDRange(reduceCount * localSize, stampCount), cl::NDRange(localSize, 1));
   cl::Event sigmaEvent = sigmaFunc(sigmaEargs, model, bg, tImgBuf, sImgBuf,
                                    stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts,
@@ -476,7 +476,7 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
   cl::Buffer *sigCountOut = &sigCount2;
 
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg,
-                    cl_long, cl_long> reduceFunc(clData.program, "reduceSig");
+                    cl_int, cl_int> reduceFunc(clData.program, "reduceSig");
 
   while (count > 1 || isFirst) {
     int nextCount = (count + localSize - 1) / localSize;

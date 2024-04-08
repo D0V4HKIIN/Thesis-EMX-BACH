@@ -153,7 +153,7 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   clData.kernel.filterX = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.gaussCount * args.fKernelWidth);
   clData.kernel.filterY = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.gaussCount * args.fKernelWidth);
 
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long>
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int>
       filterFunc(clData.program, "createKernelFilter");
   cl::EnqueueArgs filterEargs(clData.queue, cl::NullRange, cl::NDRange(clData.gaussCount), cl::NullRange);
   cl::Event filterEvent = filterFunc(filterEargs, kernelGauss, clData.kernel.xy,
@@ -164,7 +164,7 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   // Create kernel vector
   clData.kernel.vec = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.gaussCount * args.fKernelWidth * args.fKernelWidth);
 
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long>
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int>
       vecFunc(clData.program, "createKernelVector");
   cl::EnqueueArgs vecEargs(clData.queue, cl::NullRange, cl::NDRange(args.fKernelWidth, args.fKernelWidth, clData.gaussCount), cl::NullRange);
   cl::Event vecEvent = vecFunc(vecEargs, clData.kernel.xy,
@@ -282,8 +282,8 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
   createMaskEvent.wait();
 
   // Convolve
-  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl_long, cl_long, cl_long, cl_long, cl_double> convFunc(clData.program, "conv");
+  cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_int, cl_int, cl_int, cl_int, cl_double> convFunc(clData.program, "conv");
   cl::EnqueueArgs eargs(clData.queue, cl::NDRange(w * h));
   cl::Event convEvent = convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, clData.kernel.solution,
                                  w, h, args.backgroundOrder, (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1, scaleConv ? invKernSum : 1.0);
@@ -323,7 +323,7 @@ void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, I
   clData.queue.enqueueWriteBuffer(convImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &convImg);
   clData.queue.enqueueWriteBuffer(sImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &scienceImg);
   
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long,
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int,
                     cl_double, cl_double> subFunc(clData.program, "sub");
   cl::EnqueueArgs eargs(clData.queue, cl::NDRange(w * h));
   cl::Event subEvent = subFunc(eargs, sImgBuf, convImgBuf, clData.maskBuf, diffImgBuf, args.fKernelWidth, w, h,
