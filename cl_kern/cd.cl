@@ -392,16 +392,28 @@ void kernel makeKernel(const global double *kernCoeffs, const global double *ker
 
     int count = kernelWidth * kernelWidth;
 
-    if (i < count) {
-        double k0 = 0.0;
+    double k0 = 0.0;
 
-        // TODO: improve performance with local memory
-        for (int p = 0; p < nPsf; p++) {
-            k0 += kernCoeffs[p] * kernVec[p * count + i];
+    for (int p0 = 0; p0 < nPsf; p0 += lsize) {
+        if (p0 + li < nPsf) {
+            localCoeffs[li] = kernCoeffs[p0 + li];
         }
 
-        kern[i] = k0;
+        barrier(CLK_LOCAL_MEM_FENCE);
+
+        if (i < count) {
+            int pCount = min(lsize, nPsf - p0);
+
+            for (int pi = 0; pi < pCount; pi++) {
+                int p = p0 + pi;
+                k0 += localCoeffs[pi] * kernVec[p * count + i];
+            }
+        }
+
+        barrier(CLK_LOCAL_MEM_FENCE);
     }
+
+    kern[i] = k0;
 }
 
 void kernel sumKernel(const global double *in,
