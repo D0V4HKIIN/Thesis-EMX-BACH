@@ -60,9 +60,9 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
     args.stampsx = int(templateImg.axis.first / args.fStampWidth);
     args.stampsy = int(templateImg.axis.second / args.fStampWidth);
 
-  if(args.verbose)
-      std::cout << "Too many stamps requested, using " << args.stampsx << "x"
-                << args.stampsy << " stamps instead." << std::endl;
+    if(args.verbose)
+        std::cout << "Too many stamps requested, using " << args.stampsx << "x"
+                  << args.stampsy << " stamps instead." << std::endl;
   }
 
   templateStamps.reserve(args.stampsx * args.stampsy);
