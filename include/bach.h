@@ -4,44 +4,14 @@
 
 #include "datatypeUtil.h"
 
-enum StatsIndeces {SKY_EST, FWHM, NORM, DIFF, CHI2};
-
-// struct ClData
-// {
-//     cl::Device &device;
-//     cl::Context &context;
-//     cl::Program &program;
-//     cl::CommandQueue &queue;
-
-//     cl::Buffer tImgBuf;
-//     cl::Buffer sImgBuf;
-//     cl::Buffer maskBuf;
-
-//     cl::Buffer swizzledTImgBuf;
-//     cl::Buffer swizzledSImgBuf;
-//     cl::Buffer swizzledMaskBuf;
-    
-//     cl::Buffer tmplStampsBuf;
-//     cl::Buffer tmplStampsStatsBuf;
-//     cl::Buffer sciStampsBuf;
-//     cl::Buffer sciStampsStatsBuf;
-//     cl::Buffer tmplStampsCoordsBuf;
-//     cl::Buffer tmplStampsSizesBuf;
-//     cl::Buffer sciStampsCoordsBuf;
-//     cl::Buffer sciStampsSizesBuf;
-
-//     cl::Buffer tmplSStampsCoordsBuf;
-//     cl::Buffer tmplSStampsValuesBuf;
-//     cl::Buffer tmplSStampsCountsBuf;
-//     cl::Buffer sciSStampsCoordsBuf;
-//     cl::Buffer sciSStampsValuesBuf;
-//     cl::Buffer sciSStampsCountsBuf;
-// };
-
 struct ClStampsData {
     cl::Buffer stampCoords; // (x, y) coordinates
     cl::Buffer stampSizes;
-    cl::Buffer stampStats;
+    struct {
+        cl::Buffer skyEsts;
+        cl::Buffer fwhms;
+    } stats;
+    
     cl::Buffer subStampCoords; // (x, y) coordinates
     cl::Buffer subStampValues;
     cl::Buffer subStampCounts;

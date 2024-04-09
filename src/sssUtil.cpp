@@ -93,16 +93,11 @@ void createStamps(const Image& templateImg, const Image& scienceImg, std::vector
       }
     }
   }
-
-
 }
 
 cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const bool isTemplate, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
   auto [imgW, imgH] = image.axis;
   clData.queue.enqueueWriteBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
-  
-  std::vector<double> stats(5 * stamps.size());
-  clData.queue.enqueueReadBuffer(stampsData.stampStats, CL_TRUE, 0, sizeof(cl_double) * 5 * stamps.size(), &stats[0]);
 
   ImageMask::masks badMask = ImageMask::ALL & ~ImageMask::OK_CONV;
   ImageMask::masks badPixelMask, skipMask;
@@ -124,7 +119,7 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
 
   cl::EnqueueArgs eargsFindSStamps(clData.queue, cl::NDRange(roundUpToMultiple(stamps.size(), localSize)), cl::NDRange(localSize));
   cl::KernelFunctor<cl::Buffer, cl::Buffer,
-                    cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_double, cl_double,
                     cl_long, cl_int, cl_int, 
@@ -135,7 +130,8 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
   
   cl::Event findSStampsEvent{findSStampsFunc(eargsFindSStamps, 
                   imgBuf, clData.maskBuf,
-                  stampsData.stampCoords, stampsData.stampSizes, stampsData.stampStats,
+                  stampsData.stampCoords, stampsData.stampSizes,
+                  stampsData.stats.skyEsts, stampsData.stats.fwhms,
                   stampsData.subStampCoords, stampsData.subStampValues, stampsData.subStampCounts,
                   args.threshHigh, args.threshKernFit, imgW,
                   args.fStampWidth, args.hSStampWidth, maxSStamps, static_cast<cl_int>(stamps.size()),
@@ -188,11 +184,11 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
 
 int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStampsData& stampsData, const ClData& clData) {
   
-  static constexpr int statsSize{5};
   int maxSStamps{2 * args.maxKSStamps};
   cl::Buffer filteredStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * stamps.size()};
   cl::Buffer filteredStampSizes{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * stamps.size()};
-  cl::Buffer filteredStampStats{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * statsSize * stamps.size()};
+  cl::Buffer filteredSkyEsts{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size()};
+  cl::Buffer filteredFwhms{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size()};
   cl::Buffer filteredSubStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * maxSStamps * stamps.size()};
   cl::Buffer filteredSubStampValues{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * maxSStamps * stamps.size()};
   cl::Buffer filteredSubStampCounts{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * maxSStamps * stamps.size()};
@@ -205,9 +201,9 @@ int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStamp
   markFunc(clData.program, "markStampsToKeep");
 
   cl::EnqueueArgs eargsRemove{clData.queue,cl::NDRange{stamps.size()}};  
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, 
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, 
                     cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl::Buffer, cl::Buffer, cl::Buffer, 
+                    cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl_int>
   removeFunc(clData.program, "removeEmptyStamps");
@@ -219,16 +215,19 @@ int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStamp
   markEvent.wait();
   
   cl::Event removeEvent = removeFunc(eargsRemove, 
-      stampsData.stampCoords, stampsData.stampSizes, stampsData.stampStats,
+      stampsData.stampCoords, stampsData.stampSizes,
+      stampsData.stats.skyEsts, stampsData.stats.fwhms,
       stampsData.subStampCounts, stampsData.subStampCoords, stampsData.subStampValues,
-      filteredStampCoords, filteredStampSizes, filteredStampStats,
+      filteredStampCoords, filteredStampSizes, 
+      filteredSkyEsts, filteredFwhms,
       filteredSubStampCounts, filteredSubStampCoords, filteredSubStampValues,
       keepIndeces, keepCounter, args.maxKSStamps);
   removeEvent.wait();
   
-  stampsData.stampCoords = filteredStampCoords;
-  stampsData.stampSizes = filteredStampSizes;
-  stampsData.stampStats = filteredStampStats;
+  stampsData.stampCoords    = filteredStampCoords;
+  stampsData.stampSizes     = filteredStampSizes;
+  stampsData.stats.skyEsts  = filteredSkyEsts;
+  stampsData.stats.fwhms    = filteredFwhms;
   stampsData.subStampCoords = filteredSubStampCoords;
   stampsData.subStampValues = filteredSubStampValues;
   stampsData.subStampCounts = filteredSubStampCounts;

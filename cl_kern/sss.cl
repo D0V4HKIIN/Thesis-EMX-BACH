@@ -14,13 +14,6 @@
 
 #define ZEROVAL ((double)1e-10)
 
-#define STATS_SIZE (5)
-#define STAT_SKY_EST (0)
-#define STAT_FWHM (1)
-#define STAT_NORM (2)
-#define STAT_DIFF (3)
-#define STAT_CHI2 (4)
-
 //TODO: Fix swizzling for stamp data
 
 void kernel createStampBounds(global long *stampsCoords, global long *stampsSizes,
@@ -191,6 +184,129 @@ void kernel maskStamp(global const double *img, global ushort *mask,
 
 }
 
+void kernel createHistogram(global const double *img, global const ushort *mask, global const long2 *stampCoords, global const long2 *stampSizes,
+                            global const double *means, global const double *invStdDevs, global const double *binSizes, global const double *lowerBinVals,
+                            global int *bins, global double *fwhms, global double *skyEsts,
+                            const int width, const int stampCount, const double iqRange, const double sigClipAlpha) {
+    int stampId = get_global_id(0);
+
+    if (stampId >= stampCount) {
+        return;
+    }
+
+    long2 stampCoord = stampCoords[stampId];
+    long2 stampSize = stampSizes[stampId];
+
+    double mean = means[stampId];
+    double invStdDev = invStdDevs[stampId];
+    double binSize = binSizes[stampId];
+    double lowerBinVal = lowerBinVals[stampId];
+    
+    int firstBin = 256 * stampId;
+
+    int attempts = 0;
+    int okCount = 0;
+    double lower = 0.0;
+    double upper = 0.0;
+    bool setFwhm = true;
+    double skyEst = 0.0;
+
+    while(true) {
+        if(attempts >= 5) {
+            setFwhm = false;
+            break;
+        }
+
+        for (int i = 0; i < 256; i++) {
+            bins[firstBin + i] = 0;
+        }
+        okCount = 0;
+
+        for(int y = 0; y < stampSize.y; y++) {
+            for(int x = 0; x < stampSize.x; x++) {
+                long indexI = (stampCoord.x + x) + (stampCoord.y + y) * width;
+                double imgV = img[indexI];
+
+                if(mask[indexI] != 0 || imgV <= 1e-10) {
+                    continue;
+                }
+
+                if((fabs(imgV - mean) * invStdDev) > sigClipAlpha) {
+                    continue;
+                }
+                
+                int index = clamp((int)floor((imgV - lowerBinVal) / binSize) + 1, 0, 255);
+
+                bins[firstBin + index] = bins[firstBin + index] + 1;
+                okCount++;
+            }
+        }
+
+        if(okCount == 0 || binSize == 0.0) {
+            setFwhm = false;
+            break;
+        }
+
+        double sumBins = 0.0;
+        double maxDens = 0.0;
+        int lowerIndex = 1;
+        int upperIndex = 1;
+        int maxIndex = -1;
+        while (upperIndex < 255) {
+            while(sumBins < okCount / 10.0 && upperIndex < 255) {
+                sumBins += bins[firstBin + upperIndex++];
+            }
+            if(sumBins / (upperIndex - lowerIndex) > maxDens) {
+                maxDens = sumBins / (upperIndex - lowerIndex);
+                maxIndex = lowerIndex;
+            }
+            sumBins -= bins[firstBin + lowerIndex++];
+        }
+        if(maxIndex < 0 || maxIndex > 255) maxIndex = 0;
+
+        sumBins = 0.0;
+        double sumExpect = 0.0;
+        for(int i = maxIndex; sumBins < okCount / 10.0 && i < 255; i++) {
+            sumBins += bins[firstBin + i];
+            sumExpect += i * bins[firstBin + i];
+        }
+
+        double modeBin = sumExpect / sumBins + 0.5;
+        skyEst = lowerBinVal + binSize * (modeBin - 1.0);
+
+        lower = okCount * 0.25;
+        upper = okCount * 0.75;
+        sumBins = 0.0;
+
+        int i = 0;
+        while (sumBins < lower) {
+            sumBins += bins[firstBin + i++];
+        }
+        lower = i - (sumBins - lower) / bins[firstBin + i - 1];
+        while (sumBins < upper) {
+            sumBins += bins[firstBin + i++];
+        }
+        upper = i - (sumBins - upper) / bins[firstBin + i - 1];
+
+        if(lower < 1.0 || upper > 255.0) {
+            lowerBinVal -= 128.0 * binSize;
+            binSize *= 2;
+        }
+        else if(upper - lower < 40.0) {
+            binSize /= 3.0;
+            lowerBinVal = skyEst - 128.0 * binSize;
+        }
+        else {
+            break;
+        }
+        
+        attempts++;
+    }
+
+    fwhms[stampId] = setFwhm ? binSize * (upper - lower) / iqRange : 0.0;
+    skyEsts[stampId] = skyEst;
+}
+
 double checkSStamp(global const double *img, global ushort *mask,
                    const double skyEst, const double fwhm, const long imgW,
                    const int2 sstampCoords, const long hSStampWidth,
@@ -248,7 +364,7 @@ void sortSubStamps(const int substampCount, local int2 *coords, local double *va
 
 void kernel findSubStamps(global const double* img, global ushort *mask, 
                           global const long2 *stampsCoords, global const long2 *stampsSizes,
-                          global const double *stampsStats,
+                          global const double *skyEsts, global const double *fwhms,
                           global int2 *sstampsCoords, global double *sstampsValues,
                           global int *sstampsCounts,
                           const double threshHigh, const double threshKernFit,
@@ -259,8 +375,8 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
     int localStamp = get_local_id(0);
     if (stamp >= maxStamps) return;
 
-    double skyEst = stampsStats[STATS_SIZE * stamp + STAT_SKY_EST];
-    double fwhm = stampsStats[STATS_SIZE * stamp + STAT_FWHM];
+    double skyEst = skyEsts[stamp];
+    double fwhm = fwhms[stamp];
 
     double floor = skyEst + threshKernFit * fwhm;
     double dfrac = 0.9;
@@ -380,10 +496,12 @@ void kernel markStampsToKeep(global const int *sstampCounts, global int *keepInd
 }
 
 void kernel removeEmptyStamps(global const long2 *stampCoords, global const long2 *stampSizes,
-                              global const double *stampStats, global const int *subStampCounts,
+                              global const double *skyEsts, global const double *fwhms,
+                              global const int *subStampCounts,
                               global const int2 *subStampCoords, global const double *subStampValues,
                               global long2 *filteredStampCoords, global long2 *filteredStampSizes,
-                              global double *filteredStampStats, global int *filteredSubStampCounts,
+                              global double *filteredSkyEsts, global double *filteredFwhms,
+                              global int *filteredSubStampCounts,
                               global int2 *filteredSubStampCoords, global double *filteredSubStampValues,
                               global const int *keepIndeces, global const int *keepCounter, const int maxKSStamps) {
     int stamp = get_global_id(0);
@@ -392,18 +510,16 @@ void kernel removeEmptyStamps(global const long2 *stampCoords, global const long
     int index = keepIndeces[stamp];
     filteredStampCoords[stamp] = stampCoords[index];
     filteredStampSizes[stamp] = stampSizes[index];
-    filteredStampStats[STATS_SIZE * stamp + STAT_SKY_EST] = stampStats[STATS_SIZE * index + STAT_SKY_EST];
-    filteredStampStats[STATS_SIZE * stamp + STAT_FWHM] = stampStats[STATS_SIZE * index + STAT_FWHM];
-    filteredStampStats[STATS_SIZE * stamp + STAT_NORM] = stampStats[STATS_SIZE * index + STAT_NORM];
-    filteredStampStats[STATS_SIZE * stamp + STAT_DIFF] = stampStats[STATS_SIZE * index + STAT_DIFF];
-    filteredStampStats[STATS_SIZE * stamp + STAT_CHI2] = stampStats[STATS_SIZE * index + STAT_CHI2];
-    
-    filteredSubStampCounts[stamp] = subStampCounts[index];
+    filteredSkyEsts[stamp] = skyEsts[index];
+    filteredFwhms[stamp] = fwhms[index];
     
     int sstampCount = subStampCounts[index];
+    filteredSubStampCounts[stamp] = sstampCount;
+    
     int maxSStamps = 2 * maxKSStamps;
     for(int i = 0; i < sstampCount; i++){
         filteredSubStampCoords[maxSStamps*stamp + i] = subStampCoords[maxSStamps*index + i];
         filteredSubStampValues[maxSStamps*stamp + i] = subStampValues[maxSStamps*index + i];
     }
+
 } 
