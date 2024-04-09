@@ -15,7 +15,7 @@
 /* Utils */
 void checkError(const cl_int err);
 void maskInput(ImageMask& mask, const ClData& clData, const Arguments& args);
-void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args);
+void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args);
 void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
                const int iter, const Arguments& args);
 void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData);

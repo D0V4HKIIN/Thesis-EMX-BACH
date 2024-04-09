@@ -37,7 +37,7 @@ void maskInput(ImageMask& mask, const ClData& clData, const Arguments& args) {
   checkError(err);
 }
 
-void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args) {
+void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args) {
   if(dataCount == 0) {
     std::cout << "Cannot send in empty vector to Sigma Clip" << std::endl;
     *mean = 0.0;
@@ -60,11 +60,11 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long> calcFunc(clData.program, "sigmaClipCalc");
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_double, cl_double, cl_double> maskFunc(clData.program, "sigmaClipMask");
   
-  cl::EnqueueArgs calcEargs(clData.queue, cl::NullRange, cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
-  cl::EnqueueArgs eargs(clData.queue, cl::NullRange, cl::NDRange(dataCount), cl::NullRange);
+  cl::EnqueueArgs calcEargs(clData.queue, cl::NDRange(dataOffset), cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
+  cl::EnqueueArgs maskEargs(clData.queue, cl::NDRange(dataOffset), cl::NDRange(dataCount), cl::NullRange);
 
   // Zero mask
-  cl::Event initMaskEvent = initMaskFunc(eargs, intMask);
+  cl::Event initMaskEvent = initMaskFunc(maskEargs, intMask);
   initMaskEvent.wait();
 
   size_t currNPoints = 0;
@@ -101,7 +101,7 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
     clData.queue.enqueueWriteBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);
 
     // Mask bad values
-    cl::Event maskEvent = maskFunc(eargs, intMask, clipCountBuf, data, invStdDev, tempMean, args.sigClipAlpha);
+    cl::Event maskEvent = maskFunc(maskEargs, intMask, clipCountBuf, data, invStdDev, tempMean, args.sigClipAlpha);
     maskEvent.wait();
 
     clData.queue.enqueueReadBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);
@@ -246,10 +246,10 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
   std::vector<cl_double> cpuGoodPixels(nPix * nStamps);
   std::vector<cl_int>    cpuGoodPixelCounts(nStamps, 0);
   
-  std::vector<cl_double> cpuMeans{};
-  std::vector<cl_double> cpuInvStdDevs{};
-  std::vector<cl_double> cpuBinSizes{};
-  std::vector<cl_double> cpuLowerBinVals{};
+  std::vector<cl_double> cpuMeans(nStamps);
+  std::vector<cl_double> cpuInvStdDevs(nStamps);
+  std::vector<cl_double> cpuBinSizes(nStamps);
+  std::vector<cl_double> cpuLowerBinVals(nStamps);
 
   clData.queue.enqueueWriteBuffer(sampleCounts, CL_TRUE, 0, sizeof(cl_int) * cpuSampleCounts.size(), &cpuSampleCounts[0]);
   clData.queue.enqueueWriteBuffer(goodPixelCounts, CL_TRUE, 0, sizeof(cl_int) * cpuGoodPixelCounts.size(), &cpuGoodPixelCounts[0]);
@@ -288,7 +288,6 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
   clData.queue.enqueueReadBuffer(paddedSamples, CL_TRUE, 0, sizeof(cl_double) * cpuSamples.size(), &cpuSamples[0]);
   
   clData.queue.enqueueReadBuffer(goodPixelCounts, CL_TRUE, 0, sizeof(cl_int) * cpuGoodPixelCounts.size(), &cpuGoodPixelCounts[0]);
-  clData.queue.enqueueReadBuffer(goodPixels, CL_TRUE, 0, sizeof(cl_double) * cpuGoodPixels.size(), &cpuGoodPixels[0]);
   
   clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
 
@@ -308,21 +307,15 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
     double lowerBinVal =
         cpuSamples[stampIdx * paddedNSamples + (int)(midProc * sampleCount)] - (128.0 * binSize);
 
-    // Contains all good Pixels in the stamp, aka not masked.
-    std::vector<double> maskedStamp(goodPixelCount);
-    std::copy(std::begin(cpuGoodPixels)+stampIdx*nPix,
-              std::begin(cpuGoodPixels)+(stampIdx*nPix+goodPixelCount),
-              std::begin(maskedStamp));
-
     // sigma clip of maskedStamp to get mean and sd.  
     double mean, stdDev, invStdDev;
-    sigmaClip(maskedStamp, mean, stdDev, 3, args); //TODO: Use parallel version later
+    sigmaClip(goodPixels, stampIdx*nPix, goodPixelCount, &mean, &stdDev, 3, clData, args);
     invStdDev = 1.0 / stdDev;
     
-    cpuMeans.push_back(mean);
-    cpuInvStdDevs.push_back(invStdDev);
-    cpuBinSizes.push_back(binSize);
-    cpuLowerBinVals.push_back(lowerBinVal);
+    cpuMeans[stampIdx] = mean;
+    cpuInvStdDevs[stampIdx] = invStdDev;
+    cpuBinSizes[stampIdx] = binSize;
+    cpuLowerBinVals[stampIdx] = lowerBinVal;
   }
   
   clData.queue.enqueueWriteBuffer(means, CL_TRUE, 0, sizeof(cl_double) * nStamps, &cpuMeans[0]);
