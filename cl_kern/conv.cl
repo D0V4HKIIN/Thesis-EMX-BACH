@@ -90,7 +90,7 @@ void kernel conv(global const double *convKern, const int convWidth, const int x
       }
     }
     
-    outMask[id] |= newMask;
+    outMask[id] = newMask;
   } else {
     outimg[id] = 1e-30;
   }

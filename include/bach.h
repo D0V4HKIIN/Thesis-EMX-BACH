@@ -23,6 +23,7 @@ struct ClData {
     cl::Buffer tImgBuf;
     cl::Buffer sImgBuf;
     cl::Buffer maskBuf;
+    cl::Buffer convImg;
 
     struct {
         cl::Buffer xy;
@@ -60,8 +61,8 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, ClData &clData, const Arguments& args);
 void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
          const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData &clData, const ClStampsData &stampData, const Arguments& args);
-double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
+double conv(const std::pair<cl_long, cl_long> &imgSize, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
             ClData &clData, const Arguments& args);
-void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg, bool convTemplate, double kernSum,
+void sub(const std::pair<cl_long, cl_long> &imgSize, Image &diffImg, bool convTemplate, double kernSum,
          const ClData &clData, const Arguments& args);
 void fin(const Image &convImg, const Image &diffImg, const Arguments& args);

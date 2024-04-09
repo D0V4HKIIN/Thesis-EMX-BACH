@@ -226,23 +226,23 @@ void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask, tImgBuf, sImgBuf, clData, stampData, args);
 }
 
-double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
+double conv(const std::pair<cl_long, cl_long> &imgSize, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
             ClData &clData, const Arguments& args) {
   std::cout << "\nConvolving..." << std::endl;
   
-  const auto [w, h] = templateImg.axis;
+  const auto [w, h] = imgSize;
   bool scaleConv = args.normalizeTemplate && convTemplate ||
                    !args.normalizeTemplate && !convTemplate;
 
   // Convolution kernels generated beforehand since we only need on per
   // kernelsize.
   std::vector<cl_double> convKernels{};
-  int xSteps = std::ceil((templateImg.axis.first) / double(args.fKernelWidth));
-  int ySteps = std::ceil((templateImg.axis.second) / double(args.fKernelWidth));
+  int xSteps = std::ceil(imgSize.first / double(args.fKernelWidth));
+  int ySteps = std::ceil(imgSize.second / double(args.fKernelWidth));
   for(int yStep = 0; yStep < ySteps; yStep++) {
     for(int xStep = 0; xStep < xSteps; xStep++) {
       makeKernel(
-          convolutionKernel, templateImg.axis,
+          convolutionKernel, imgSize,
           xStep * args.fKernelWidth + args.hKernelWidth + args.hKernelWidth,
           yStep * args.fKernelWidth + args.hKernelWidth + args.hKernelWidth,
           args);
@@ -254,22 +254,19 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
 
   // Used to normalize the result since the kernel sum is not always 1.
   double kernSum =
-      makeKernel(convolutionKernel, templateImg.axis,
-                 templateImg.axis.first / 2, templateImg.axis.second / 2, args);
-  cl_double invKernSum = 1.0 / kernSum;
+      makeKernel(convolutionKernel, imgSize,
+                 imgSize.first / 2, imgSize.second / 2, args);
+  double invKernSum = 1.0 / kernSum;
 
   if(args.verbose) {
-    std::cout << "Sum of kernel at (" << templateImg.axis.first / 2 << ","
-              << templateImg.axis.second / 2 << "): " << kernSum << std::endl;
+    std::cout << "Sum of kernel at (" << imgSize.first / 2 << ","
+              << imgSize.second / 2 << "): " << kernSum << std::endl;
   }
-
-  mask.clear();
 
   // Declare all the buffers which will be need in opencl operations.  
   cl::Buffer convMaskBuf(clData.context, CL_MEM_READ_ONLY, sizeof(cl_ushort) * w * h);
   cl::Buffer kernBuf(clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * convKernels.size());
-  cl::Buffer convImgBuf(clData.context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
-  cl::Buffer outMaskBuf(clData.context, CL_MEM_WRITE_ONLY, sizeof(cl_ushort) * w * h);
+  clData.convImg = cl::Buffer(clData.context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
 
   // Write necessary data for convolution
   clData.queue.enqueueWriteBuffer(kernBuf, CL_TRUE, 0, sizeof(cl_double) * convKernels.size(), convKernels.data());
@@ -285,48 +282,37 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
   cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_int, cl_int, cl_int, cl_int, cl_double> convFunc(clData.program, "conv");
   cl::EnqueueArgs eargs(clData.queue, cl::NDRange(w * h));
-  cl::Event convEvent = convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, clData.kernel.solution,
+  cl::Event convEvent = convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, clData.convImg, convMaskBuf, clData.maskBuf, clData.kernel.solution,
                                  w, h, args.backgroundOrder, (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1, scaleConv ? invKernSum : 1.0);
   convEvent.wait();
 
-  // TEMP: transfer convoluted image back to CPU
-  clData.queue.enqueueReadBuffer(convImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &convImg);
+  // Transfer convoluted image back to CPU
+  clData.queue.enqueueReadBuffer(clData.convImg, CL_TRUE, 0, sizeof(cl_double) * w * h, &convImg);
 
   // Mask after convolve
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double> maskAfterFunc(clData.program, "maskAfterConv");
   cl::EnqueueArgs maskAfterEargs(clData.queue, cl::NDRange(w, h));
-  cl::Event maskAfterEvent = maskAfterFunc(maskAfterEargs, clData.sImgBuf, outMaskBuf, w, args.threshHigh, args.threshLow);
+  cl::Event maskAfterEvent = maskAfterFunc(maskAfterEargs, clData.sImgBuf, clData.maskBuf, w, args.threshHigh, args.threshLow);
 
   maskAfterEvent.wait();
-
-  clData.maskBuf = outMaskBuf;
-
-  // TEMP: transfer mask back to CPU
-  clData.queue.enqueueReadBuffer(outMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h, &mask);
 
   return kernSum;
 }
 
-void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg, bool convTemplate, double kernSum,
+void sub(const std::pair<cl_long, cl_long> &imgSize, Image &diffImg, bool convTemplate, double kernSum,
          const ClData &clData, const Arguments& args) {
   std::cout << "\nSubtracting images..." << std::endl;
 
-  const auto [w, h] = scienceImg.axis;
+  const auto [w, h] = imgSize;
   bool scaleConv = args.normalizeTemplate && convTemplate ||
                    !args.normalizeTemplate && !convTemplate;
 
-  cl::Buffer convImgBuf(clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
   cl::Buffer diffImgBuf(clData.context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
-  cl::Buffer sImgBuf(clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
-
-  // Write necessary data for subtraction
-  clData.queue.enqueueWriteBuffer(convImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &convImg);
-  clData.queue.enqueueWriteBuffer(sImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &scienceImg);
   
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int,
                     cl_double, cl_double> subFunc(clData.program, "sub");
   cl::EnqueueArgs eargs(clData.queue, cl::NDRange(w * h));
-  cl::Event subEvent = subFunc(eargs, sImgBuf, convImgBuf, clData.maskBuf, diffImgBuf, args.fKernelWidth, w, h,
+  cl::Event subEvent = subFunc(eargs, clData.sImgBuf, clData.convImg, clData.maskBuf, diffImgBuf, args.fKernelWidth, w, h,
                                scaleConv ? kernSum : 1.0, scaleConv ? -(1.0 / kernSum) : 1.0);
   subEvent.wait();
 
