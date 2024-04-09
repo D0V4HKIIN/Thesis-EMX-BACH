@@ -54,8 +54,8 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl::LocalSpaceArg> calcFunc(clData.program, "sigmaClipCalc");
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_double, cl_double, cl_double> maskFunc(clData.program, "sigmaClipMask");
   
-  cl::EnqueueArgs calcEargs(clData.queue, cl::NullRange, cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
-  cl::EnqueueArgs eargs(clData.queue, cl::NullRange, cl::NDRange(dataCount), cl::NullRange);
+  cl::EnqueueArgs calcEargs(clData.queue, cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
+  cl::EnqueueArgs eargs(clData.queue, cl::NDRange(dataCount));
 
   // Zero mask
   cl::Event initMaskEvent = initMaskFunc(eargs, intMask);
@@ -410,14 +410,14 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
 void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &vv, const ClData &clData) {
   // Find big values
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int> bigFunc(clData.program, "ludcmpBig");
-  cl::EnqueueArgs bigEargs(clData.queue, cl::NullRange, cl::NDRange(matrixSize, stampCount), cl::NullRange);
+  cl::EnqueueArgs bigEargs(clData.queue, cl::NDRange(matrixSize, stampCount));
   cl::Event bigEvent = bigFunc(bigEargs, matrix, vv, matrixSize);
 
   bigEvent.wait();
 
   // Rest of LU-decomposition
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int> restFunc(clData.program, "ludcmpRest");
-  cl::EnqueueArgs restEargs(clData.queue, cl::NullRange, cl::NDRange(stampCount), cl::NullRange);
+  cl::EnqueueArgs restEargs(clData.queue, cl::NDRange(stampCount));
   cl::Event restEvent = restFunc(restEargs, vv, matrix, index, matrixSize);
 
   restEvent.wait();
@@ -425,7 +425,7 @@ void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::
 
 void lubksb(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &result, const ClData &clData) {
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int> func(clData.program, "lubksb");
-  cl::EnqueueArgs eargs(clData.queue, cl::NullRange, cl::NDRange(stampCount), cl::NullRange);
+  cl::EnqueueArgs eargs(clData.queue, cl::NDRange(stampCount));
   cl::Event event = func(eargs, matrix, index, result, matrixSize);
 
   event.wait();
