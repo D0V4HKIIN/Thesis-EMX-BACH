@@ -12,7 +12,7 @@ inline cl::Platform getDefaultPlatform() {
   cl::Platform::get(&allPlatforms);
   if(allPlatforms.size() == 0) {
     std::cout << " No platforms found. Check OpenCL installation!\n";
-    exit(1);
+    std::exit(1);
   }
   cl::Platform defaultPlatform = allPlatforms[0];
   std::cout << "Using platform: "
@@ -27,7 +27,7 @@ inline cl::Device getDefaultDevice(const cl::Platform &platform) {
   platform.getDevices(CL_DEVICE_TYPE_ALL, &allDevices);
   if(allDevices.size() == 0) {
     std::cout << " No devices found. Check OpenCL installation!\n";
-    exit(1);
+    std::exit(1);
   }
   cl::Device defaultDevice = allDevices[0];
   std::cout << "Using device: " << defaultDevice.getInfo<CL_DEVICE_NAME>()
@@ -97,7 +97,7 @@ cl::Program loadBuildPrograms(const cl::Context context, const cl::Device defaul
     std::cout << " Error building: "
               << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(defaultDevice)
               << "\n";
-    exit(1);
+    std::exit(1);
   }
 
   return program;

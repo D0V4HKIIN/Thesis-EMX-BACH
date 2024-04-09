@@ -5,7 +5,7 @@
 void checkError(const cl_int err) {
   if(err != 0) {
     std::cout << "Error encountered with error code: " << err << std::endl;
-    exit(err);
+    std::exit(err);
   }
 }
 
@@ -232,7 +232,7 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
 
   if(numPix < nValues) {
     std::cout << "Not enough pixels in a stamp" << std::endl;
-    exit(1);
+    std::exit(1);
   }
   int idum = -666;
 

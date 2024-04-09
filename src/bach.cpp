@@ -25,7 +25,7 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
   if(templateImg.axis != scienceImg.axis) {
     std::cout << "Template image and science image must be the same size!"
               << std::endl;
-    exit(1);
+    std::exit(1);
   }
   
   mask = ImageMask(templateImg.axis);
@@ -106,7 +106,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 
   if(templateStamps.size() == 0 && sciStamps.size() == 0) {
     std::cout << "No substamps found" << std::endl;
-    exit(1);
+    std::exit(1);
   }
 }
 
