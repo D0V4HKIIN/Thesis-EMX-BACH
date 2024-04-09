@@ -129,20 +129,22 @@ void kernel lubksb(const global double *matrix, const global int *index,
 void kernel sigmaClipInitMask(global uchar *mask) {
     int id = get_global_id(0);
 
-    mask[id] = 0;
+    mask[id - get_global_offset(0)] = 0;
 }
 
 void kernel sigmaClipCalc(global double *sum, global double *sum2,
                           global const double *data, global const uchar *mask,
                           const long count) {
     int gid = get_global_id(0);
+    int gidNoOffset = gid - get_global_offset(0);
+    
     int lid = get_local_id(0);
     int groupId = get_group_id(0);
 
     local double localD[32];
 
-    if (gid < count) {
-        double d = select(0.0, data[gid], (long)(mask[gid] == 0));
+    if (gidNoOffset < count) {
+        double d = select(0.0, data[gid], (long)(mask[gidNoOffset] == 0));
 
         localD[lid] = d;
     }
@@ -153,7 +155,7 @@ void kernel sigmaClipCalc(global double *sum, global double *sum2,
         double s = 0.0;
         double s2 = 0.0;
 
-        int localCount = min((int)get_local_size(0), (int)(count - gid));
+        int localCount = min((int)get_local_size(0), (int)(count - gidNoOffset));
 
         for (int i = 0; i < localCount; i++) {
             double d = localD[i];
@@ -170,11 +172,12 @@ void kernel sigmaClipCalc(global double *sum, global double *sum2,
 void kernel sigmaClipMask(global uchar *mask, global int *clipCount,
                           global const double *data,
                           const double invStdDev, const double mean, const double sigClipAlpha) {
-    int id = get_global_id(0);
+    int dataId = get_global_id(0);
+    int maskId = dataId - get_global_offset(0);
 
-    if (mask[id] == 0) {
-        if (fabs(data[id] - mean) * invStdDev > sigClipAlpha) {
-            mask[id] = 1;
+    if (mask[maskId] == 0) {
+        if (fabs(data[dataId] - mean) * invStdDev > sigClipAlpha) {
+            mask[maskId] = 1;
             atomic_inc(clipCount);
         }
     }

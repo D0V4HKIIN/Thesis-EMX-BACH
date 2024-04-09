@@ -184,10 +184,14 @@ void kernel maskStamp(global const double *img, global ushort *mask,
 
 }
 
-void kernel createHistogram(global const double *img, global const ushort *mask, global const long2 *stampCoords, global const long2 *stampSizes,
-                            global const double *means, global const double *invStdDevs, global const double *binSizes, global const double *lowerBinVals,
+void kernel createHistogram(global const double *img, global const ushort *mask,
+                            global const long2 *stampCoords, global const long2 *stampSizes,
+                            global const double *means, global const double *invStdDevs,
+                            global const double *paddedSamples, global const int *sampleCounts,
                             global int *bins, global double *fwhms, global double *skyEsts,
-                            const int width, const int stampCount, const double iqRange, const double sigClipAlpha) {
+                            const int width, const int stampCount,
+                            const int nSamples, const int paddedNSamples,
+                            const double iqRange, const double sigClipAlpha) {
     int stampId = get_global_id(0);
 
     if (stampId >= stampCount) {
@@ -197,10 +201,19 @@ void kernel createHistogram(global const double *img, global const ushort *mask,
     long2 stampCoord = stampCoords[stampId];
     long2 stampSize = stampSizes[stampId];
 
+    int sampleCount = sampleCounts[stampId];
+    
+    double upProc = 0.9;
+    double midProc = 0.5;
+
     double mean = means[stampId];
     double invStdDev = invStdDevs[stampId];
-    double binSize = binSizes[stampId];
-    double lowerBinVal = lowerBinVals[stampId];
+
+    double upProcSample = paddedSamples[stampId * paddedNSamples + (int)(upProc * sampleCount)];
+    double midProcSample = paddedSamples[stampId * paddedNSamples + (int)(midProc * sampleCount)];
+    
+    double binSize = (upProcSample - midProcSample) / (double)nSamples;
+    double lowerBinVal = midProcSample - (128.0 * binSize);
     
     int firstBin = 256 * stampId;
 
