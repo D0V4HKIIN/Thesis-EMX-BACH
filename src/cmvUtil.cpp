@@ -36,6 +36,13 @@ void initFillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& 
   stampData.w = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.wRows * clData.wColumns * stamps.size());
   stampData.q = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * stamps.size());
   stampData.b = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
+
+  // TEMP: initialize vectors for W, Q and B
+  for (Stamp &stamp : stamps) {
+    stamp.W = std::vector<std::vector<double>>(clData.wRows, std::vector<double>(clData.wColumns));
+    stamp.Q = std::vector<std::vector<double>>(clData.qCount, std::vector<double>(clData.qCount));
+    stamp.B = std::vector<double>(clData.bCount);
+  }
   
   fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, 0, stamps.size(), k, clData, stampData, args);
 }
@@ -86,20 +93,16 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   bgConvEvent.wait();
 
   // TEMP: move back w to CPU
-  std::vector<double> wGpu(clData.wRows * clData.wColumns * stamps.size(), 0.0);
-
-  clData.queue.enqueueReadBuffer(stampData.w, CL_TRUE, 0, sizeof(cl_double) * wGpu.size(), wGpu.data());
+  std::vector<double> wGpu(clData.wRows * clData.wColumns * stampCount);
+  clData.queue.enqueueReadBuffer(stampData.w, CL_TRUE, sizeof(cl_double) * stampOffset * clData.wRows * clData.wColumns, sizeof(cl_double) * wGpu.size(), wGpu.data());
   
   // TEMP: replace w with GPU data
-  for (int i = stampOffset; i < stampOffset + stampCount; i++) {
-    Stamp& s = stamps[i];
-    s.W.clear();
+  for (int i = 0; i < stampCount; i++) {
+    Stamp& s = stamps[stampOffset + i];
 
     for (int j = 0; j < clData.wRows; j++) {
-      s.W.emplace_back();
-
       for (int k = 0; k < clData.wColumns; k++) {
-        s.W[j].push_back(wGpu[i * clData.wRows * clData.wColumns + j * clData.wColumns + k]);
+        s.W[j][k] = wGpu[i * clData.wRows * clData.wColumns + j * clData.wColumns + k];
       }
     }
   }
@@ -124,33 +127,29 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   bEvent.wait();
 
   // TEMP: transfer the data back to the CPU
-  std::vector<double> gpuQ(clData.qCount * clData.qCount * stamps.size());
-  std::vector<double> gpuB(clData.bCount * stamps.size());
+  std::vector<double> gpuQ(clData.qCount * clData.qCount * stampCount);
+  std::vector<double> gpuB(clData.bCount * stampCount);
 
-  clData.queue.enqueueReadBuffer(stampData.q, CL_TRUE, 0, sizeof(cl_double) * gpuQ.size(), gpuQ.data());
-  clData.queue.enqueueReadBuffer(stampData.b, CL_TRUE, 0, sizeof(cl_double) * gpuB.size(), gpuB.data());
+  clData.queue.enqueueReadBuffer(stampData.q, CL_TRUE, sizeof(cl_double) * stampOffset * clData.qCount * clData.qCount, sizeof(cl_double) * gpuQ.size(), gpuQ.data());
+  clData.queue.enqueueReadBuffer(stampData.b, CL_TRUE, sizeof(cl_double) * stampOffset * clData.bCount, sizeof(cl_double) * gpuB.size(), gpuB.data());
 
   // TEMP: put data back in Q
-  for (int i = stampOffset; i < stampOffset + stampCount; i++) {
-    auto& s = stamps[i];
-    s.Q.clear();
+  for (int i = 0; i < stampCount; i++) {
+    Stamp &s = stamps[stampOffset + i];
     
     for (int j = 0; j < clData.qCount; j++) {
-      s.Q.emplace_back();
-
       for (int k = 0; k < clData.qCount; k++) {
-        s.Q[j].push_back(gpuQ[i * clData.qCount * clData.qCount + j * clData.qCount + k]);
+        s.Q[j][k] = gpuQ[i * clData.qCount * clData.qCount + j * clData.qCount + k];
       }
     }
   }
 
   // TEMP: put data back in B
-  for (int i = stampOffset; i < stampOffset + stampCount; i++) {
-    auto& s = stamps[i];
-    s.B.clear();
+  for (int i = 0; i < stampCount; i++) {
+    Stamp &s = stamps[stampOffset + i];
 
     for (int j = 0; j < clData.bCount; j++) {
-      s.B.push_back(gpuB[i * clData.bCount + j]);
+      s.B[j] = gpuB[i * clData.bCount + j];
     }
   }
 }

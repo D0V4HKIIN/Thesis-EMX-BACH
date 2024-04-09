@@ -54,7 +54,6 @@ int main(int argc, const char* argv[]) {
   ClData clData { device, context, program, queue };
 
   init(templateImg, scienceImg, mask, clData, args);
-  const auto [w, h] = templateImg.axis;
 
   clock_t p2 = clock();
   if(args.verboseTime) {
