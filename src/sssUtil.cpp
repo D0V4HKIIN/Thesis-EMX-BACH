@@ -55,22 +55,22 @@ void createStamps(const Image& templateImg, const Image& scienceImg, std::vector
                   w, h);
   cl::Event::waitForEvents(boundsEvents);
 
-  std::vector<cl_long> stampCoords(2 * args.stampsx * args.stampsy, 0);
-  std::vector<cl_long> stampSizes(2 * args.stampsx * args.stampsy, 0);
+  std::vector<cl_long2> stampCoords(args.stampsx * args.stampsy, {0,0});
+  std::vector<cl_long2> stampSizes(args.stampsx * args.stampsy, {0,0});
 
   cl_int err = clData.queue.enqueueReadBuffer(clData.tmpl.stampCoords, CL_TRUE, 0,
-    sizeof(cl_long) * 2 * args.stampsx * args.stampsy, &stampCoords[0]);
+    sizeof(cl_long2) * args.stampsx * args.stampsy, &stampCoords[0]);
   checkError(err);
   err = clData.queue.enqueueReadBuffer(clData.tmpl.stampSizes, CL_TRUE, 0,
-    sizeof(cl_long) * 2 * args.stampsx * args.stampsy, &stampSizes[0]);
+    sizeof(cl_long2) * args.stampsx * args.stampsy, &stampSizes[0]);
   checkError(err);
   
   for(int j = 0; j < args.stampsy; j++) {
     for(int i = 0; i < args.stampsx; i++) {
-      int startx = stampCoords[2*(j*args.stampsx + i) + 0];
-      int starty = stampCoords[2*(j*args.stampsx + i) + 1];
-      int stampw =  stampSizes[2*(j*args.stampsx + i) + 0];
-      int stamph =  stampSizes[2*(j*args.stampsx + i) + 1];
+      int startx = stampCoords[j*args.stampsx + i].x;
+      int starty = stampCoords[j*args.stampsx + i].y;
+      int stampw =  stampSizes[j*args.stampsx + i].x;
+      int stamph =  stampSizes[j*args.stampsx + i].y;
 
       templateStamps.emplace_back();
       scienceStamps.emplace_back();
