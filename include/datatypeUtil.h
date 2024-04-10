@@ -142,7 +142,6 @@ struct Stamp {
   std::pair<cl_long, cl_long> coords{};
   std::pair<cl_long, cl_long> size{};
   std::vector<SubStamp> subStamps{};
-  std::vector<double> data{};
   StampStats stats{};
   std::vector<std::vector<double>> W{};
   std::vector<std::vector<double>> Q{};
@@ -155,10 +154,7 @@ struct Stamp {
         const std::vector<double>& stampData)
       : coords{stampCoords},
         size{stampSize},
-        subStamps{subStamps},
-        data{stampData} {}
-
-  double operator[](size_t index) const { return data[index]; }
+        subStamps{subStamps} {}
 
   double pixels() const { return size.first * size.second; }
 

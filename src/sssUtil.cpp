@@ -75,22 +75,11 @@ void createStamps(const Image& templateImg, const Image& scienceImg, std::vector
       templateStamps.emplace_back();
       scienceStamps.emplace_back();
       
-      templateStamps.back().data.reserve(args.fStampWidth*args.fStampWidth);
       templateStamps.back().coords = std::make_pair(startx, starty);
       templateStamps.back().size = std::make_pair(stampw, stamph);
       
-      scienceStamps.back().data.reserve(args.fStampWidth*args.fStampWidth);
       scienceStamps.back().coords = std::make_pair(startx, starty);
       scienceStamps.back().size = std::make_pair(stampw, stamph);
-      
-      for(int y = 0; y < stamph; y++) {
-        for(int x = 0; x < stampw; x++) {
-          templateStamps.back().data.push_back(
-            templateImg[(startx + x) + ((starty + y) * w)]);
-          scienceStamps.back().data.push_back(
-            scienceImg[(startx + x) + ((starty + y) * w)]);
-        }
-      }
     }
   }
 }
