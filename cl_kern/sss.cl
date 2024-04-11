@@ -134,7 +134,7 @@ static void exchangeDouble(global double *i, global double *j)
 	*j = k;
 }
 
-void kernel sortSamples(global double *paddedSamples, int paddedNSamples, const int j, const int k){
+void kernel sortSamples(global double *paddedSamples, const int paddedNSamples, const int j, const int k){
     int id = get_global_id(0);                        
     
     const long i = id % paddedNSamples;
@@ -508,6 +508,36 @@ void kernel markStampsToKeep(global const int *sstampCounts, global int *keepInd
     }
 }
 
+void kernel padMarks(global int *keepIndeces, global const int *keepCounter) {
+    int stamp = get_global_id(0);
+    if (stamp >= *keepCounter) {
+        keepIndeces[stamp] = INT_MAX;
+        return;
+    }
+}
+
+void exchangeInt(global int *i, global int *j) {
+	int k;
+	k = *i;
+	*i = *j;
+	*j = k;
+}
+
+void kernel sortMarks(global int *keepIndeces, const int j, const int k) {
+    int i = get_global_id(0);
+
+    const int ixj=i^j; // Calculate indexing!
+    if ((ixj)>i)
+    {
+        if ((i&k)==0 && keepIndeces[i] > keepIndeces[ixj]) {
+        exchangeInt(&keepIndeces[i], &keepIndeces[ixj]);
+        }
+        if ((i&k)!=0 && keepIndeces[i] < keepIndeces[ixj]) {
+        exchangeInt(&keepIndeces[i], &keepIndeces[ixj]);
+        }
+    }
+}
+
 void kernel removeEmptyStamps(global const long2 *stampCoords, global const long2 *stampSizes,
                               global const double *skyEsts, global const double *fwhms,
                               global const int *subStampCounts,
@@ -536,3 +566,8 @@ void kernel removeEmptyStamps(global const long2 *stampCoords, global const long
     }
 
 } 
+
+void kernel resetSkipMask(global ushort *mask) {
+    int id = get_global_id(0);
+    mask[id] &= ~(MASK_SKIP_S | MASK_SKIP_T);
+}

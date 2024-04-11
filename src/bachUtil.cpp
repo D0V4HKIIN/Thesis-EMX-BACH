@@ -168,17 +168,6 @@ void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
   }
 }
 
-constexpr cl_int leastGreaterPow2(cl_int n) {
-  if (n < 0) return 0;
-  --n;
-  n |= n >> 1;
-  n |= n >> 2;
-  n |= n >> 4;
-  n |= n >> 8;
-  n |= n >> 16;
-  return n+1;
-}
-
 void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
@@ -186,17 +175,20 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
   auto&& [imgW, imgH] = image.axis;
   clData.queue.enqueueWriteBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
   
-  size_t nStamps{stamps.size()};
+  cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx * args.stampsy)};
 
   static constexpr cl_int nSamples{100};
   static constexpr cl_int paddedNSamples{leastGreaterPow2(nSamples)};
 
-  for (Stamp& stamp : stamps) {
-    cl_int stampNumPix = stamp.size.first * stamp.size.second;
-
-    if(stampNumPix < nSamples) {
-      std::cout << "Not enough pixels in a stamp" << std::endl;
-      exit(1);
+  {
+    std::vector<cl_long2> stampSizes(nStamps);
+    clData.queue.enqueueReadBuffer(stampsData.stampSizes, CL_TRUE, 0, sizeof(cl_long2) * stampsData.stampCount, &stampSizes[0]);
+    for (size_t i{0}; i < stampsData.stampCount; i++) {
+      cl_int stampNumPix = stampSizes[i].x * stampSizes[i].y;
+      if(stampNumPix < nSamples) {
+        std::cout << "Not enough pixels in a stamp" << std::endl;
+        exit(1);
+      }
     }
   }
 
@@ -237,7 +229,6 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
                     cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_int, cl_int, cl_int, cl_int,cl_double, cl_double>
   histogramFunc(clData.program, "createHistogram");
-  
   
   std::vector<cl_int>    cpuSampleCounts(nStamps);
   std::vector<cl_int>    cpuGoodPixelCounts(nStamps, 0);
@@ -285,8 +276,6 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
 
   for (size_t stampIdx{0}; stampIdx < nStamps; stampIdx++)
   {
-    auto &&stamp{stamps[stampIdx]};
-    cl_int stampNumPix = stamp.size.first * stamp.size.second;
     int sampleCount{cpuSampleCounts[stampIdx]};
     int goodPixelCount{cpuGoodPixelCounts[stampIdx]};
 

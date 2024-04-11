@@ -149,7 +149,7 @@ struct Stamp {
 
   Stamp(){};
   Stamp(std::pair<cl_long, cl_long> stampCoords,
-        std::pair<cl_long, cl_long> stampSize, std::pair<cl_long, cl_long> c,
+        std::pair<cl_long, cl_long> stampSize,
         const std::vector<SubStamp>& subStamps,
         const std::vector<double>& stampData)
       : coords{stampCoords},
