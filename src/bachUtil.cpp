@@ -173,7 +173,6 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
    * Calculates important values of stamps for futher calculations.
    */
   auto&& [imgW, imgH] = image.axis;
-  clData.queue.enqueueWriteBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
   
   cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx * args.stampsy)};
 

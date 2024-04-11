@@ -124,14 +124,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
     templateStamps.clear();
     sciStamps.clear();
 
-    //resetSStampSkipMask(w, h, mask, clData);
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        int index = y * w + x;
-        mask.unmask(index, ImageMask::SKIP_S | ImageMask::SKIP_T);
-      }
-    }
-    clData.queue.enqueueWriteBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h, &mask);
+    resetSStampSkipMask(w, h, mask, clData);
 
     createStamps(templateStamps, w, h, clData.tmpl, clData, args);
     createStamps(sciStamps, w, h, clData.sci, clData, args);

@@ -37,7 +37,6 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
   auto [imgW, imgH] = image.axis;
 
   cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx) * static_cast<cl::size_type>(args.stampsy)};
-  clData.queue.enqueueWriteBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
 
   ImageMask::masks badMask = ImageMask::ALL & ~ImageMask::OK_CONV;
   ImageMask::masks badPixelMask, skipMask;
@@ -188,7 +187,8 @@ int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStamp
 void resetSStampSkipMask(const int w, const int h, ImageMask& mask, const ClData& clData) {
   cl::EnqueueArgs eargs{clData.queue, cl::NDRange(w * h)};
   cl::KernelFunctor<cl::Buffer> resetFunc(clData.program, "resetSkipMask");
-  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h, &mask);
+  cl::Event unmaskEvent{resetFunc(eargs, clData.maskBuf)};
+  unmaskEvent.wait();
 }
 
 void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData, const ClData& clData, const Arguments& args) {
