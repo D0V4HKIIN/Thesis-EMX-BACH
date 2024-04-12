@@ -58,3 +58,5 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
                const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData &clData, const ClStampsData &stampData, const Arguments& args);
 bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
                       const Image& sImg, const ClData &clData, const ClStampsData &stampData, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const cl::Buffer &kernSol, const Arguments& args);
+void removeBadSubStamps(bool *check, const ClStampsData &stampData, std::vector<Stamp> &stamps, const std::vector<cl_uchar> &invalidatedSubStamps, const Image &tImg, const Image &sImg,
+                        const cl::Buffer &sImgBuf, const cl::Buffer &tImgBuf, const Kernel &k, const ClData &clData, const Arguments &args);

@@ -500,8 +500,8 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
     auto [fittingMatrix0, weight0] = createMatrix(stamps, tImg.axis, args);
     std::vector<double> solution0 = createScProd(stamps, sImg, weight0, args);
 
-    std::vector<std::vector<double>> fittingMatrixCpu = fittingMatrix0;
-    std::vector<double>solutionCpu = solution0;
+    std::vector<std::vector<double>> fittingMatrixCpu = std::move(fittingMatrix0);
+    std::vector<double>solutionCpu = std::move(solution0);
 #endif
 
     // LU solve
@@ -578,29 +578,7 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
 
   // Remove the bad sub-stamps
   bool check = false;
-
-  for (int i = 0; i < invalidatedSubStamps.size(); i++) {
-    if (invalidatedSubStamps[i] == 1) {
-      // Count concecutive invalidated sub-stamps, so that
-      // multiple new sub-stamps can be filled at the same time
-      int firstIndex = i;
-      int count = 1;
-
-      while (firstIndex + count < invalidatedSubStamps.size() && invalidatedSubStamps[i + 1] == 1) {
-        count++;
-        i++;
-      }
-
-      // TEMP: delete bad sub-stamps on CPU
-      for (int j = 0; j < count; j++) {
-        Stamp &s = stamps[firstIndex + j];
-        s.subStamps.erase(s.subStamps.begin(), std::next(s.subStamps.begin()));
-      }
-
-      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, firstIndex, count, k, clData, stampData, args);
-      check = true;
-    }
-  }
+  removeBadSubStamps(&check, stampData, stamps, invalidatedSubStamps, tImg, sImg, sImgBuf, tImgBuf, k, clData, args);
 
   // Sigma clip
   double mean = 0.0;
@@ -618,6 +596,13 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
   clData.queue.enqueueReadBuffer(invalidatedSubStampsBuf, CL_TRUE, 0, sizeof(cl_uchar) * invalidatedSubStamps.size(), invalidatedSubStamps.data());
 
   // Remove the bad sub-stamps
+  removeBadSubStamps(&check, stampData, stamps, invalidatedSubStamps, tImg, sImg, sImgBuf, tImgBuf, k, clData, args);
+
+  return check;
+}
+
+void removeBadSubStamps(bool *check, const ClStampsData &stampData, std::vector<Stamp> &stamps, const std::vector<cl_uchar> &invalidatedSubStamps, const Image &tImg, const Image &sImg,
+                        const cl::Buffer &sImgBuf, const cl::Buffer &tImgBuf, const Kernel &k, const ClData &clData, const Arguments &args) {
   for (int i = 0; i < invalidatedSubStamps.size(); i++) {
     if (invalidatedSubStamps[i] == 1) {
       // Count concecutive invalidated sub-stamps, so that
@@ -637,9 +622,7 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
       }
       
       fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, firstIndex, count, k, clData, stampData, args);
-      check = true;
+      *check = true;
     }
   }
-
-  return check;
 }
