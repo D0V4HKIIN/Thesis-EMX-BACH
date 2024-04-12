@@ -232,8 +232,7 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
         std::numeric_limits<cl_int>::max(),
         std::numeric_limits<cl_int>::max()
       );
-      stamp.subStamps.emplace_back(std::vector<double>{}, 0.0,
-                                   imageCoords, stampCoords,
+      stamp.subStamps.emplace_back(imageCoords, stampCoords,
                                    subStampValues[offset]);
     }
   }

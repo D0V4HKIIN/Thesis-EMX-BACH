@@ -140,36 +140,6 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   readFinalStamps(templateStamps, clData.tmpl, clData, args);
   readFinalStamps(sciStamps, clData.sci, clData, args);
 
-  {
-    std::ofstream ofs{"substamps-parallel.log"};
-
-    ofs << "template\n";
-    int idx{0};
-    for (auto &&stamp : templateStamps)
-    {
-      ofs << "stamp " << idx << '\n';
-      for (auto &&sstamp : stamp.subStamps)
-      {
-        ofs << sstamp.imageCoords.first << ", " << sstamp.imageCoords.second << ": " << sstamp.val << '\n';
-      }
-      idx++;
-    }
-
-    ofs << "\nscience\n";
-    idx = 0;
-    for (auto &&stamp : sciStamps)
-    {
-      ofs << "stamp " << idx << '\n';
-      for (auto &&sstamp : stamp.subStamps)
-      {
-        ofs << sstamp.imageCoords.first << ", " << sstamp.imageCoords.second << ": " << sstamp.val << '\n';
-      }
-      idx++;
-    }
-    
-    ofs << std::endl;
-  }
-
   if(templateStamps.size() == 0 && sciStamps.size() == 0) {
     std::cout << "No substamps found" << std::endl;
     std::exit(1);
