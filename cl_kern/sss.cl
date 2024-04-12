@@ -151,6 +151,11 @@ void kernel sortSamples(global double *paddedSamples, const int paddedNSamples, 
     }
 }
 
+void kernel resetGoodPixelCounts(global int *goodPixelCounts) {
+    int id = get_global_id(0);
+    goodPixelCounts[id] = 0;
+}
+
 void kernel maskStamp(global const double *img, global ushort *mask, 
                       global const long2 *stampCoords, 
                       global double *goodPixels, global int *goodPixelCounts,
@@ -512,7 +517,6 @@ void kernel padMarks(global int *keepIndeces, global const int *keepCounter) {
     int stamp = get_global_id(0);
     if (stamp >= *keepCounter) {
         keepIndeces[stamp] = INT_MAX;
-        return;
     }
 }
 
@@ -546,7 +550,8 @@ void kernel removeEmptyStamps(global const long2 *stampCoords, global const long
                               global double *filteredSkyEsts, global double *filteredFwhms,
                               global int *filteredSubStampCounts,
                               global int2 *filteredSubStampCoords, global double *filteredSubStampValues,
-                              global const int *keepIndeces, global const int *keepCounter, const int maxKSStamps) {
+                              global const int *keepIndeces, global const int *keepCounter,
+                              global int *currentSubStamps, const int maxSStamps) {
     int stamp = get_global_id(0);
     if(stamp >= *keepCounter) return;
     
@@ -559,12 +564,12 @@ void kernel removeEmptyStamps(global const long2 *stampCoords, global const long
     int sstampCount = subStampCounts[index];
     filteredSubStampCounts[stamp] = sstampCount;
     
-    int maxSStamps = 2 * maxKSStamps;
     for(int i = 0; i < sstampCount; i++){
         filteredSubStampCoords[maxSStamps*stamp + i] = subStampCoords[maxSStamps*index + i];
         filteredSubStampValues[maxSStamps*stamp + i] = subStampValues[maxSStamps*index + i];
     }
-
+    
+    currentSubStamps[stamp] = 0;
 } 
 
 void kernel resetSkipMask(global ushort *mask) {

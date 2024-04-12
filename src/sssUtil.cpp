@@ -3,19 +3,17 @@
 #include <cassert>
 #include <iostream>
 
-extern double ran1(int *idum);
-
 void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, const Arguments& args, ClData& clData) {
   std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
 
-  std::cout << "calcStats (template)" << std::endl;
+  if (args.verbose) std::cout << "calcStats (template)" << std::endl;
   calcStats(templStamps, templImage, mask, args, clData.tImgBuf, clData.tmpl, clData);
-  std::cout << "calcStats (science)" << std::endl;
+  if (args.verbose) std::cout << "calcStats (science)" << std::endl;
   calcStats(scienceStamps, scienceImage, mask, args, clData.sImgBuf, clData.sci, clData);
 
-  std::cout << "findSStamps (template)" << std::endl;
+  if (args.verbose) std::cout << "findSStamps (template)" << std::endl;
   findSStamps(templStamps, templImage, mask, true, args, clData.tImgBuf, clData.tmpl, clData);
-  std::cout << "findSStamps (science)" << std::endl;
+  if (args.verbose) std::cout << "findSStamps (science)" << std::endl;
   findSStamps(scienceStamps, scienceImage, mask, false, args, clData.sImgBuf, clData.sci, clData);
 }
 
@@ -82,28 +80,27 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
 
   findSStampsEvent.wait();
   
-  std::vector<cl_int> sstampCounts(nStamps);
 
-  clData.queue.enqueueReadBuffer(stampsData.subStampCounts, CL_TRUE, 0, sizeof(cl_int)    * sstampCounts.size(), &sstampCounts[0]);
   clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
 
-  int index{0};
-  for (auto&& stamp : stamps) {
-    if(args.verbose) {
-      if(sstampCounts[index] == 0) {
-        std::cout << "No suitable substamps found in stamp " << index << std::endl;
+  if(args.verbose) {  
+    std::vector<cl_int> sstampCounts(nStamps);
+    clData.queue.enqueueReadBuffer(stampsData.subStampCounts, CL_TRUE, 0, sizeof(cl_int)    * sstampCounts.size(), &sstampCounts[0]);
+    
+    for (int i{0}; i < nStamps; i++) {
+      if(sstampCounts[i] == 0) {
+        std::cout << "No suitable substamps found in stamp " << i << std::endl;
       }   
       else {
-        std::cout << "Added " << sstampCounts[index]
-                  << " substamps to stamp " << index << std::endl;
+        std::cout << "Added " << sstampCounts[i]
+                  << " substamps to stamp " << i << std::endl;
       }
     }
-    index++;
   }
   return 0;
 }
 
-int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStampsData& stampsData, const ClData& clData) {
+void removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStampsData& stampsData, const ClData& clData) {
   
   int maxSStamps{2 * args.maxKSStamps};
   
@@ -138,7 +135,7 @@ int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStamp
                     cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer,
-                    cl::Buffer, cl::Buffer, cl_int>
+                    cl::Buffer, cl::Buffer, cl::Buffer, cl_int>
   removeFunc(clData.program, "removeEmptyStamps");
 
   cl_int zero{0};
@@ -163,6 +160,9 @@ int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStamp
   
   clData.queue.enqueueReadBuffer(keepCounter, CL_TRUE, 0, sizeof(cl_int), &nStamps);
 
+  stampsData.stampCount = nStamps;
+  stampsData.currentSubStamps = {clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * nStamps};
+
   cl::Event removeEvent = removeFunc(eargsRemove, 
       stampsData.stampCoords, stampsData.stampSizes,
       stampsData.stats.skyEsts, stampsData.stats.fwhms,
@@ -170,7 +170,7 @@ int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStamp
       filteredStampCoords, filteredStampSizes, 
       filteredSkyEsts, filteredFwhms,
       filteredSubStampCounts, filteredSubStampCoords, filteredSubStampValues,
-      keepIndeces, keepCounter, args.maxKSStamps);
+      keepIndeces, keepCounter, stampsData.currentSubStamps, maxSStamps);
   removeEvent.wait();
   
   stampsData.stampCoords    = filteredStampCoords;
@@ -180,8 +180,6 @@ int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStamp
   stampsData.subStampCoords = filteredSubStampCoords;
   stampsData.subStampValues = filteredSubStampValues;
   stampsData.subStampCounts = filteredSubStampCounts;
-  
-  return nStamps;
 }
 
 void resetSStampSkipMask(const int w, const int h, ImageMask& mask, const ClData& clData) {
@@ -222,7 +220,7 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
                         std::pair<cl_long, cl_long>{stampSizes[i].x, stampSizes[i].y},
                         std::vector<SubStamp>{},std::vector<double>{})};
     
-    auto &sstamps{stamps.back().subStamps};
+    auto &sstamps{stamp.subStamps};
     
     for (size_t j{0}; j < subStampCounts[i]; j++)
     {
@@ -232,8 +230,8 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
         std::numeric_limits<cl_int>::max(),
         std::numeric_limits<cl_int>::max()
       );
-      stamp.subStamps.emplace_back(imageCoords, stampCoords,
-                                   subStampValues[offset]);
+      sstamps.emplace_back(imageCoords, stampCoords,
+                            subStampValues[offset]);
     }
   }
 

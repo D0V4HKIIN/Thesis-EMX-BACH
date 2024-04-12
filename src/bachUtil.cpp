@@ -107,62 +107,6 @@ void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *me
   }
 }
 
-void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
-               const int iter, const Arguments& args) {
-  /* Does sigma clipping on data to provide the mean and stdDev of said
-   * data
-   */
-  if(data.empty()) {
-    std::cout << "Cannot send in empty vector to Sigma Clip" << std::endl;
-    mean = 0.0;
-    stdDev = 1e10;
-    return;
-  }
-
-  size_t currNPoints = 0;
-  size_t prevNPoints = data.size();
-  std::vector<bool> intMask(data.size(), false);
-
-  // Do three times or a stable solution has been found.
-  for(int i = 0; (i < iter) && (currNPoints != prevNPoints); i++) {
-    currNPoints = prevNPoints;
-    mean = 0;
-    stdDev = 0;
-
-    for(size_t i = 0; i < data.size(); i++) {
-      if(!intMask[i]) {
-        mean += data[i];
-        stdDev += data[i] * data[i];
-      }
-    }
-
-    if(prevNPoints > 1) {
-      mean = mean / prevNPoints;
-      stdDev = stdDev - prevNPoints * mean * mean;
-      stdDev = std::sqrt(stdDev / double(prevNPoints - 1));
-    } else {
-      std::cout << "prevNPoints is: " << prevNPoints
-                << "Needs to be greater than 1" << std::endl;
-      mean = 0.0;
-      stdDev = 1e10;
-      return;
-    }
-
-    prevNPoints = 0;
-    double invStdDev = 1.0 / stdDev;
-    for(size_t i = 0; i < data.size(); i++) {
-      if(!intMask[i]) {
-        // Doing the sigmaClip
-        if(std::abs(data[i] - mean) * invStdDev > args.sigClipAlpha) {
-          intMask[i] = true;
-        } else {
-          prevNPoints++;
-        }
-      }
-    }
-  }
-}
-
 void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
@@ -181,7 +125,7 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
       cl_int stampNumPix = stampSizes[i].x * stampSizes[i].y;
       if(stampNumPix < nSamples) {
         std::cout << "Not enough pixels in a stamp" << std::endl;
-        exit(1);
+        std::exit(1);
       }
     }
   }
@@ -212,6 +156,10 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
   cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl_int>
   sortSamplesFunc(clData.program, "sortSamples");
 
+  cl::EnqueueArgs eargsResetGoodPixelCounts{clData.queue, cl::NDRange{nStamps}};
+  cl::KernelFunctor<cl::Buffer>
+  resetGoodPixelCountsFunc(clData.program, "resetGoodPixelCounts");
+
   cl::EnqueueArgs eargsMask{clData.queue, cl::NDRange(nPix, nStamps)};
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int>
   maskFunc(clData.program, "maskStamp");
@@ -224,20 +172,15 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
                     cl_int, cl_int, cl_int, cl_int,cl_double, cl_double>
   histogramFunc(clData.program, "createHistogram");
   
-  std::vector<cl_int>    cpuSampleCounts(nStamps);
-  std::vector<cl_int>    cpuGoodPixelCounts(nStamps, 0);
-  
-  std::vector<cl_double> cpuMeans(nStamps);
-  std::vector<cl_double> cpuInvStdDevs(nStamps);
-
-  clData.queue.enqueueWriteBuffer(sampleCounts, CL_TRUE, 0, sizeof(cl_int) * cpuSampleCounts.size(), &cpuSampleCounts[0]);
-  clData.queue.enqueueWriteBuffer(goodPixelCounts, CL_TRUE, 0, sizeof(cl_int) * cpuGoodPixelCounts.size(), &cpuGoodPixelCounts[0]);
-
   cl::Event sampleEvent =
     sampleStampFunc(eargsSample, imgBuf, clData.maskBuf,
                     stampsData.stampCoords, stampsData.stampSizes,
                     samples, sampleCounts, imgW, nSamples);
   sampleEvent.wait();
+
+  cl::Event resetEvent = 
+    resetGoodPixelCountsFunc(eargsResetGoodPixelCounts, goodPixelCounts);
+  resetEvent.wait();
 
   cl::Event padEvent =
     padFunc(eargsPadSamples, samples, paddedSamples, 
@@ -262,15 +205,16 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
              args.fStampWidth, imgW, imgH);
   maskEvent.wait();
   
+  std::vector<cl_int>    cpuGoodPixelCounts(nStamps);  
+  std::vector<cl_double> cpuMeans(nStamps);
+  std::vector<cl_double> cpuInvStdDevs(nStamps);
 
-  clData.queue.enqueueReadBuffer(sampleCounts, CL_TRUE, 0, sizeof(cl_int) * cpuSampleCounts.size(), &cpuSampleCounts[0]);
   clData.queue.enqueueReadBuffer(goodPixelCounts, CL_TRUE, 0, sizeof(cl_int) * cpuGoodPixelCounts.size(), &cpuGoodPixelCounts[0]);
   
   clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
 
   for (size_t stampIdx{0}; stampIdx < nStamps; stampIdx++)
   {
-    int sampleCount{cpuSampleCounts[stampIdx]};
     int goodPixelCount{cpuGoodPixelCounts[stampIdx]};
 
     // sigma clip of maskedStamp to get mean and sd.  
@@ -294,12 +238,6 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
                   args.iqRange, args.sigClipAlpha);
 
   histogramEvent.wait();
-
-  std::vector<double> skyEsts(nStamps);
-  std::vector<double> fwhms(nStamps);
-
-  clData.queue.enqueueReadBuffer(stampsData.stats.skyEsts, CL_TRUE, 0, sizeof(cl_double) * nStamps, &skyEsts[0]);
-  clData.queue.enqueueReadBuffer(stampsData.stats.fwhms, CL_TRUE, 0,sizeof(cl_double) * nStamps, &fwhms[0]);
 }
 
 void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &vv, const ClData &clData) {

@@ -111,54 +111,6 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
 
   cl::Event::waitForEvents(testEvents);
 
-  // TEMP: read back data
-  std::vector<cl_int2> gpuSsCoords(testStampCount * (2 * args.maxKSStamps));
-  std::vector<cl_int> gpuSsCounts(testStampCount);
-  std::vector<cl_double> gpuW(testStampCount * clData.wColumns * clData.wRows, 0.0);
-  std::vector<cl_double> gpuQ(testStampCount * clData.qCount * clData.qCount, 0.0);
-  std::vector<cl_double> gpuB(testStampCount * clData.bCount, 0.0);
-
-  clData.queue.enqueueReadBuffer(testStampData.subStampCoords, CL_TRUE, 0, sizeof(cl_int2) * gpuSsCoords.size(), gpuSsCoords.data());
-  clData.queue.enqueueReadBuffer(testStampData.subStampCounts, CL_TRUE, 0, sizeof(cl_int) * gpuSsCounts.size(), gpuSsCounts.data());
-  clData.queue.enqueueReadBuffer(testStampData.w, CL_TRUE, 0, sizeof(cl_double) * gpuW.size(), gpuW.data());
-  clData.queue.enqueueReadBuffer(testStampData.q, CL_TRUE, 0, sizeof(cl_double) * gpuQ.size(), gpuQ.data());
-  clData.queue.enqueueReadBuffer(testStampData.b, CL_TRUE, 0, sizeof(cl_double) * gpuB.size(), gpuB.data());
-
-  std::vector<Stamp> testStamps2{};
-  for (int i = 0; i < testStampCount; i++) {
-    Stamp s{};
-
-    for (int j = 0; j < gpuSsCounts[i]; j++) {
-      SubStamp ss{};
-      ss.imageCoords = std::make_pair(gpuSsCoords[i * (2 * args.maxKSStamps) + j].x,
-                                      gpuSsCoords[i * (2 * args.maxKSStamps) + j].y);
-
-      s.subStamps.push_back(ss);
-    }
-
-    for (int j = 0; j < clData.wRows; j++) {
-      s.W.emplace_back();
-
-      for (int k = 0; k < clData.wColumns; k++) {
-        s.W.back().push_back(gpuW[i * clData.wColumns * clData.wRows + j * clData.wColumns + k]);
-      }
-    }
-
-    for (int j = 0; j < clData.qCount; j++) {
-      s.Q.emplace_back();
-
-      for (int k = 0; k < clData.qCount; k++) {
-        s.Q.back().push_back(gpuQ[i * clData.qCount * clData.qCount + j * clData.qCount + k]);
-      }
-    }
-
-    for (int j = 0; j < clData.bCount; j++) {
-      s.B.push_back(gpuB[i * clData.bCount + j]);
-    }
-
-    testStamps2.push_back(s);
-  }
-
   // Do fit
   createMatrix(matrix, weights, clData, testStampData, axis, args);
   createScProd(testKernSol, weights, sImgBuf, axis, clData, testStampData, args);
@@ -498,25 +450,6 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
   clData.queue.enqueueCopyBuffer(*sigIn, sigma, 0, 0, sizeof(cl_double) * stampCount, nullptr, &copyEvent);
 
   copyEvent.wait();
-}
-
-double getBackground(const int x, const int y, const std::vector<double>& kernSol,
-                     const std::pair<cl_long, cl_long> imgSize, const Arguments& args) {
-  int BGComp = (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1;
-  double bg = 0.0;
-  double xf = (x - 0.5 * imgSize.first) / (0.5 * imgSize.first);
-  double yf = (y - 0.5 * imgSize.second) / (0.5 * imgSize.second);
-
-  double ax = 1.0;
-  for(int i = 0, k = 1; i <= args.backgroundOrder; i++) {
-    double ay = 1.0;
-    for(int j = 0; j <= args.backgroundOrder - i; j++) {
-      bg += kernSol[BGComp + k++] * ax * ay;
-      ay *= yf;
-    }
-    ax *= xf;
-  }
-  return bg;
 }
 
 void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask,

@@ -87,11 +87,6 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   clData.sci.subStampValues  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy);
   clData.sci.subStampCounts  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * args.stampsx * args.stampsy);
 
-  //Non-empty stamps ()
-  ClStampsData filteredTmpl{
-
-  };
-
   createStamps(templateStamps, w, h, clData.tmpl, clData, args);
   createStamps(sciStamps, w, h, clData.sci, clData, args);
   if(args.verbose) {
@@ -105,8 +100,8 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, args, clData);
   
   int oldCount = args.stampsx * args.stampsy;
-  clData.tmpl.stampCount = removeEmptyStamps(templateStamps, args, clData.tmpl, clData);
-  clData.sci.stampCount = removeEmptyStamps(sciStamps, args, clData.sci, clData);
+  removeEmptyStamps(templateStamps, args, clData.tmpl, clData);
+  removeEmptyStamps(sciStamps, args, clData.sci, clData);
 
   double filledTempl{static_cast<double>(clData.tmpl.stampCount) / oldCount};
   double filledScience{static_cast<double>(clData.sci.stampCount) / oldCount};
@@ -132,8 +127,8 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 
     identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, args, clData);
 
-    clData.tmpl.stampCount = removeEmptyStamps(templateStamps, args, clData.tmpl, clData);
-    clData.sci.stampCount = removeEmptyStamps(sciStamps, args, clData.sci, clData);
+    removeEmptyStamps(templateStamps, args, clData.tmpl, clData);
+    removeEmptyStamps(sciStamps, args, clData.sci, clData);
     args.threshLow /= 0.5;
   }
 
