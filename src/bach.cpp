@@ -36,7 +36,7 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
   clData.tImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
   clData.sImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
   clData.maskBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_ushort) * pixelCount);
-
+  
   err = clData.queue.enqueueWriteBuffer(clData.tImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &templateImg);
   checkError(err);
   err = clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &scienceImg);
@@ -45,7 +45,7 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
   maskInput(mask, clData, args);
 }
 
-void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args) {
+void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args, ClData& clData) {
   std::cout << "\nCreating stamps..." << std::endl;
     
   const auto [w, h] = templateImg.axis;
@@ -61,25 +61,61 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
     args.stampsx = int(templateImg.axis.first / args.fStampWidth);
     args.stampsy = int(templateImg.axis.second / args.fStampWidth);
 
-  if(args.verbose)
-      std::cout << "Too many stamps requested, using " << args.stampsx << "x"
-                << args.stampsy << " stamps instead." << std::endl;
+    if(args.verbose)
+        std::cout << "Too many stamps requested, using " << args.stampsx << "x"
+                  << args.stampsy << " stamps instead." << std::endl;
   }
 
-  createStamps(templateImg, templateStamps, w, h, args);
+  templateStamps.reserve(args.stampsx * args.stampsy);
+  sciStamps.reserve(args.stampsx * args.stampsy);
+  
+  int subStampMaxCount{2 * args.maxKSStamps};
+
+  clData.tmpl.stampCoords    = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.tmpl.stampSizes     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.tmpl.stats.skyEsts  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.stampsx * args.stampsy);
+  clData.tmpl.stats.fwhms    = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.stampsx * args.stampsy);
+  clData.tmpl.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy);
+  clData.tmpl.subStampValues = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy);
+  clData.tmpl.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * args.stampsx * args.stampsy);
+
+  clData.sci.stampCoords     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.sci.stampSizes      = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.sci.stats.skyEsts   = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.stampsx * args.stampsy);
+  clData.sci.stats.fwhms     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.stampsx * args.stampsy);
+  clData.sci.subStampCoords  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy);
+  clData.sci.subStampValues  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy);
+  clData.sci.subStampCounts  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * args.stampsx * args.stampsy);
+
+  //Non-empty stamps ()
+  ClStampsData filteredTmpl{
+
+  };
+
+  createStamps(templateStamps, w, h, clData.tmpl, clData, args);
+  createStamps(sciStamps, w, h, clData.sci, clData, args);
   if(args.verbose) {
     std::cout << "Stamps created for " << templateImg.name << std::endl;
-  }
-
-  createStamps(scienceImg, sciStamps, w, h, args);
-  if(args.verbose) {
     std::cout << "Stamps created for " << scienceImg.name << std::endl;
   }
 
   /* == Check Template Stamps  ==*/
-  double filledTempl{};
-  double filledScience{};
-  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args);
+  
+  
+  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, args, clData);
+  
+  int oldCount = args.stampsx * args.stampsy;
+  clData.tmpl.stampCount = removeEmptyStamps(templateStamps, args, clData.tmpl, clData);
+  clData.sci.stampCount = removeEmptyStamps(sciStamps, args, clData.sci, clData);
+
+  double filledTempl{static_cast<double>(clData.tmpl.stampCount) / oldCount};
+  double filledScience{static_cast<double>(clData.sci.stampCount) / oldCount};
+ 
+  if(args.verbose) {
+    std::cout << "Non-Empty template stamps: " << clData.tmpl.stampCount << std::endl;
+    std::cout << "Non-Empty science stamps: " << clData.sci.stampCount << std::endl;
+  }
+  
   if(filledTempl < 0.1 || filledScience < 0.1) {
     if(args.verbose)
       std::cout << "Not enough substamps found in " << templateImg.name
@@ -89,19 +125,49 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
     templateStamps.clear();
     sciStamps.clear();
 
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        int index = y * w + x;
-        mask.unmask(index, ImageMask::SKIP_S | ImageMask::SKIP_T);
+    resetSStampSkipMask(w, h, mask, clData);
+
+    createStamps(templateStamps, w, h, clData.tmpl, clData, args);
+    createStamps(sciStamps, w, h, clData.sci, clData, args);
+
+    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, args, clData);
+
+    clData.tmpl.stampCount = removeEmptyStamps(templateStamps, args, clData.tmpl, clData);
+    clData.sci.stampCount = removeEmptyStamps(sciStamps, args, clData.sci, clData);
+    args.threshLow /= 0.5;
+  }
+
+  readFinalStamps(templateStamps, clData.tmpl, clData, args);
+  readFinalStamps(sciStamps, clData.sci, clData, args);
+
+  {
+    std::ofstream ofs{"substamps-parallel.log"};
+
+    ofs << "template\n";
+    int idx{0};
+    for (auto &&stamp : templateStamps)
+    {
+      ofs << "stamp " << idx << '\n';
+      for (auto &&sstamp : stamp.subStamps)
+      {
+        ofs << sstamp.imageCoords.first << ", " << sstamp.imageCoords.second << ": " << sstamp.val << '\n';
       }
+      idx++;
     }
 
-    createStamps(templateImg, templateStamps, w, h, args);
-
-    createStamps(scienceImg, sciStamps, w, h, args);
-
-    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args);
-    args.threshLow /= 0.5;
+    ofs << "\nscience\n";
+    idx = 0;
+    for (auto &&stamp : sciStamps)
+    {
+      ofs << "stamp " << idx << '\n';
+      for (auto &&sstamp : stamp.subStamps)
+      {
+        ofs << sstamp.imageCoords.first << ", " << sstamp.imageCoords.second << ": " << sstamp.val << '\n';
+      }
+      idx++;
+    }
+    
+    ofs << std::endl;
   }
 
   if(templateStamps.size() == 0 && sciStamps.size() == 0) {

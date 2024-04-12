@@ -1,6 +1,7 @@
 #include "bachUtil.h"
 #include "mathUtil.h"
 #include <numeric>
+#include <algorithm>
 
 void checkError(const cl_int err) {
   if(err != 0) {
@@ -31,7 +32,7 @@ void maskInput(ImageMask& mask, const ClData& clData, const Arguments& args) {
   clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
 }
 
-void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args) {
+void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args) {
   if(dataCount == 0) {
     std::cout << "Cannot send in empty vector to Sigma Clip" << std::endl;
     *mean = 0.0;
@@ -51,14 +52,14 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
   cl::Buffer sum2Buf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * reduceCount);
 
   cl::KernelFunctor<cl::Buffer> initMaskFunc(clData.program, "sigmaClipInitMask");
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl::LocalSpaceArg> calcFunc(clData.program, "sigmaClipCalc");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long> calcFunc(clData.program, "sigmaClipCalc");
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_double, cl_double, cl_double> maskFunc(clData.program, "sigmaClipMask");
   
-  cl::EnqueueArgs calcEargs(clData.queue, cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
-  cl::EnqueueArgs eargs(clData.queue, cl::NDRange(dataCount));
+  cl::EnqueueArgs calcEargs(clData.queue, cl::NDRange(dataOffset), cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
+  cl::EnqueueArgs maskEargs(clData.queue, cl::NDRange(dataOffset), cl::NDRange(dataCount), cl::NullRange);
 
   // Zero mask
-  cl::Event initMaskEvent = initMaskFunc(eargs, intMask);
+  cl::Event initMaskEvent = initMaskFunc(maskEargs, intMask);
   initMaskEvent.wait();
 
   size_t currNPoints = 0;
@@ -76,7 +77,7 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
     currNPoints = prevNPoints;
         
     // Calculate mean and standard deviation    
-    cl::Event calcEvent = calcFunc(calcEargs, sumBuf, sum2Buf, data, intMask, dataCount, cl::Local(localSize * sizeof(cl_double)));
+    cl::Event calcEvent = calcFunc(calcEargs, sumBuf, sum2Buf, data, intMask, dataCount);
     calcEvent.wait();
     
     // Can be optimized to use a tree structure instead of reducing on CPU
@@ -88,14 +89,89 @@ void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdD
 
     double tempMean = sum / prevNPoints;
     double tempStdDev = std::sqrt((sum2 - prevNPoints * tempMean * tempMean) / (prevNPoints - 1));
-
+    
     double invStdDev = 1.0 / tempStdDev;
 
     int clipCount = 0;
     clData.queue.enqueueWriteBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);
 
     // Mask bad values
-    cl::Event maskEvent = maskFunc(eargs, intMask, clipCountBuf, data, invStdDev, tempMean, args.sigClipAlpha);
+    cl::Event maskEvent = maskFunc(maskEargs, intMask, clipCountBuf, data, invStdDev, tempMean, args.sigClipAlpha);
+    maskEvent.wait();
+
+    clData.queue.enqueueReadBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);
+
+    prevNPoints = currNPoints - clipCount;
+    *mean = tempMean;
+    *stdDev = tempStdDev;
+  }
+}
+
+void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args) {
+  if(dataCount == 0) {
+    std::cout << "Cannot send in empty vector to Sigma Clip" << std::endl;
+    *mean = 0.0;
+    *stdDev = 1e10;
+    return;
+  }
+
+  constexpr int localSize = 32;
+  int reduceCount = (dataCount + localSize - 1) / localSize;
+
+  std::vector<double> sumVec(reduceCount);
+  std::vector<double> sum2Vec(reduceCount);
+
+  cl::Buffer intMask(clData.context, CL_MEM_READ_WRITE, sizeof(cl_uchar) * dataCount);
+  cl::Buffer clipCountBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int));
+  cl::Buffer sumBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * reduceCount);
+  cl::Buffer sum2Buf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * reduceCount);
+
+  cl::KernelFunctor<cl::Buffer> initMaskFunc(clData.program, "sigmaClipInitMask");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long> calcFunc(clData.program, "sigmaClipCalc");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_double, cl_double, cl_double> maskFunc(clData.program, "sigmaClipMask");
+  
+  cl::EnqueueArgs calcEargs(clData.queue, cl::NDRange(dataOffset), cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
+  cl::EnqueueArgs maskEargs(clData.queue, cl::NDRange(dataOffset), cl::NDRange(dataCount), cl::NullRange);
+
+  // Zero mask
+  cl::Event initMaskEvent = initMaskFunc(maskEargs, intMask);
+  initMaskEvent.wait();
+
+  size_t currNPoints = 0;
+  size_t prevNPoints = dataCount;
+
+  // Do three times or a stable solution has been found.
+  for (int i = 0; (i < maxIter) && (currNPoints != prevNPoints); i++) {
+    if (prevNPoints <= 1) {
+      std::cout << "prevNPoints is: " << prevNPoints << "Needs to be greater than 1" << std::endl;
+      *mean = 0.0;
+      *stdDev = 1e10;
+      return;
+    }
+
+    currNPoints = prevNPoints;
+        
+    // Calculate mean and standard deviation    
+    cl::Event calcEvent = calcFunc(calcEargs, sumBuf, sum2Buf, data, intMask, dataCount);
+    calcEvent.wait();
+    
+    // Can be optimized to use a tree structure instead of reducing on CPU
+    clData.queue.enqueueReadBuffer(sumBuf, CL_TRUE, 0, sizeof(cl_double) * sumVec.size(), sumVec.data());    
+    clData.queue.enqueueReadBuffer(sum2Buf, CL_TRUE, 0, sizeof(cl_double) * sum2Vec.size(), sum2Vec.data());
+
+    double sum = std::accumulate(sumVec.begin(), sumVec.end(), 0.0);
+    double sum2 = std::accumulate(sum2Vec.begin(), sum2Vec.end(), 0.0);
+
+    double tempMean = sum / prevNPoints;
+    double tempStdDev = std::sqrt((sum2 - prevNPoints * tempMean * tempMean) / (prevNPoints - 1));
+    
+    double invStdDev = 1.0 / tempStdDev;
+
+    int clipCount = 0;
+    clData.queue.enqueueWriteBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);
+
+    // Mask bad values
+    cl::Event maskEvent = maskFunc(maskEargs, intMask, clipCountBuf, data, invStdDev, tempMean, args.sigClipAlpha);
     maskEvent.wait();
 
     clData.queue.enqueueReadBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);
@@ -162,249 +238,143 @@ void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
   }
 }
 
-#define M1 259200
-#define IA1 7141
-#define IC1 54773
-#define RM1 (1.0/M1)
-#define M2 134456
-#define IA2 8121
-#define IC2 28411
-#define RM2 (1.0/M2)
-#define M3 243000
-#define IA3 4561
-#define IC3 51349
-double ran1(int *idum) {
-    static long ix1,ix2,ix3;
-    static double r[98];
-    double temp;
-    static int iff=0;
-    int j;
-    /* void nrerror(char *error_text); */
-    
-    if (*idum < 0 || iff == 0) {
-        iff=1;
-        ix1=(IC1-(*idum)) % M1;
-        ix1=(IA1*ix1+IC1) % M1;
-        ix2=ix1 % M2;
-        ix1=(IA1*ix1+IC1) % M1;
-        ix3=ix1 % M3;
-        for (j=1;j<=97;j++) {
-            ix1=(IA1*ix1+IC1) % M1;
-            ix2=(IA2*ix2+IC2) % M2;
-            r[j]=(ix1+ix2*RM2)*RM1;
-        }
-        *idum=1;
-    }
-    ix1=(IA1*ix1+IC1) % M1;
-    ix2=(IA2*ix2+IC2) % M2;
-    ix3=(IA3*ix3+IC3) % M3;
-    j=1 + ((97*ix3)/M3);
-    /* if (j > 97 || j < 1) nrerror("RAN1: This cannot happen."); */
-    temp=r[j];
-    r[j]=(ix1+ix2*RM2)*RM1;
-    return temp;
-}
-#undef M1
-#undef IA1
-#undef IC1
-#undef RM1
-#undef M2
-#undef IA2
-#undef IC2
-#undef RM2
-#undef M3
-#undef IA3
-#undef IC3
-
-void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Arguments& args) {
+void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
+  auto&& [imgW, imgH] = image.axis;
+  
+  cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx * args.stampsy)};
 
-  double median, sum;
+  static constexpr cl_int nSamples{100};
+  static constexpr cl_int paddedNSamples{leastGreaterPow2(nSamples)};
 
-  std::vector<cl_int> bins(256, 0);
-
-  constexpr cl_int nValues = 100;
-  double upProc = 0.9;
-  double midProc = 0.5;
-  cl_int numPix = stamp.size.first * stamp.size.second;
-
-  if(numPix < nValues) {
-    std::cout << "Not enough pixels in a stamp" << std::endl;
-    std::exit(1);
+  {
+    std::vector<cl_long2> stampSizes(nStamps);
+    clData.queue.enqueueReadBuffer(stampsData.stampSizes, CL_TRUE, 0, sizeof(cl_long2) * stampsData.stampCount, &stampSizes[0]);
+    for (size_t i{0}; i < stampsData.stampCount; i++) {
+      cl_int stampNumPix = stampSizes[i].x * stampSizes[i].y;
+      if(stampNumPix < nSamples) {
+        std::cout << "Not enough pixels in a stamp" << std::endl;
+        exit(1);
+      }
+    }
   }
-  int idum = -666;
 
-  std::array<double, nValues> values{};
-  int valuesCount = 0;
+  cl_int nPix{args.fStampWidth * args.fStampWidth};
+  cl::Buffer samples{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nSamples * nStamps};
+  cl::Buffer paddedSamples{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * paddedNSamples * nStamps};
+  cl::Buffer sampleCounts{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * nStamps};
+  
+  cl::Buffer goodPixels{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nPix * nStamps};
+  cl::Buffer goodPixelCounts{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * nStamps};
 
-  // Stop after randomly having selected a pixel numPix times.
-  for(int iter = 0; valuesCount < nValues && iter < numPix; iter++) {
-    int randX = std::floor(ran1(&idum) * stamp.size.first);
-    int randY = std::floor(ran1(&idum) * stamp.size.second);
+  cl::Buffer bins{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * 256 * nStamps};
+  cl::Buffer means{clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * nStamps};
+  cl::Buffer invStdDevs{clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * nStamps};
+  cl::Buffer binSizes{clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * nStamps};
+  cl::Buffer lowerBinVals{clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * nStamps};
+
+  cl::EnqueueArgs eargsSample{clData.queue, cl::NDRange{nStamps}};
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_int>
+  sampleStampFunc(clData.program, "sampleStamp");
+  
+  cl::EnqueueArgs eargsPadSamples{clData.queue, cl::NDRange{paddedNSamples, nStamps}};
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_int>
+  padFunc(clData.program, "pad");
+
+  cl::EnqueueArgs eargsSortSamples{clData.queue, cl::NDRange(paddedNSamples * nStamps)};
+  cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl_int>
+  sortSamplesFunc(clData.program, "sortSamples");
+
+  cl::EnqueueArgs eargsMask{clData.queue, cl::NDRange(nPix, nStamps)};
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int>
+  maskFunc(clData.program, "maskStamp");
+
+  static constexpr int histogramLocalSize = 4;
+  cl::EnqueueArgs eargsHistogram(clData.queue, cl::NDRange(roundUpToMultiple(nStamps, histogramLocalSize)), cl::NDRange(histogramLocalSize));
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_int, cl_int, cl_int, cl_int,cl_double, cl_double>
+  histogramFunc(clData.program, "createHistogram");
+  
+  std::vector<cl_int>    cpuSampleCounts(nStamps);
+  std::vector<cl_int>    cpuGoodPixelCounts(nStamps, 0);
+  
+  std::vector<cl_double> cpuMeans(nStamps);
+  std::vector<cl_double> cpuInvStdDevs(nStamps);
+
+  clData.queue.enqueueWriteBuffer(sampleCounts, CL_TRUE, 0, sizeof(cl_int) * cpuSampleCounts.size(), &cpuSampleCounts[0]);
+  clData.queue.enqueueWriteBuffer(goodPixelCounts, CL_TRUE, 0, sizeof(cl_int) * cpuGoodPixelCounts.size(), &cpuGoodPixelCounts[0]);
+
+  cl::Event sampleEvent =
+    sampleStampFunc(eargsSample, imgBuf, clData.maskBuf,
+                    stampsData.stampCoords, stampsData.stampSizes,
+                    samples, sampleCounts, imgW, nSamples);
+  sampleEvent.wait();
+
+  cl::Event padEvent =
+    padFunc(eargsPadSamples, samples, paddedSamples, 
+            nSamples, paddedNSamples);
+  padEvent.wait();
+
+  cl::Event sortEvent;
+  for (cl_int k=2;k<=paddedNSamples;k=2*k) // Outer loop, double size for each step
+  {
+    for (cl_int j=k>>1;j>0;j=j>>1)  // Inner loop, half size for each step
+    {
+      sortEvent = sortSamplesFunc(eargsSortSamples, paddedSamples, paddedNSamples, j, k);
+      cl_int err = sortEvent.wait();
+      checkError(err);
+    }
+  }
+
+  cl::Event maskEvent =
+    maskFunc(eargsMask, imgBuf, clData.maskBuf,
+             stampsData.stampCoords,
+             goodPixels, goodPixelCounts,
+             args.fStampWidth, imgW, imgH);
+  maskEvent.wait();
+  
+
+  clData.queue.enqueueReadBuffer(sampleCounts, CL_TRUE, 0, sizeof(cl_int) * cpuSampleCounts.size(), &cpuSampleCounts[0]);
+  clData.queue.enqueueReadBuffer(goodPixelCounts, CL_TRUE, 0, sizeof(cl_int) * cpuGoodPixelCounts.size(), &cpuGoodPixelCounts[0]);
+  
+  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
+
+  for (size_t stampIdx{0}; stampIdx < nStamps; stampIdx++)
+  {
+    int sampleCount{cpuSampleCounts[stampIdx]};
+    int goodPixelCount{cpuGoodPixelCounts[stampIdx]};
+
+    // sigma clip of maskedStamp to get mean and sd.  
+    double mean, stdDev, invStdDev;
+    sigmaClip(goodPixels, stampIdx*nPix, goodPixelCount, &mean, &stdDev, 3, clData, args);
+    invStdDev = 1.0 / stdDev;
     
-    // Random pixel in stamp in stamp coords.
-    cl_int indexS = randX + randY * stamp.size.first;
-
-    // Random pixel in stamp in Image coords.
-    cl_int xI = randX + stamp.coords.first;
-    cl_int yI = randY + stamp.coords.second;
-    int indexI = xI + yI * image.axis.first;
-
-    if(mask.isMaskedAny(indexI) || std::abs(image[indexI]) <= 1e-10) {
-      continue;
-    }
-
-    values[valuesCount++] = stamp[indexS];
+    cpuMeans[stampIdx] = mean;
+    cpuInvStdDevs[stampIdx] = invStdDev;
   }
+  
+  clData.queue.enqueueWriteBuffer(means, CL_TRUE, 0, sizeof(cl_double) * nStamps, &cpuMeans[0]);
+  clData.queue.enqueueWriteBuffer(invStdDevs, CL_TRUE, 0, sizeof(cl_double) * nStamps, &cpuInvStdDevs[0]);
 
-  std::sort(std::begin(values), std::end(values));
+  cl::Event histogramEvent =
+    histogramFunc(eargsHistogram, imgBuf, clData.maskBuf,
+                  stampsData.stampCoords, stampsData.stampSizes,
+                  means, invStdDevs, paddedSamples, sampleCounts,
+                  bins, stampsData.stats.fwhms, stampsData.stats.skyEsts,
+                  image.axis.first, nStamps, nSamples, paddedNSamples,
+                  args.iqRange, args.sigClipAlpha);
 
-  // Width of a histogram bin.
-  double binSize = (values[(int)(upProc * valuesCount)] -
-                    values[(int)(midProc * valuesCount)]) /
-                   (double)nValues;
+  histogramEvent.wait();
 
-  // Value of lowest bin.
-  double lowerBinVal =
-      values[(int)(midProc * valuesCount)] - (128.0 * binSize);
+  std::vector<double> skyEsts(nStamps);
+  std::vector<double> fwhms(nStamps);
 
-  // Contains all good Pixels in the stamp, aka not masked.
-  std::vector<double> maskedStamp{};
-  for(int y = 0; y < stamp.size.second; y++) {
-    for(int x = 0; x < stamp.size.first; x++) {
-      // Pixel in stamp in stamp coords.
-      cl_int indexS = x + y * stamp.size.first;
-
-      // Pixel in stamp in Image coords.
-      cl_int xI = x + stamp.coords.first;
-      cl_int yI = y + stamp.coords.second;
-      int indexI = xI + yI * image.axis.first;
-
-      if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
-        continue;
-      }
-
-      if (std::isnan(image[indexI])) {
-        mask.maskPix(xI, yI, ImageMask::NAN_PIXEL | ImageMask::BAD_INPUT);
-        continue;
-      }
-
-      maskedStamp.push_back(stamp[indexS]);
-    }
-  }
-
-  // sigma clip of maskedStamp to get mean and sd.
-  double mean, stdDev, invStdDev;
-  sigmaClip(maskedStamp, mean, stdDev, 3, args);
-  invStdDev = 1.0 / stdDev;
-
-  int attempts = 0;
-  cl_int okCount = 0;
-  double sumBins = 0.0;
-  double sumExpect = 0.0;
-  double lower, upper;
-  while(true) {
-    if(attempts >= 5) {
-      std::cout << "Creation of histogram unsuccessful after 5 attempts";
-      return;
-    }
-
-    std::fill(bins.begin(), bins.end(), 0);
-    okCount = 0;
-    sum = 0.0;
-    sumBins = 0.0;
-    sumExpect = 0.0;
-    for(int y = 0; y < stamp.size.second; y++) {
-      for(int x = 0; x < stamp.size.first; x++) {
-        // Pixel in stamp in stamp coords.
-        cl_int indexS = x + y * stamp.size.first;
-
-        // Pixel in stamp in Image coords.
-        cl_int xI = x + stamp.coords.first;
-        cl_int yI = y + stamp.coords.second;
-        int indexI = xI + yI * image.axis.first;
-
-        if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
-          continue;
-        }
-
-        if((std::abs(stamp[indexS] - mean) * invStdDev) > args.sigClipAlpha) {
-          continue;
-        }
-        
-        int index = std::clamp(
-            (int)std::floor((stamp[indexS] - lowerBinVal) / binSize) + 1, 0, 255);
-
-        bins[index]++;
-        sum += abs(stamp[indexS]);
-        okCount++;
-      }
-    }
-
-    if(okCount == 0 || binSize == 0.0) {
-      std::cout << "No good pixels or variation in pixels" << std::endl;
-      return;
-    }
-
-    double maxDens = 0.0;
-    int lowerIndex, upperIndex, maxIndex = -1;
-    for(lowerIndex = upperIndex = 1; upperIndex < 255;
-        sumBins -= bins[lowerIndex++]) {
-      while(sumBins < okCount / 10.0 && upperIndex < 255) {
-        sumBins += bins[upperIndex++];
-      }
-      if(sumBins / (upperIndex - lowerIndex) > maxDens) {
-        maxDens = sumBins / (upperIndex - lowerIndex);
-        maxIndex = lowerIndex;
-      }
-    }
-    if(maxIndex < 0 || maxIndex > 255) maxIndex = 0;
-
-    sumBins = 0.0;
-    for(int i = maxIndex; sumBins < okCount / 10.0 && i < 255; i++) {
-      sumBins += bins[i];
-      sumExpect += i * bins[i];
-    }
-
-    double modeBin = sumExpect / sumBins + 0.5;
-    stamp.stats.skyEst = lowerBinVal + binSize * (modeBin - 1.0);
-
-    lower = okCount * 0.25;
-    upper = okCount * 0.75;
-    sumBins = 0.0;
-    int i = 0;
-    for(; sumBins < lower; sumBins += bins[i++])
-      ;
-    lower = i - (sumBins - lower) / bins[i - 1];
-    for(; sumBins < upper; sumBins += bins[i++])
-      ;
-    upper = i - (sumBins - upper) / bins[i - 1];
-
-    if(lower < 1.0 || upper > 255.0) {
-      if(args.verbose) {
-        std::cout << "Expanding bin size..." << std::endl;
-      }
-      lowerBinVal -= 128.0 * binSize;
-      binSize *= 2;
-      attempts++;
-    } else if(upper - lower < 40.0) {
-      if(args.verbose) {
-        std::cout << "Shrinking bin size..." << std::endl;
-      }
-      binSize /= 3.0;
-      lowerBinVal = stamp.stats.skyEst - 128.0 * binSize;
-      attempts++;
-    } else
-      break;
-  }
-  stamp.stats.fwhm = binSize * (upper - lower) / args.iqRange;
-  int i = 0;
-  for(i = 0, sumBins = 0; sumBins < okCount / 2.0; sumBins += bins[i++])
-    ;
-  median = i - (sumBins - okCount / 2.0) / bins[i - 1];
-  median = lowerBinVal + binSize * (median - 1.0);
+  clData.queue.enqueueReadBuffer(stampsData.stats.skyEsts, CL_TRUE, 0, sizeof(cl_double) * nStamps, &skyEsts[0]);
+  clData.queue.enqueueReadBuffer(stampsData.stats.fwhms, CL_TRUE, 0,sizeof(cl_double) * nStamps, &fwhms[0]);
 }
 
 void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &vv, const ClData &clData) {

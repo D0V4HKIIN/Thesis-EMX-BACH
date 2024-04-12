@@ -1,221 +1,242 @@
 #include "bachUtil.h"
+#include "mathUtil.h"
 #include <cassert>
+#include <iostream>
 
-void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience, const Arguments& args) {
+extern double ran1(int *idum);
+
+void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, const Arguments& args, ClData& clData) {
   std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
 
-  assert(templStamps.size() == scienceStamps.size());
+  std::cout << "calcStats (template)" << std::endl;
+  calcStats(templStamps, templImage, mask, args, clData.tImgBuf, clData.tmpl, clData);
+  std::cout << "calcStats (science)" << std::endl;
+  calcStats(scienceStamps, scienceImage, mask, args, clData.sImgBuf, clData.sci, clData);
 
-  for (int i = 0; i < templStamps.size(); i++) {
-    calcStats(templStamps[i], templImage, mask, args);
-    calcStats(scienceStamps[i], scienceImage, mask, args);
-
-    findSStamps(templStamps[i], templImage, mask, i, true, args);
-    findSStamps(scienceStamps[i], scienceImage, mask, i, false, args);
-  }
-
-  int oldCount = templStamps.size();
-
-  templStamps.erase(std::remove_if(templStamps.begin(), templStamps.end(),
-                              [](Stamp& s) { return s.subStamps.empty(); }),
-               templStamps.end());
-  scienceStamps.erase(std::remove_if(scienceStamps.begin(), scienceStamps.end(),
-                              [](Stamp& s) { return s.subStamps.empty(); }),
-               scienceStamps.end());
-
-  if (filledTempl != nullptr) {
-    *filledTempl = static_cast<double>(templStamps.size()) / oldCount;
-  }
-
-  if (filledScience != nullptr) {
-    *filledScience = static_cast<double>(scienceStamps.size()) / oldCount;
-  }
-
-  if(args.verbose) {
-    std::cout << "Non-Empty template stamps: " << templStamps.size() << std::endl;
-    std::cout << "Non-Empty science stamps: " << scienceStamps.size() << std::endl;
-  }
-}
-void createStamps(const Image& img, std::vector<Stamp>& stamps, const int w, const int h, const Arguments& args) {
-  for(int j = 0; j < args.stampsy; j++) {
-    for(int i = 0; i < args.stampsx; i++) {
-      int startx = i * (double(w) / double(args.stampsx));
-      int starty = j * (double(h) / double(args.stampsy));
-      int stopx = std::min(startx + args.fStampWidth, w);
-      int stopy = std::min(starty + args.fStampWidth, h);
-      int stampw = stopx - startx;
-      int stamph = stopy - starty;
-
-      int centerx = startx + stampw / 2;
-      int centery = starty + stamph / 2;
-
-      Stamp tmpS{};
-      for(int y = 0; y < stamph; y++) {
-        for(int x = 0; x < stampw; x++) {
-          double tmp = img[(startx + x) + ((starty + y) * w)];
-          tmpS.data.push_back(tmp);
-        }
-      }
-
-      tmpS.coords = std::make_pair(startx, starty);
-      tmpS.size = std::make_pair(stampw, stamph);
-      tmpS.center = std::make_pair(centerx, centery);
-      stamps.push_back(tmpS);
-    }
-  }
+  std::cout << "findSStamps (template)" << std::endl;
+  findSStamps(templStamps, templImage, mask, true, args, clData.tImgBuf, clData.tmpl, clData);
+  std::cout << "findSStamps (science)" << std::endl;
+  findSStamps(scienceStamps, scienceImage, mask, false, args, clData.sImgBuf, clData.sci, clData);
 }
 
-double checkSStamp(const SubStamp& sstamp, const Image& image, ImageMask& mask, const Stamp& stamp, const ImageMask::masks badMask, const bool isTemplate, const Arguments& args) {
-  double retVal = 0.0;
-  for(int y = sstamp.imageCoords.second - args.hSStampWidth;
-      y <= sstamp.imageCoords.second + args.hSStampWidth; y++) {
-    if(y < stamp.coords.second || y >= stamp.coords.second + stamp.size.second)
-      continue;
-    for(int x = sstamp.imageCoords.first - args.hSStampWidth;
-        x <= sstamp.imageCoords.first + args.hSStampWidth; x++) {
-      if(x < stamp.coords.first || x >= stamp.coords.first + stamp.size.first)
-        continue;
+void createStamps(std::vector<Stamp>& stamps, const int w, const int h, ClStampsData& stampsData, const ClData& clData, const Arguments& args) {
+  cl::EnqueueArgs eargsBounds{clData.queue, cl::NDRange(args.stampsx * args.stampsy)};
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_int, cl_long, cl_long, cl_long>
+  boundsFunc(clData.program, "createStampBounds");
 
-      int absCoords = x + y * image.axis.first;
-      if(mask.isMasked(absCoords, badMask))
-        return 0.0;
-
-      if(image[absCoords] >= args.threshHigh) {
-        mask.maskPix(x, y, isTemplate ? ImageMask::BAD_PIXEL_T : ImageMask::BAD_PIXEL_S);
-        return 0.0;
-      }
-      if((image[absCoords] - stamp.stats.skyEst) / stamp.stats.fwhm >
-         args.threshKernFit)
-        retVal += image[absCoords];
-    }
-  }
-  return retVal;
+  cl::Event boundsEvent{
+    boundsFunc(eargsBounds,
+                stampsData.stampCoords, stampsData.stampSizes,
+                args.stampsx, args.stampsy, args.fStampWidth,
+                w, h)};
+  boundsEvent.wait();
+  stampsData.stampCount = args.stampsx * args.stampsy;
 }
 
-cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int index, const bool isTemplate, const Arguments& args) {
-  double floor = stamp.stats.skyEst + args.threshKernFit * stamp.stats.fwhm;
+cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const bool isTemplate, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
+  auto [imgW, imgH] = image.axis;
 
-  double dfrac = 0.9;
-  int maxSStamps = 2 * args.maxKSStamps;
+  cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx) * static_cast<cl::size_type>(args.stampsy)};
 
   ImageMask::masks badMask = ImageMask::ALL & ~ImageMask::OK_CONV;
+  ImageMask::masks badPixelMask, skipMask;
 
   if (isTemplate) {
     badMask &= ~(ImageMask::BAD_PIXEL_S | ImageMask::SKIP_S);
+    badPixelMask = ImageMask::BAD_PIXEL_T;
+    skipMask     = ImageMask::SKIP_T;
   }
   else {
     badMask &= ~(ImageMask::BAD_PIXEL_T | ImageMask::SKIP_T);
+    badPixelMask = ImageMask::BAD_PIXEL_S;
+    skipMask     = ImageMask::SKIP_S;
   }
+  
+  cl_int maxSStamps{2 * args.maxKSStamps};
 
-  while(stamp.subStamps.size() < size_t(maxSStamps)) {
-    double lowestPSFLim =
-        std::max(floor, stamp.stats.skyEst +
-                            (args.threshHigh - stamp.stats.skyEst) * dfrac);
-    for(long y = 0; y < args.fStampWidth; y++) {
-      long absy = y + stamp.coords.second;
-      for(long x = 0; x < args.fStampWidth; x++) {
-        long absx = x + stamp.coords.first;
-        long coords = x + (y * stamp.size.first);
-        long absCoords = absx + (absy * image.axis.first);
+  constexpr int localSize{1};
 
-        if (mask.isMasked(absCoords, badMask)) {
-          continue;
-        }
+  cl::EnqueueArgs eargsFindSStamps(clData.queue, cl::NDRange(roundUpToMultiple(nStamps, localSize)), cl::NDRange(localSize));
+  cl::KernelFunctor<cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_double, cl_double,
+                    cl_long, cl_int, cl_int, 
+                    cl_int, cl_int,
+                    cl_ushort, cl_ushort, cl_ushort,
+                    cl::LocalSpaceArg, cl::LocalSpaceArg> 
+  findSStampsFunc{clData.program, "findSubStamps"};
+  
+  cl::Event findSStampsEvent{findSStampsFunc(eargsFindSStamps, 
+                  imgBuf, clData.maskBuf,
+                  stampsData.stampCoords, stampsData.stampSizes,
+                  stampsData.stats.skyEsts, stampsData.stats.fwhms,
+                  stampsData.subStampCoords, stampsData.subStampValues, stampsData.subStampCounts,
+                  args.threshHigh, args.threshKernFit, imgW,
+                  args.fStampWidth, args.hSStampWidth, maxSStamps, static_cast<cl_int>(nStamps),
+                  static_cast<cl_ushort>(badMask),
+                  static_cast<cl_ushort>(badPixelMask),
+                  static_cast<cl_ushort>(skipMask),
+                  cl::Local(sizeof(cl_int2) * maxSStamps * localSize),
+                  cl::Local(sizeof(cl_double) * maxSStamps * localSize))};
 
-        if(stamp[coords] > args.threshHigh) {
-          mask.maskPix(absx, absy, isTemplate ? ImageMask::BAD_PIXEL_T : ImageMask::BAD_PIXEL_S);
-          continue;
-        }
+  findSStampsEvent.wait();
+  
+  std::vector<cl_int> sstampCounts(nStamps);
 
-        if((stamp[coords] - stamp.stats.skyEst) * (1.0 / stamp.stats.fwhm) <
-           args.threshKernFit) {
-          continue;
-        }
+  clData.queue.enqueueReadBuffer(stampsData.subStampCounts, CL_TRUE, 0, sizeof(cl_int)    * sstampCounts.size(), &sstampCounts[0]);
+  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
 
-        if(stamp[coords] > lowestPSFLim) {  // good candidate found
-          SubStamp s{std::make_pair(absx, absy),
-                     std::make_pair(x, y),
-                     stamp[coords]};
-          
-          for(long ky = absy - args.hSStampWidth;
-              ky <= absy + args.hSStampWidth; ky++) {
-            if(ky < stamp.coords.second ||
-               ky >= stamp.coords.second + args.fStampWidth)
-              continue;
-            for(long kx = absx - args.hSStampWidth;
-                kx <= absx + args.hSStampWidth; kx++) {
-              if(kx < stamp.coords.first ||
-                 kx >= stamp.coords.first + args.fStampWidth)
-                continue;
-              long kCoords = kx + (ky * image.axis.first);
-
-              if (mask.isMasked(kCoords, badMask)) {
-                continue;
-              }
-
-              if(image[kCoords] >= args.threshHigh) {
-                mask.maskPix(kx, ky, isTemplate ? ImageMask::BAD_PIXEL_T : ImageMask::BAD_PIXEL_S);
-                continue;
-              }
-
-              if((image[kCoords] - stamp.stats.skyEst) *
-                     (1.0 / stamp.stats.fwhm) <
-                 args.threshKernFit) {
-                continue;
-              }
-
-              if(image[kCoords] > s.val) {
-                s.val = image[kCoords];
-                s.imageCoords = std::make_pair(kx, ky);
-                s.stampCoords = std::make_pair(kx - stamp.coords.first,
-                                               ky - stamp.coords.second);
-              }
-            }
-          }
-          s.val = checkSStamp(s, image, mask, stamp, badMask, isTemplate, args);
-          if(s.val == 0.0) continue;
-          stamp.subStamps.push_back(s);
-
-          for(int y = s.stampCoords.second - args.hSStampWidth;
-              y <= s.stampCoords.second + args.hSStampWidth; y++) {
-            int y2 = y + stamp.coords.second;
-            for(int x = s.stampCoords.first - args.hSStampWidth;
-                x <= s.stampCoords.first + args.hSStampWidth; x++) {
-              int x2 = x + stamp.coords.first;
-              if (x > 0 && x < stamp.size.first && y > 0 && y < stamp.size.second) {
-                mask.maskPix(x2, y2, isTemplate ? ImageMask::SKIP_T : ImageMask::SKIP_S);
-              }
-            }
-          }
-        }
-        if(stamp.subStamps.size() >= size_t(maxSStamps)) break;
+  int index{0};
+  for (auto&& stamp : stamps) {
+    if(args.verbose) {
+      if(sstampCounts[index] == 0) {
+        std::cout << "No suitable substamps found in stamp " << index << std::endl;
+      }   
+      else {
+        std::cout << "Added " << sstampCounts[index]
+                  << " substamps to stamp " << index << std::endl;
       }
-      if(stamp.subStamps.size() >= size_t(maxSStamps)) break;
     }
-    if(lowestPSFLim == floor) break;
-    dfrac -= 0.2;
+    index++;
   }
-
-  if(stamp.subStamps.size() == 0) {
-    if(args.verbose)
-      std::cout << "No suitable substamps found in stamp " << index
-                << std::endl;
-    return 1;
-  }
-  int keepSStampCount = std::min<int>(stamp.subStamps.size(), args.maxKSStamps);
-  std::partial_sort(
-    stamp.subStamps.begin(),
-    stamp.subStamps.begin() + keepSStampCount,
-    stamp.subStamps.end(),
-    std::greater<SubStamp>()
-    );
-
-  if (stamp.subStamps.size() > keepSStampCount) {
-    stamp.subStamps.erase(stamp.subStamps.begin() + keepSStampCount, stamp.subStamps.end());
-  }
-
-  if(args.verbose)
-    std::cout << "Added " << stamp.subStamps.size() << " substamps to stamp "
-              << index << std::endl;
   return 0;
 }
+
+int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStampsData& stampsData, const ClData& clData) {
+  
+  int maxSStamps{2 * args.maxKSStamps};
+  
+  cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx * args.stampsy)};
+  cl::size_type paddedNStamps{static_cast<cl::size_type>(leastGreaterPow2(args.stampsx * args.stampsy))};
+
+
+  cl::Buffer filteredStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * nStamps};
+  cl::Buffer filteredStampSizes{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * nStamps};
+  cl::Buffer filteredSkyEsts{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nStamps};
+  cl::Buffer filteredFwhms{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nStamps};
+  cl::Buffer filteredSubStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * maxSStamps * nStamps};
+  cl::Buffer filteredSubStampValues{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * maxSStamps * nStamps};
+  cl::Buffer filteredSubStampCounts{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * maxSStamps * nStamps};
+
+  cl::Buffer keepCounter{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int)};
+  cl::Buffer keepIndeces{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * paddedNStamps};
+  
+  cl::EnqueueArgs eargsMark{clData.queue,cl::NDRange{nStamps}};
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>
+  markFunc(clData.program, "markStampsToKeep");
+
+  cl::EnqueueArgs eargsSort{clData.queue,cl::NDRange{paddedNStamps}};
+  cl::KernelFunctor<cl::Buffer, cl::Buffer>
+  padFunc(clData.program, "padMarks");
+
+  cl::KernelFunctor<cl::Buffer, cl_int, cl_int>
+  sortFunc(clData.program, "sortMarks");
+
+  cl::EnqueueArgs eargsRemove{clData.queue,cl::NDRange{nStamps}};  
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, 
+                    cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl_int>
+  removeFunc(clData.program, "removeEmptyStamps");
+
+  cl_int zero{0};
+  clData.queue.enqueueWriteBuffer(keepCounter, CL_TRUE, 0, sizeof(cl_int), &zero);
+
+  cl::Event markEvent{markFunc(eargsMark, stampsData.subStampCounts, keepIndeces, keepCounter)};
+  markEvent.wait();
+
+  cl::Event padEvent{padFunc(eargsSort, keepIndeces, keepCounter)};
+  padEvent.wait();
+  
+  cl::Event sortEvent;
+  for (cl_int k=2;k<=paddedNStamps;k=2*k) // Outer loop, double size for each step
+  {
+    for (cl_int j=k>>1;j>0;j=j>>1)  // Inner loop, half size for each step
+    {
+      sortEvent = sortFunc(eargsSort, keepIndeces, j, k);
+      cl_int err = sortEvent.wait();
+      checkError(err);
+    }
+  }
+  
+  clData.queue.enqueueReadBuffer(keepCounter, CL_TRUE, 0, sizeof(cl_int), &nStamps);
+
+  cl::Event removeEvent = removeFunc(eargsRemove, 
+      stampsData.stampCoords, stampsData.stampSizes,
+      stampsData.stats.skyEsts, stampsData.stats.fwhms,
+      stampsData.subStampCounts, stampsData.subStampCoords, stampsData.subStampValues,
+      filteredStampCoords, filteredStampSizes, 
+      filteredSkyEsts, filteredFwhms,
+      filteredSubStampCounts, filteredSubStampCoords, filteredSubStampValues,
+      keepIndeces, keepCounter, args.maxKSStamps);
+  removeEvent.wait();
+  
+  stampsData.stampCoords    = filteredStampCoords;
+  stampsData.stampSizes     = filteredStampSizes;
+  stampsData.stats.skyEsts  = filteredSkyEsts;
+  stampsData.stats.fwhms    = filteredFwhms;
+  stampsData.subStampCoords = filteredSubStampCoords;
+  stampsData.subStampValues = filteredSubStampValues;
+  stampsData.subStampCounts = filteredSubStampCounts;
+  
+  return nStamps;
+}
+
+void resetSStampSkipMask(const int w, const int h, ImageMask& mask, const ClData& clData) {
+  cl::EnqueueArgs eargs{clData.queue, cl::NDRange(w * h)};
+  cl::KernelFunctor<cl::Buffer> resetFunc(clData.program, "resetSkipMask");
+  cl::Event unmaskEvent{resetFunc(eargs, clData.maskBuf)};
+  unmaskEvent.wait();
+}
+
+void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData, const ClData& clData, const Arguments& args) {
+  cl::size_type maxSStamps(2 * args.maxKSStamps);
+
+  std::vector<cl_long2> stampCoords(stampsData.stampCount);
+  std::vector<cl_long2> stampSizes(stampsData.stampCount);
+  std::vector<cl_double> skyEsts(stampsData.stampCount);
+  std::vector<cl_double> fwhms(stampsData.stampCount);
+  std::vector<cl_int2> subStampCoords(maxSStamps * stampsData.stampCount);
+  std::vector<cl_double> subStampValues(maxSStamps * stampsData.stampCount);
+  std::vector<cl_int> subStampCounts(maxSStamps * stampsData.stampCount);
+   
+  static constexpr int nStampBuffers{7};
+  std::vector<cl::Event> readEvents(nStampBuffers);
+  clData.queue.enqueueReadBuffer(stampsData.stampCoords, CL_FALSE, 0, sizeof(cl_long2) * stampsData.stampCount, &stampCoords[0], nullptr, &readEvents[0]);
+  clData.queue.enqueueReadBuffer(stampsData.stampSizes, CL_FALSE, 0, sizeof(cl_long2) * stampsData.stampCount, &stampSizes[0], nullptr, &readEvents[1]);
+  clData.queue.enqueueReadBuffer(stampsData.stats.skyEsts, CL_FALSE, 0, sizeof(cl_double) * stampsData.stampCount, &skyEsts[0], nullptr, &readEvents[2]);
+  clData.queue.enqueueReadBuffer(stampsData.stats.fwhms, CL_FALSE, 0, sizeof(cl_double) * stampsData.stampCount, &fwhms[0], nullptr, &readEvents[3]);
+  clData.queue.enqueueReadBuffer(stampsData.subStampCoords, CL_FALSE, 0, sizeof(cl_int2) * maxSStamps * stampsData.stampCount, &subStampCoords[0], nullptr, &readEvents[4]);
+  clData.queue.enqueueReadBuffer(stampsData.subStampValues, CL_FALSE, 0, sizeof(cl_double) * maxSStamps * stampsData.stampCount, &subStampValues[0], nullptr, &readEvents[5]);
+  clData.queue.enqueueReadBuffer(stampsData.subStampCounts, CL_FALSE, 0, sizeof(cl_int) * maxSStamps * stampsData.stampCount, &subStampCounts[0], nullptr, &readEvents[6]);
+  cl::Event::waitForEvents(readEvents);
+
+  stamps.clear();
+  stamps.reserve(stampsData.stampCount);
+
+  for (size_t i{0}; i < stampsData.stampCount; i++)
+  {
+    auto &stamp{stamps.emplace_back(std::pair<cl_long, cl_long>{stampCoords[i].x, stampCoords[i].y},
+                        std::pair<cl_long, cl_long>{stampSizes[i].x, stampSizes[i].y},
+                        std::vector<SubStamp>{},std::vector<double>{})};
+    
+    auto &sstamps{stamps.back().subStamps};
+    
+    for (size_t j{0}; j < subStampCounts[i]; j++)
+    {
+      size_t offset{i * maxSStamps + j};
+      std::pair<cl_int, cl_int> imageCoords{subStampCoords[offset].x, subStampCoords[offset].y};
+      static constexpr std::pair<cl_int, cl_int> stampCoords(
+        std::numeric_limits<cl_int>::max(),
+        std::numeric_limits<cl_int>::max()
+      );
+      stamp.subStamps.emplace_back(std::vector<double>{}, 0.0,
+                                   imageCoords, stampCoords,
+                                   subStampValues[offset]);
+    }
+  }
+
+  assert(stampsData.stampCount == stamps.size());
+ }

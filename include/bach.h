@@ -5,8 +5,16 @@
 #include "datatypeUtil.h"
 
 struct ClStampsData {
-    cl::Buffer subStampCoords; // (x, y) coordinates
+    cl::Buffer stampCoords; // (x, y) coordinates
+    cl::Buffer stampSizes;
+    struct {
+        cl::Buffer skyEsts;
+        cl::Buffer fwhms;
+    } stats;
+
     cl::Buffer currentSubStamps;
+    cl::Buffer subStampCoords; // (x, y) coordinates
+    cl::Buffer subStampValues;
     cl::Buffer subStampCounts;
     cl::Buffer w;
     cl::Buffer q;
@@ -56,7 +64,7 @@ struct ClData {
 };
 
 void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData, const Arguments& args);
-void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args);
+void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args, ClData& clData);
 void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args);
 bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, ClData &clData, const Arguments& args);
 void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,

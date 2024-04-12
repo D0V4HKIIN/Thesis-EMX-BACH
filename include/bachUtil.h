@@ -15,10 +15,10 @@
 /* Utils */
 void checkError(const cl_int err);
 void maskInput(ImageMask& mask, const ClData& clData, const Arguments& args);
-void sigmaClip(const cl::Buffer &data, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args);
+void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args);
 void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
                const int iter, const Arguments& args);
-void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Arguments& args);
+void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData);
 
 void ludcmp(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &vv, const ClData &clData);
 void lubksb(const cl::Buffer &matrix, int matrixSize, int stampCount, const cl::Buffer &index, const cl::Buffer &result, const ClData &clData);
@@ -31,10 +31,13 @@ double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> &imgSize, cons
                   const int y, const Arguments& args);
 
 /* SSS */
-void createStamps(const Image& img, std::vector<Stamp>& stamps, const int w, const int h, const Arguments& args);
+void createStamps(std::vector<Stamp>& stamps, const int w, const int h, ClStampsData& stampsData, const ClData& clData, const Arguments& args);
 double checkSStamp(const SubStamp& sstamp, const Image& image, ImageMask& mask, const Stamp&, const ImageMask::masks badMask, const bool isTemplate, const Arguments& args);
-cl_int findSStamps(Stamp& stamp, const Image& image, ImageMask& mask, const int index, const bool isTemplate, const Arguments& args);
-void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, double* filledTempl, double* filledScience, const Arguments& args);
+cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const bool isTemplate, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData);
+int removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStampsData& stampsData, const ClData& clData);
+void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, const Arguments& args, ClData& clData);
+void resetSStampSkipMask(const int w, const int h, ImageMask& mask, const ClData& clData);
+void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData, const ClData& clData, const Arguments& args);
 
 /* CMV */
 void initFillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,

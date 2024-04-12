@@ -137,9 +137,7 @@ struct StampStats {
 struct Stamp {
   std::pair<cl_long, cl_long> coords{};
   std::pair<cl_long, cl_long> size{};
-  std::pair<cl_long, cl_long> center{};
   std::vector<SubStamp> subStamps{};
-  std::vector<double> data{};
   StampStats stats{};
   std::vector<std::vector<double>> W{};
   std::vector<std::vector<double>> Q{};
@@ -147,16 +145,12 @@ struct Stamp {
 
   Stamp(){};
   Stamp(std::pair<cl_long, cl_long> stampCoords,
-        std::pair<cl_long, cl_long> stampSize, std::pair<cl_long, cl_long> c,
+        std::pair<cl_long, cl_long> stampSize,
         const std::vector<SubStamp>& subStamps,
         const std::vector<double>& stampData)
       : coords{stampCoords},
         size{stampSize},
-        center{c},
-        subStamps{subStamps},
-        data{stampData} {}
-
-  double operator[](size_t index) const { return data[index]; }
+        subStamps{subStamps} {}
 
   double pixels() const { return size.first * size.second; }
 };

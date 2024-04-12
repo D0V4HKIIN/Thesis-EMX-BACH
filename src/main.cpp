@@ -44,7 +44,7 @@ int main(int argc, const char* argv[]) {
   cl::Context context(device);
   cl::Program program =
       loadBuildPrograms(context, device, std::filesystem::path(argv[0]).parent_path(),
-      "bash.cl", "cd.cl", "cmv.cl", "conv.cl", "ini.cl", "ksc.cl", "sub.cl");
+      "bash.cl", "ini.cl", "sss.cl", "cmv.cl", "cd.cl", "ksc.cl", "conv.cl", "sub.cl");
   cl::CommandQueue queue(context, device);
 
   if (args.verbose) {
@@ -65,7 +65,7 @@ int main(int argc, const char* argv[]) {
   clock_t p3 = clock();
   std::vector<Stamp> templateStamps{};
   std::vector<Stamp> sciStamps{};
-  sss(templateImg, scienceImg, mask, templateStamps, sciStamps, args);
+  sss(templateImg, scienceImg, mask, templateStamps, sciStamps, args, clData);
 
   clock_t p4 = clock();
   if(args.verboseTime) {
