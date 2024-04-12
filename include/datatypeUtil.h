@@ -6,6 +6,7 @@
 #include <concepts>
 #include <iostream>
 #include <string>
+#include <valarray>
 #include <vector>
 
 #include "argsUtil.h"
@@ -160,22 +161,22 @@ struct Image {
   std::string path;
   std::pair<cl_long, cl_long> axis;
 
-  std::vector<double> data{};
+  std::valarray<double> data{};
 
  public:
-  Image(const std::string n, std::pair<cl_long, cl_long> a = {0L, 0L},
+  Image(const std::string &n, std::pair<cl_long, cl_long> a = {0L, 0L},
         const std::string p = "res/")
       : name{n},
         path{p},
         axis{a},
         data(this->size()) {}
 
-  Image(const std::string n, std::vector<double> d,
-        std::pair<cl_long, cl_long> a, const std::string p = "res/")
+  Image(const std::string &n, size_t dataCount,
+        const std::pair<cl_long, cl_long> &a, const std::string &p = "res/")
       : name{n},
         path{p},
         axis{a},
-        data{d} {}
+        data(dataCount) {}
 
   const double* operator&() const {
     return &data[0]; 

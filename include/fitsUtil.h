@@ -27,13 +27,10 @@ inline cl_int readImage(Image& input, const Arguments& args) {
     return -1;
   }
 
+  input = Image(input.name, img.axis(0) * img.axis(1), std::make_pair(img.axis(0), img.axis(1)));
+  
   img.readAllKeys();
-
-  std::valarray<double> temp(0.0, img.axis(0) * img.axis(1));
-  img.read(temp);
-  input =
-      Image{input.name, std::vector<double>{std::begin(temp), std::end(temp)},
-            std::make_pair(img.axis(0), img.axis(1))};
+  img.read(input.data);
 
   if(args.verbose) {
     std::cout << img << std::endl;
