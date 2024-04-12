@@ -10,26 +10,23 @@ void checkError(const cl_int err) {
   }
 }
 
-void maskInput(ImageMask& mask, const ClData& clData, const Arguments& args) {
+void maskInput(const std::pair<cl_long, cl_long> &axis, const ClData& clData, const Arguments& args) {
   // Create mask from input data
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int, cl_double, cl_double> maskFunc(clData.program, "maskInput");
-  cl::EnqueueArgs maskEargs(clData.queue, cl::NDRange(mask.axis.first * mask.axis.second));
+  cl::EnqueueArgs maskEargs(clData.queue, cl::NDRange(axis.first * axis.second));
   cl::Event maskEvent = maskFunc(maskEargs, clData.tImgBuf, clData.sImgBuf, clData.maskBuf,
-                                 mask.axis.first, mask.axis.second, args.hSStampWidth + args.hKernelWidth,
+                                 axis.first, axis.second, args.hSStampWidth + args.hKernelWidth,
                                  args.threshHigh, args.threshLow);
   maskEvent.wait();
 
   // Spread mask
   int spreadWidth = static_cast<int>(args.hKernelWidth * args.inSpreadMaskFactor);
   cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl_int> spreadFunc(clData.program, "spreadMask");
-  cl::EnqueueArgs spreadEargs(clData.queue, cl::NDRange(mask.axis.first, mask.axis.second));
+  cl::EnqueueArgs spreadEargs(clData.queue, cl::NDRange(axis.first, axis.second));
   cl::Event spreadEvent = spreadFunc(spreadEargs, clData.maskBuf,
-                                     mask.axis.first, mask.axis.second,
+                                     axis.first, axis.second,
                                      spreadWidth);
   spreadEvent.wait();
-  
-  // TEMP: For now, return the image mask to the CPU
-  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
 }
 
 void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args) {
@@ -107,7 +104,7 @@ void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *me
   }
 }
 
-void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
+void calcStats(std::vector<Stamp>& stamps, const Image& image, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
@@ -211,8 +208,6 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, 
 
   clData.queue.enqueueReadBuffer(goodPixelCounts, CL_TRUE, 0, sizeof(cl_int) * cpuGoodPixelCounts.size(), &cpuGoodPixelCounts[0]);
   
-  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
-
   for (size_t stampIdx{0}; stampIdx < nStamps; stampIdx++)
   {
     int goodPixelCount{cpuGoodPixelCounts[stampIdx]};

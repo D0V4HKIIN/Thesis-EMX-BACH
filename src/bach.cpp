@@ -12,7 +12,7 @@
 
 #include "bach.h"
 
-void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData, const Arguments& args) {
+void init(Image &templateImg, Image &scienceImg, ClData& clData, const Arguments& args) {
 
   cl_int err{};
 
@@ -27,8 +27,6 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
               << std::endl;
     std::exit(1);
   }
-  
-  mask = ImageMask(templateImg.axis);
 
   int pixelCount = templateImg.axis.first * templateImg.axis.second;
 
@@ -42,10 +40,10 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
   err = clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &scienceImg);
   checkError(err);
 
-  maskInput(mask, clData, args);
+  maskInput(templateImg.axis, clData, args);
 }
 
-void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args, ClData& clData) {
+void sss(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args, ClData& clData) {
   std::cout << "\nCreating stamps..." << std::endl;
     
   const auto [w, h] = templateImg.axis;
@@ -97,7 +95,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   /* == Check Template Stamps  ==*/
   
   
-  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, args, clData);
+  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, args, clData);
   
   int oldCount = args.stampsx * args.stampsy;
   removeEmptyStamps(templateStamps, args, clData.tmpl, clData);
@@ -120,12 +118,12 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
     templateStamps.clear();
     sciStamps.clear();
 
-    resetSStampSkipMask(w, h, mask, clData);
+    resetSStampSkipMask(w, h, clData);
 
     createStamps(templateStamps, w, h, clData.tmpl, clData, args);
     createStamps(sciStamps, w, h, clData.sci, clData, args);
 
-    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, args, clData);
+    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, args, clData);
 
     removeEmptyStamps(templateStamps, args, clData.tmpl, clData);
     removeEmptyStamps(sciStamps, args, clData.sci, clData);
@@ -141,7 +139,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   }
 }
 
-void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args) {
+void cmv(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args) {
   std::cout << "\nCalculating matrix variables..." << std::endl;
 
   // Generate kernel stats
@@ -206,12 +204,12 @@ void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   
   clData.cmv.yConvTmp = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * std::max(templateStamps.size(), sciStamps.size()) * clData.gaussCount * (2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1));
   
-  initFillStamps(templateStamps, templateImg, scienceImg, clData.tImgBuf, clData.sImgBuf, mask, convolutionKernel, clData, clData.tmpl, args);
+  initFillStamps(templateStamps, templateImg, scienceImg, clData.tImgBuf, clData.sImgBuf, convolutionKernel, clData, clData.tmpl, args);
 
-  initFillStamps(sciStamps, scienceImg, templateImg, clData.sImgBuf, clData.tImgBuf, mask, convolutionKernel, clData, clData.sci, args);
+  initFillStamps(sciStamps, scienceImg, templateImg, clData.sImgBuf, clData.tImgBuf, convolutionKernel, clData, clData.sci, args);
 }
 
-bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, ClData &clData, const Arguments& args) {
+bool cd(Image &templateImg, Image &scienceImg, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, ClData &clData, const Arguments& args) {
   std::cout << "\nChoosing convolution direction..." << std::endl;
 
   // Create kernel XY
@@ -229,9 +227,6 @@ bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
 
   const double templateMerit = testFit(templateStamps, templateImg.axis, clData.tImgBuf, clData.sImgBuf, clData, clData.tmpl, args);
   const double scienceMerit = testFit(sciStamps, scienceImg.axis, clData.sImgBuf, clData.tImgBuf, clData, clData.sci, args);
-
-  // TEMP: return mask to CPU
-  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
   
   std::cout << "template merit value = " << templateMerit
             << ", science merit value = " << scienceMerit << std::endl;
@@ -250,11 +245,11 @@ bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
   return convTemplate;
 }
 
-void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
+void ksc(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
          const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData &clData, const ClStampsData &stampData, const Arguments& args) {
   std::cout << "\nFitting kernel..." << std::endl;
 
-  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask, tImgBuf, sImgBuf, clData, stampData, args);
+  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, tImgBuf, sImgBuf, clData, stampData, args);
 }
 
 double conv(const std::pair<cl_long, cl_long> &imgSize, Image &convImg, Kernel &convolutionKernel, bool convTemplate,

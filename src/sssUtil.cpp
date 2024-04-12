@@ -3,18 +3,18 @@
 #include <cassert>
 #include <iostream>
 
-void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, ImageMask& mask, const Arguments& args, ClData& clData) {
+void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, const Arguments& args, ClData& clData) {
   std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
 
   if (args.verbose) std::cout << "calcStats (template)" << std::endl;
-  calcStats(templStamps, templImage, mask, args, clData.tImgBuf, clData.tmpl, clData);
+  calcStats(templStamps, templImage, args, clData.tImgBuf, clData.tmpl, clData);
   if (args.verbose) std::cout << "calcStats (science)" << std::endl;
-  calcStats(scienceStamps, scienceImage, mask, args, clData.sImgBuf, clData.sci, clData);
+  calcStats(scienceStamps, scienceImage, args, clData.sImgBuf, clData.sci, clData);
 
   if (args.verbose) std::cout << "findSStamps (template)" << std::endl;
-  findSStamps(templStamps, templImage, mask, true, args, clData.tImgBuf, clData.tmpl, clData);
+  findSStamps(templStamps, templImage, true, args, clData.tImgBuf, clData.tmpl, clData);
   if (args.verbose) std::cout << "findSStamps (science)" << std::endl;
-  findSStamps(scienceStamps, scienceImage, mask, false, args, clData.sImgBuf, clData.sci, clData);
+  findSStamps(scienceStamps, scienceImage, false, args, clData.sImgBuf, clData.sci, clData);
 }
 
 void createStamps(std::vector<Stamp>& stamps, const int w, const int h, ClStampsData& stampsData, const ClData& clData, const Arguments& args) {
@@ -31,23 +31,23 @@ void createStamps(std::vector<Stamp>& stamps, const int w, const int h, ClStamps
   stampsData.stampCount = args.stampsx * args.stampsy;
 }
 
-cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& mask, const bool isTemplate, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
+cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, const bool isTemplate, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
   auto [imgW, imgH] = image.axis;
 
   cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx) * static_cast<cl::size_type>(args.stampsy)};
 
-  ImageMask::masks badMask = ImageMask::ALL & ~ImageMask::OK_CONV;
-  ImageMask::masks badPixelMask, skipMask;
+  ImageMasks badMask = ImageMasks::ALL & ~ImageMasks::OK_CONV;
+  ImageMasks badPixelMask, skipMask;
 
   if (isTemplate) {
-    badMask &= ~(ImageMask::BAD_PIXEL_S | ImageMask::SKIP_S);
-    badPixelMask = ImageMask::BAD_PIXEL_T;
-    skipMask     = ImageMask::SKIP_T;
+    badMask &= ~(ImageMasks::BAD_PIXEL_S | ImageMasks::SKIP_S);
+    badPixelMask = ImageMasks::BAD_PIXEL_T;
+    skipMask     = ImageMasks::SKIP_T;
   }
   else {
-    badMask &= ~(ImageMask::BAD_PIXEL_T | ImageMask::SKIP_T);
-    badPixelMask = ImageMask::BAD_PIXEL_S;
-    skipMask     = ImageMask::SKIP_S;
+    badMask &= ~(ImageMasks::BAD_PIXEL_T | ImageMasks::SKIP_T);
+    badPixelMask = ImageMasks::BAD_PIXEL_S;
+    skipMask     = ImageMasks::SKIP_S;
   }
   
   cl_int maxSStamps{2 * args.maxKSStamps};
@@ -79,9 +79,6 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, ImageMask& ma
                   cl::Local(sizeof(cl_double) * maxSStamps * localSize))};
 
   findSStampsEvent.wait();
-  
-
-  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0, sizeof(cl_ushort) * imgW * imgH, &mask);
 
   if(args.verbose) {  
     std::vector<cl_int> sstampCounts(nStamps);
@@ -182,7 +179,7 @@ void removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStam
   stampsData.subStampCounts = filteredSubStampCounts;
 }
 
-void resetSStampSkipMask(const int w, const int h, ImageMask& mask, const ClData& clData) {
+void resetSStampSkipMask(const int w, const int h, const ClData& clData) {
   cl::EnqueueArgs eargs{clData.queue, cl::NDRange(w * h)};
   cl::KernelFunctor<cl::Buffer> resetFunc(clData.program, "resetSkipMask");
   cl::Event unmaskEvent{resetFunc(eargs, clData.maskBuf)};

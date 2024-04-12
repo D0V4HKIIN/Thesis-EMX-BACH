@@ -36,8 +36,6 @@ int main(int argc, const char* argv[]) {
     std::cout << "template image name: " << args.templateName
               << ", science image name: " << args.scienceName << std::endl;
 
-  ImageMask mask(std::make_pair(0, 0));
-
   std::cout << "\nSetting up openCL..." << std::endl;
   cl::Platform platform = getDefaultPlatform();
   cl::Device device = getDefaultDevice(platform);
@@ -53,7 +51,7 @@ int main(int argc, const char* argv[]) {
 
   ClData clData { device, context, program, queue };
 
-  init(templateImg, scienceImg, mask, clData, args);
+  init(templateImg, scienceImg, clData, args);
 
   clock_t p2 = clock();
   if(args.verboseTime) {
@@ -65,7 +63,7 @@ int main(int argc, const char* argv[]) {
   clock_t p3 = clock();
   std::vector<Stamp> templateStamps{};
   std::vector<Stamp> sciStamps{};
-  sss(templateImg, scienceImg, mask, templateStamps, sciStamps, args, clData);
+  sss(templateImg, scienceImg, templateStamps, sciStamps, args, clData);
 
   clock_t p4 = clock();
   if(args.verboseTime) {
@@ -79,7 +77,7 @@ int main(int argc, const char* argv[]) {
   clock_t p5 = clock();
 
   Kernel convolutionKernel{args};
-  cmv(templateImg, scienceImg, mask, templateStamps, sciStamps, convolutionKernel, clData, args);
+  cmv(templateImg, scienceImg, templateStamps, sciStamps, convolutionKernel, clData, args);
   
   clock_t p6 = clock();
   if(args.verboseTime) {
@@ -90,7 +88,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p7 = clock();
 
-  bool convTemplate = cd(templateImg, scienceImg, mask, templateStamps, sciStamps, clData, args);
+  bool convTemplate = cd(templateImg, scienceImg, templateStamps, sciStamps, clData, args);
 
   clock_t p8 = clock();
   if(args.verboseTime) {
@@ -101,7 +99,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p9 = clock();
 
-  ksc(templateImg, scienceImg, mask, templateStamps, convolutionKernel, clData.tImgBuf, clData.sImgBuf, clData, clData.tmpl, args);
+  ksc(templateImg, scienceImg, templateStamps, convolutionKernel, clData.tImgBuf, clData.sImgBuf, clData, clData.tmpl, args);
 
   clock_t p10 = clock();
   if(args.verboseTime) {

@@ -452,7 +452,7 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
   copyEvent.wait();
 }
 
-void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask,
+void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
                const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData &clData, const ClStampsData &stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
@@ -537,7 +537,7 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
     // TEMP: transfer kernel solution to GPU
     clData.queue.enqueueWriteBuffer(clData.kernel.solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
 
-    check = checkFitSolution(k, stamps, tImg, sImg, mask, clData, stampData, tImgBuf, sImgBuf, clData.kernel.solution, args);
+    check = checkFitSolution(k, stamps, tImg, sImg, clData, stampData, tImgBuf, sImgBuf, clData.kernel.solution, args);
 
     iteration++;
   }
@@ -545,7 +545,7 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
 }
 
 bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
-                      const Image& sImg, ImageMask& mask, const ClData &clData, const ClStampsData &stampData, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const cl::Buffer &kernSol, const Arguments& args) {
+                      const Image& sImg,  const ClData &clData, const ClStampsData &stampData, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const cl::Buffer &kernSol, const Arguments& args) {
   cl_int chi2Count = 0;
   
   // Create buffers
@@ -597,7 +597,7 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
         s.subStamps.erase(s.subStamps.begin(), std::next(s.subStamps.begin()));
       }
 
-      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, firstIndex, count, k, clData, stampData, args);
+      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, firstIndex, count, k, clData, stampData, args);
       check = true;
     }
   }
@@ -636,7 +636,7 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
         s.subStamps.erase(s.subStamps.begin(), std::next(s.subStamps.begin()));
       }
       
-      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, mask, firstIndex, count, k, clData, stampData, args);
+      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, firstIndex, count, k, clData, stampData, args);
       check = true;
     }
   }
