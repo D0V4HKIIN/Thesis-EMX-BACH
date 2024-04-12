@@ -104,11 +104,11 @@ void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *me
   }
 }
 
-void calcStats(std::vector<Stamp>& stamps, const Image& image, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
+void calcStats(const std::pair<cl_long, cl_long> &axis, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
-  auto&& [imgW, imgH] = image.axis;
+  auto&& [imgW, imgH] = axis;
   
   cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx * args.stampsy)};
 
@@ -229,7 +229,7 @@ void calcStats(std::vector<Stamp>& stamps, const Image& image, const Arguments& 
                   stampsData.stampCoords, stampsData.stampSizes,
                   means, invStdDevs, paddedSamples, sampleCounts,
                   bins, stampsData.stats.fwhms, stampsData.stats.skyEsts,
-                  image.axis.first, nStamps, nSamples, paddedNSamples,
+                  axis.first, nStamps, nSamples, paddedNSamples,
                   args.iqRange, args.sigClipAlpha);
 
   histogramEvent.wait();

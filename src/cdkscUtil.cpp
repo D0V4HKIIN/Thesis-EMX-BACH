@@ -452,8 +452,8 @@ void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::p
   copyEvent.wait();
 }
 
-void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg,
-               const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData &clData, const ClStampsData &stampData, const Arguments& args) {
+void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image &sImg, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf,
+               ClData &clData, const ClStampsData &stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nBGComp = triNum(args.backgroundOrder + 1);
@@ -480,8 +480,8 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
     
     // Create matrix
 #if false
-    createMatrix(fitMatrix, weights, clData, stampData, tImg.axis, args);
-    createScProd(solution, weights, sImgBuf, tImg.axis, clData, stampData, args);
+    createMatrix(fitMatrix, weights, clData, stampData, axis, args);
+    createScProd(solution, weights, sImgBuf, axis, clData, stampData, args);
     
     // TEMP: transfer back to CPU
     std::vector<std::vector<double>> fittingMatrixCpu(matSize + 1, std::vector<double>(matSize + 1));
@@ -497,7 +497,7 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
       }
     }
 #else
-    auto [fittingMatrix0, weight0] = createMatrix(stamps, tImg.axis, args);
+    auto [fittingMatrix0, weight0] = createMatrix(stamps, sImg.axis, args);
     std::vector<double> solution0 = createScProd(stamps, sImg, weight0, args);
 
     std::vector<std::vector<double>> fittingMatrixCpu = std::move(fittingMatrix0);
@@ -537,15 +537,15 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg, const I
     // TEMP: transfer kernel solution to GPU
     clData.queue.enqueueWriteBuffer(clData.kernel.solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
 
-    check = checkFitSolution(k, stamps, tImg, sImg, clData, stampData, tImgBuf, sImgBuf, clData.kernel.solution, args);
+    check = checkFitSolution(k, stamps, sImg.axis, clData, stampData, tImgBuf, sImgBuf, clData.kernel.solution, args);
 
     iteration++;
   }
   while (check);
 }
 
-bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
-                      const Image& sImg,  const ClData &clData, const ClStampsData &stampData, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const cl::Buffer &kernSol, const Arguments& args) {
+bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &axis, const ClData &clData, const ClStampsData &stampData,
+                      const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const cl::Buffer &kernSol, const Arguments& args) {
   cl_int chi2Count = 0;
   
   // Create buffers
@@ -558,7 +558,7 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
   clData.queue.enqueueWriteBuffer(chi2Counter, CL_TRUE, 0, sizeof(cl_int), &chi2Count);
 
   // Calculate sigmas
-  calcSigs(tImgBuf, sImgBuf, tImg.axis, model, kernSol, sigmaVals, stampData, clData, args);
+  calcSigs(tImgBuf, sImgBuf, axis, model, kernSol, sigmaVals, stampData, clData, args);
 
   // Find bad sub-stamps
   static constexpr int badLocalSize = 16;
@@ -578,7 +578,7 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
 
   // Remove the bad sub-stamps
   bool check = false;
-  removeBadSubStamps(&check, stampData, stamps, invalidatedSubStamps, tImg, sImg, sImgBuf, tImgBuf, k, clData, args);
+  removeBadSubStamps(&check, stampData, stamps, invalidatedSubStamps, axis, sImgBuf, tImgBuf, k, clData, args);
 
   // Sigma clip
   double mean = 0.0;
@@ -596,12 +596,12 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& 
   clData.queue.enqueueReadBuffer(invalidatedSubStampsBuf, CL_TRUE, 0, sizeof(cl_uchar) * invalidatedSubStamps.size(), invalidatedSubStamps.data());
 
   // Remove the bad sub-stamps
-  removeBadSubStamps(&check, stampData, stamps, invalidatedSubStamps, tImg, sImg, sImgBuf, tImgBuf, k, clData, args);
+  removeBadSubStamps(&check, stampData, stamps, invalidatedSubStamps, axis, sImgBuf, tImgBuf, k, clData, args);
 
   return check;
 }
 
-void removeBadSubStamps(bool *check, const ClStampsData &stampData, std::vector<Stamp> &stamps, const std::vector<cl_uchar> &invalidatedSubStamps, const Image &tImg, const Image &sImg,
+void removeBadSubStamps(bool *check, const ClStampsData &stampData, std::vector<Stamp> &stamps, const std::vector<cl_uchar> &invalidatedSubStamps, const std::pair<cl_long, cl_long> &axis,
                         const cl::Buffer &sImgBuf, const cl::Buffer &tImgBuf, const Kernel &k, const ClData &clData, const Arguments &args) {
   for (int i = 0; i < invalidatedSubStamps.size(); i++) {
     if (invalidatedSubStamps[i] == 1) {
@@ -620,8 +620,8 @@ void removeBadSubStamps(bool *check, const ClStampsData &stampData, std::vector<
         Stamp &s = stamps[firstIndex + j];
         s.subStamps.erase(s.subStamps.begin(), std::next(s.subStamps.begin()));
       }
-      
-      fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, firstIndex, count, k, clData, stampData, args);
+
+      fillStamps(stamps, axis, tImgBuf, sImgBuf, firstIndex, count, k, clData, stampData, args);
       *check = true;
     }
   }

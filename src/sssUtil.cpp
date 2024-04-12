@@ -3,18 +3,18 @@
 #include <cassert>
 #include <iostream>
 
-void identifySStamps(std::vector<Stamp>& templStamps, const Image& templImage, std::vector<Stamp>& scienceStamps, const Image& scienceImage, const Arguments& args, ClData& clData) {
-  std::cout << "Identifying sub-stamps in " << templImage.name << " and " << scienceImage.name << "..." << std::endl;
+void identifySStamps(const std::pair<cl_long, cl_long> &axis, const Arguments& args, ClData& clData) {
+  std::cout << "Identifying sub-stamps..." << std::endl;
 
   if (args.verbose) std::cout << "calcStats (template)" << std::endl;
-  calcStats(templStamps, templImage, args, clData.tImgBuf, clData.tmpl, clData);
+  calcStats(axis, args, clData.tImgBuf, clData.tmpl, clData);
   if (args.verbose) std::cout << "calcStats (science)" << std::endl;
-  calcStats(scienceStamps, scienceImage, args, clData.sImgBuf, clData.sci, clData);
+  calcStats(axis, args, clData.sImgBuf, clData.sci, clData);
 
   if (args.verbose) std::cout << "findSStamps (template)" << std::endl;
-  findSStamps(templStamps, templImage, true, args, clData.tImgBuf, clData.tmpl, clData);
+  findSStamps(axis, true, args, clData.tImgBuf, clData.tmpl, clData);
   if (args.verbose) std::cout << "findSStamps (science)" << std::endl;
-  findSStamps(scienceStamps, scienceImage, false, args, clData.sImgBuf, clData.sci, clData);
+  findSStamps(axis, false, args, clData.sImgBuf, clData.sci, clData);
 }
 
 void createStamps(std::vector<Stamp>& stamps, const int w, const int h, ClStampsData& stampsData, const ClData& clData, const Arguments& args) {
@@ -31,8 +31,8 @@ void createStamps(std::vector<Stamp>& stamps, const int w, const int h, ClStamps
   stampsData.stampCount = args.stampsx * args.stampsy;
 }
 
-cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, const bool isTemplate, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
-  auto [imgW, imgH] = image.axis;
+cl_int findSStamps(const std::pair<cl_long, cl_long> &axis, const bool isTemplate, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
+  auto [imgW, imgH] = axis;
 
   cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx) * static_cast<cl::size_type>(args.stampsy)};
 
@@ -97,7 +97,7 @@ cl_int findSStamps(std::vector<Stamp>& stamps, const Image& image, const bool is
   return 0;
 }
 
-void removeEmptyStamps(std::vector<Stamp>& stamps, const Arguments& args, ClStampsData& stampsData, const ClData& clData) {
+void removeEmptyStamps(const Arguments& args, ClStampsData& stampsData, const ClData& clData) {
   
   int maxSStamps{2 * args.maxKSStamps};
   

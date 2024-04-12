@@ -1,7 +1,7 @@
 #include "bachUtil.h"
 #include "mathUtil.h"
 
-void initFillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
+void initFillStamps(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &axis, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
                     const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args) {
   clData.wColumns = args.fSStampWidth * args.fSStampWidth;
   clData.wRows = args.nPSF + triNum(args.backgroundOrder + 1);
@@ -20,10 +20,10 @@ void initFillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& 
     stamp.B = std::vector<double>(clData.bCount);
   }
   
-  fillStamps(stamps, tImg, sImg, tImgBuf, sImgBuf, 0, stamps.size(), k, clData, stampData, args);
+  fillStamps(stamps, axis, tImgBuf, sImgBuf, 0, stamps.size(), k, clData, stampData, args);
 }
 
-void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
+void fillStamps(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &axis, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
                int stampOffset, int stampCount, const Kernel& k, const ClData& clData, const ClStampsData& stampData, const Arguments& args) {
   /* Fills Substamp with gaussian basis convolved images around said substamp
    * and calculates CMV.
@@ -35,7 +35,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
                     yConvFunc(clData.program, "convStampY");
   cl::EnqueueArgs yConvEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange((2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1), clData.gaussCount, stampCount), cl::NullRange);
   cl::Event yConvEvent = yConvFunc(yConvEargs, tImgBuf, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.kernel.filterY, clData.cmv.yConvTmp,
-                                   args.fKernelWidth, args.fSStampWidth, sImg.axis.first, clData.gaussCount, 2 * args.maxKSStamps);
+                                   args.fKernelWidth, args.fSStampWidth, axis.first, clData.gaussCount, 2 * args.maxKSStamps);
 
   yConvEvent.wait();
 
@@ -63,7 +63,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
                     bgConvFunc(clData.program, "convStampBg");
   cl::EnqueueArgs bgConvEargs(clData.queue, cl::NDRange(0, 0, stampOffset), cl::NDRange(clData.wColumns, clData.wRows - clData.gaussCount, stampCount), cl::NullRange);
   cl::Event bgConvEvent = bgConvFunc(bgConvEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.bg.xy, stampData.w,
-                                     tImg.axis.first, tImg.axis.second, args.fSStampWidth,
+                                     axis.first, axis.second, args.fSStampWidth,
                                      clData.wRows, clData.wColumns, clData.gaussCount, 2 * args.maxKSStamps);
 
   bgConvEvent.wait();
@@ -97,7 +97,7 @@ void fillStamps(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg
   cl::EnqueueArgs bEargs(clData.queue, cl::NDRange(0, stampOffset), cl::NDRange(clData.bCount, stampCount), cl::NullRange);
   cl::Event bEvent = bFunc(bEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, sImgBuf,
                            stampData.w, stampData.b, clData.wRows, clData.wColumns, clData.bCount,
-                           args.fSStampWidth, 2 * args.maxKSStamps, tImg.axis.first);
+                           args.fSStampWidth, 2 * args.maxKSStamps, axis.first);
 
   qEvent.wait();
   bEvent.wait();

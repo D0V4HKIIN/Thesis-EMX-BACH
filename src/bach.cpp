@@ -43,12 +43,12 @@ void init(Image &templateImg, Image &scienceImg, ClData& clData, const Arguments
   maskInput(templateImg.axis, clData, args);
 }
 
-void sss(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args, ClData& clData) {
+void sss(const std::pair<cl_long, cl_long> &axis, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args, ClData& clData) {
   std::cout << "\nCreating stamps..." << std::endl;
     
-  const auto [w, h] = templateImg.axis;
-  args.fStampWidth = std::min(int(templateImg.axis.first / args.stampsx),
-                              int(templateImg.axis.second / args.stampsy));
+  const auto [w, h] = axis;
+  args.fStampWidth = std::min(int(axis.first / args.stampsx),
+                              int(axis.second / args.stampsy));
   args.fStampWidth -= args.fKernelWidth;
   args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
 
@@ -56,8 +56,8 @@ void sss(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &
     args.fStampWidth = args.fSStampWidth + args.fKernelWidth;
     args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
 
-    args.stampsx = int(templateImg.axis.first / args.fStampWidth);
-    args.stampsy = int(templateImg.axis.second / args.fStampWidth);
+    args.stampsx = int(axis.first / args.fStampWidth);
+    args.stampsy = int(axis.second / args.fStampWidth);
 
     if(args.verbose)
         std::cout << "Too many stamps requested, using " << args.stampsx << "x"
@@ -88,18 +88,18 @@ void sss(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &
   createStamps(templateStamps, w, h, clData.tmpl, clData, args);
   createStamps(sciStamps, w, h, clData.sci, clData, args);
   if(args.verbose) {
-    std::cout << "Stamps created for " << templateImg.name << std::endl;
-    std::cout << "Stamps created for " << scienceImg.name << std::endl;
+    std::cout << "Stamps created for template image" << std::endl;
+    std::cout << "Stamps created for science image" << std::endl;
   }
 
   /* == Check Template Stamps  ==*/
   
   
-  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, args, clData);
+  identifySStamps(axis, args, clData);
   
   int oldCount = args.stampsx * args.stampsy;
-  removeEmptyStamps(templateStamps, args, clData.tmpl, clData);
-  removeEmptyStamps(sciStamps, args, clData.sci, clData);
+  removeEmptyStamps(args, clData.tmpl, clData);
+  removeEmptyStamps(args, clData.sci, clData);
 
   double filledTempl{static_cast<double>(clData.tmpl.stampCount) / oldCount};
   double filledScience{static_cast<double>(clData.sci.stampCount) / oldCount};
@@ -111,8 +111,8 @@ void sss(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &
   
   if(filledTempl < 0.1 || filledScience < 0.1) {
     if(args.verbose)
-      std::cout << "Not enough substamps found in " << templateImg.name
-                << " trying again with lower thresholds..." << std::endl;
+      std::cout << "Not enough substamps found in images, "
+                << "trying again with lower thresholds..." << std::endl;
     args.threshLow *= 0.5;
     
     templateStamps.clear();
@@ -123,10 +123,10 @@ void sss(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &
     createStamps(templateStamps, w, h, clData.tmpl, clData, args);
     createStamps(sciStamps, w, h, clData.sci, clData, args);
 
-    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, args, clData);
+    identifySStamps(axis, args, clData);
 
-    removeEmptyStamps(templateStamps, args, clData.tmpl, clData);
-    removeEmptyStamps(sciStamps, args, clData.sci, clData);
+    removeEmptyStamps(args, clData.tmpl, clData);
+    removeEmptyStamps(args, clData.sci, clData);
     args.threshLow /= 0.5;
   }
 
@@ -139,7 +139,7 @@ void sss(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &
   }
 }
 
-void cmv(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args) {
+void cmv(const std::pair<cl_long, cl_long> &axis, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args) {
   std::cout << "\nCalculating matrix variables..." << std::endl;
 
   // Generate kernel stats
@@ -204,9 +204,9 @@ void cmv(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &
   
   clData.cmv.yConvTmp = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * std::max(templateStamps.size(), sciStamps.size()) * clData.gaussCount * (2 * (args.hSStampWidth + args.hKernelWidth) + 1) * (2 * args.hSStampWidth + 1));
   
-  initFillStamps(templateStamps, templateImg, scienceImg, clData.tImgBuf, clData.sImgBuf, convolutionKernel, clData, clData.tmpl, args);
+  initFillStamps(templateStamps, axis, clData.tImgBuf, clData.sImgBuf, convolutionKernel, clData, clData.tmpl, args);
 
-  initFillStamps(sciStamps, scienceImg, templateImg, clData.sImgBuf, clData.tImgBuf, convolutionKernel, clData, clData.sci, args);
+  initFillStamps(sciStamps, axis, clData.sImgBuf, clData.tImgBuf, convolutionKernel, clData, clData.sci, args);
 }
 
 bool cd(Image &templateImg, Image &scienceImg, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, ClData &clData, const Arguments& args) {
@@ -245,11 +245,11 @@ bool cd(Image &templateImg, Image &scienceImg, std::vector<Stamp> &templateStamp
   return convTemplate;
 }
 
-void ksc(const Image &templateImg, const Image &scienceImg, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
-         const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData &clData, const ClStampsData &stampData, const Arguments& args) {
+void ksc(std::vector<Stamp> &templateStamps, Kernel &convolutionKernel, const Image &sImg, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf,
+         ClData &clData, const ClStampsData &stampData, const Arguments& args) {
   std::cout << "\nFitting kernel..." << std::endl;
 
-  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, tImgBuf, sImgBuf, clData, stampData, args);
+  fitKernel(convolutionKernel, templateStamps, sImg, tImgBuf, sImgBuf, clData, stampData, args);
 }
 
 double conv(const std::pair<cl_long, cl_long> &imgSize, Image &convImg, Kernel &convolutionKernel, bool convTemplate,

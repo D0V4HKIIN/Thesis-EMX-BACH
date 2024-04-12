@@ -63,7 +63,7 @@ int main(int argc, const char* argv[]) {
   clock_t p3 = clock();
   std::vector<Stamp> templateStamps{};
   std::vector<Stamp> sciStamps{};
-  sss(templateImg, scienceImg, templateStamps, sciStamps, args, clData);
+  sss(templateImg.axis, templateStamps, sciStamps, args, clData);
 
   clock_t p4 = clock();
   if(args.verboseTime) {
@@ -77,7 +77,7 @@ int main(int argc, const char* argv[]) {
   clock_t p5 = clock();
 
   Kernel convolutionKernel{args};
-  cmv(templateImg, scienceImg, templateStamps, sciStamps, convolutionKernel, clData, args);
+  cmv(templateImg.axis, templateStamps, sciStamps, convolutionKernel, clData, args);
   
   clock_t p6 = clock();
   if(args.verboseTime) {
@@ -99,7 +99,7 @@ int main(int argc, const char* argv[]) {
 
   clock_t p9 = clock();
 
-  ksc(templateImg, scienceImg, templateStamps, convolutionKernel, clData.tImgBuf, clData.sImgBuf, clData, clData.tmpl, args);
+  ksc(templateStamps, convolutionKernel, scienceImg, clData.tImgBuf, clData.sImgBuf, clData, clData.tmpl, args);
 
   clock_t p10 = clock();
   if(args.verboseTime) {
