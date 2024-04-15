@@ -126,19 +126,10 @@ struct SubStamp {
   bool operator>(const SubStamp& other) const { return val > other.val; }
 };
 
-struct StampStats {
-  double skyEst{};  // Mode of stamp
-  double fwhm{};    // Middle part value diff (full width half max)
-  double norm{};
-  double diff{};
-  double chi2{};
-};
-
 struct Stamp {
   std::pair<cl_long, cl_long> coords{};
   std::pair<cl_long, cl_long> size{};
   std::vector<SubStamp> subStamps{};
-  StampStats stats{};
   std::vector<std::vector<double>> W{};
   std::vector<std::vector<double>> Q{};
   std::vector<double> B{};
