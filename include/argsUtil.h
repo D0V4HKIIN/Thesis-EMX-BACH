@@ -1,8 +1,8 @@
 #pragma once
 
+#include <array>
 #include <CL/opencl.hpp>
 #include <string>
-#include <vector>
 
 struct Arguments {
   std::string templateName;
@@ -32,7 +32,7 @@ struct Arguments {
   cl_int hKernelWidth = 10;  // half kernel width
   cl_int fKernelWidth = 21;  // full kernel width
   cl_int hStampWidth = 0;    // half stamp width
-  cl_int fStampWidth = 0;    // half stamp width
+  cl_int fStampWidth = 0;    // full stamp width
 
   double inSpreadMaskFactor = 1.0;
   bool normalizeTemplate = true; // If false, normalize science
@@ -40,8 +40,8 @@ struct Arguments {
   cl_int backgroundOrder = 1;
   cl_int kernelOrder = 2;
 
-  std::vector<cl_int> dg = {6, 4, 2};  // ngauss = length of dg
-  std::vector<float> bg = {
+  std::array<cl_int, 3> dg = {6, 4, 2};  // ngauss = length of dg
+  std::array<float, 3> bg = {
       (1.0 / (2.0 * 0.7 * 0.7)),
       (1.0 / (2.0 * 1.5 * 1.5)),
       (1.0 / (2.0 * 3.0 * 3.0)),
