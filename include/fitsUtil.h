@@ -9,13 +9,13 @@
 #include "argsUtil.h"
 #include "datatypeUtil.h"
 
-inline cl_int readImage(Image& input, const Arguments& args) {
+inline void readImage(Image& input, const Arguments& args) {
   CCfits::FITS* pIn{};
   try {
     pIn = new CCfits::FITS(input.getFile(), CCfits::RWmode::Read, true);
-  } catch(CCfits::FITS::CantOpen err) {
+  } catch(const CCfits::FITS::CantOpen &err) {
     std::cout << "Unable to open file '" << input.getFile() << "'" << std::endl << err.message() << std::endl;
-    return -1;
+    throw;
   }
   CCfits::PHDU& img = pIn->pHDU();
 
@@ -24,7 +24,6 @@ inline cl_int readImage(Image& input, const Arguments& args) {
   if(type != CCfits::Ifloat && type != CCfits::Idouble) {
     throw std::invalid_argument("fits image of type" + std::to_string(type) +
                                 " is not supported.");
-    return -1;
   }
 
   input = Image(input.name, img.axis(0) * img.axis(1), std::make_pair(img.axis(0), img.axis(1)));
@@ -38,10 +37,9 @@ inline cl_int readImage(Image& input, const Arguments& args) {
   }
 
   delete pIn;
-  return 0;
 }
 
-inline cl_int writeImage(const Image& img, const Arguments& args) {
+inline void writeImage(const Image& img, const Arguments& args) {
   constexpr cl_long nAxis = 2;
   CCfits::FITS* pFits{};
 
@@ -49,9 +47,9 @@ inline cl_int writeImage(const Image& img, const Arguments& args) {
     long axisArr[nAxis]{img.axis.first, img.axis.second};
 
     pFits = new CCfits::FITS(img.getOutFile(), FLOAT_IMG, nAxis, axisArr);
-  } catch(CCfits::FITS::CantCreate) {
-    delete pFits;
-    return -1;
+  } catch(const CCfits::FITS::CantCreate &err) {
+    std::cout << "Unable to save file '" << img.getFile() << "'" << std::endl << err.message() << std::endl;
+    throw;
   }
 
   cl_long fpixel(1);
@@ -66,5 +64,4 @@ inline cl_int writeImage(const Image& img, const Arguments& args) {
   }
 
   delete pFits;
-  return 0;
 }

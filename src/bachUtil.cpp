@@ -3,13 +3,6 @@
 #include <numeric>
 #include <algorithm>
 
-void checkError(const cl_int err) {
-  if(err != 0) {
-    std::cout << "Error encountered with error code: " << err << std::endl;
-    std::exit(err);
-  }
-}
-
 void maskInput(const std::pair<cl_long, cl_long> &axis, const ClData& clData, const Arguments& args) {
   // Create mask from input data
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int, cl_double, cl_double> maskFunc(clData.program, "maskInput");
@@ -190,8 +183,7 @@ void calcStats(const std::pair<cl_long, cl_long> &axis, const Arguments& args, c
     for (cl_int j=k>>1;j>0;j=j>>1)  // Inner loop, half size for each step
     {
       sortEvent = sortSamplesFunc(eargsSortSamples, paddedSamples, paddedNSamples, j, k);
-      cl_int err = sortEvent.wait();
-      checkError(err);
+      sortEvent.wait();
     }
   }
 

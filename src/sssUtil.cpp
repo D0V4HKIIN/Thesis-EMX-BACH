@@ -150,8 +150,7 @@ void removeEmptyStamps(const Arguments& args, ClStampsData& stampsData, const Cl
     for (cl_int j=k>>1;j>0;j=j>>1)  // Inner loop, half size for each step
     {
       sortEvent = sortFunc(eargsSort, keepIndeces, j, k);
-      cl_int err = sortEvent.wait();
-      checkError(err);
+      sortEvent.wait();
     }
   }
   

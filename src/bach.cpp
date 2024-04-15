@@ -13,14 +13,9 @@
 #include "bach.h"
 
 void init(Image &templateImg, Image &scienceImg, ClData& clData, const Arguments& args) {
-
-  cl_int err{};
-
   // Read input images
-  err = readImage(templateImg, args);
-  checkError(err);
-  err = readImage(scienceImg, args);
-  checkError(err);
+  readImage(templateImg, args);
+  readImage(scienceImg, args);
 
   if(templateImg.axis != scienceImg.axis) {
     std::cout << "Template image and science image must be the same size!"
@@ -35,10 +30,8 @@ void init(Image &templateImg, Image &scienceImg, ClData& clData, const Arguments
   clData.sImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
   clData.maskBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_ushort) * pixelCount);
   
-  err = clData.queue.enqueueWriteBuffer(clData.tImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &templateImg);
-  checkError(err);
-  err = clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &scienceImg);
-  checkError(err);
+  clData.queue.enqueueWriteBuffer(clData.tImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &templateImg);
+  clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &scienceImg);
 
   maskInput(templateImg.axis, clData, args);
 }
@@ -349,10 +342,6 @@ void sub(const std::pair<cl_long, cl_long> &imgSize, Image &diffImg, bool convTe
 void fin(const Image &convImg, const Image &diffImg, const Arguments& args) {
   std::cout << "\nWriting output..." << std::endl;
 
-  cl_int err{};
-  err = writeImage(convImg, args);
-  checkError(err);
-  
-  err = writeImage(diffImg, args);
-  checkError(err);
+  writeImage(convImg, args);  
+  writeImage(diffImg, args);
 }

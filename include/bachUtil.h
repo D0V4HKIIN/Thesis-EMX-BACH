@@ -13,7 +13,6 @@
 #include "datatypeUtil.h"
 
 /* Utils */
-void checkError(const cl_int err);
 void maskInput(const std::pair<cl_long, cl_long> &axis, const ClData& clData, const Arguments& args);
 void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *mean, double *stdDev, int maxIter, const ClData &clData, const Arguments& args);
 
