@@ -120,7 +120,6 @@ struct Kernel {
 
 struct SubStamp {
   std::pair<cl_long, cl_long> imageCoords{};
-  std::pair<cl_long, cl_long> stampCoords{};
   double val;
 
   bool operator<(const SubStamp& other) const { return val < other.val; }

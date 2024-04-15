@@ -222,12 +222,7 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
     {
       size_t offset{i * maxSStamps + j};
       std::pair<cl_int, cl_int> imageCoords{subStampCoords[offset].x, subStampCoords[offset].y};
-      static constexpr std::pair<cl_int, cl_int> stampCoords(
-        std::numeric_limits<cl_int>::max(),
-        std::numeric_limits<cl_int>::max()
-      );
-      sstamps.emplace_back(imageCoords, stampCoords,
-                            subStampValues[offset]);
+      sstamps.emplace_back(imageCoords, subStampValues[offset]);
     }
   }
 
