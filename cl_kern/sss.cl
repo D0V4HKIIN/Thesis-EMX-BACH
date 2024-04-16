@@ -16,27 +16,25 @@
 
 //TODO: Fix swizzling for stamp data
 
-void kernel createStampBounds(global long *stampsCoords, global long *stampsSizes,
-                              const int nStampsX, const int nStampsY, const long fullStampWidth, 
-                              const long w, const long h) {
+void kernel createStampBounds(global int2 *stampsCoords, global int2 *stampsSizes,
+                              const int nStampsX, const int nStampsY, const int fullStampWidth, 
+                              const int w, const int h) {
     const int id = get_global_id(0);
     const int stampX = id % nStampsX;
     const int stampY = id / nStampsX;
 
 
-    long startX = stampX * w / nStampsX;
-    long startY = stampY * h / nStampsY;
+    int startX = stampX * w / nStampsX;
+    int startY = stampY * h / nStampsY;
     
-    long stopX = min(startX + fullStampWidth, w);
-    long stopY = min(startY + fullStampWidth, h);
+    int stopX = min(startX + fullStampWidth, w);
+    int stopY = min(startY + fullStampWidth, h);
 
-    long stampW = stopX - startX;
-    long stampH = stopY - startY;
+    int stampW = stopX - startX;
+    int stampH = stopY - startY;
 
-    stampsCoords[2*id + 0] = startX;
-    stampsCoords[2*id + 1] = startY;
-    stampsSizes[2*id + 0] = stampW;
-    stampsSizes[2*id + 1] = stampH;
+    stampsCoords[id] = (int2)(startX, startY);
+    stampsSizes[id] = (int2)(stampW, stampH);
 }
 
 
@@ -81,13 +79,13 @@ double ran1(int *idum, long *ix1, long *ix2, long *ix3, double *r, int *iff) {
 }
 
 void kernel sampleStamp(global const double *img, global const ushort *mask, 
-                        global const long2 *stampsCoords, global const long2 *stampsSizes,
+                        global const int2 *stampsCoords, global const int2 *stampsSizes,
                         global double *samples, global int *sampleCounts,
                         const long w, const int nSamples) {
     
     int stamp = get_global_id(0);
-    long2 stampCoords = stampsCoords[stamp];
-    long2 stampSize = stampsSizes[stamp];
+    int2 stampCoords = stampsCoords[stamp];
+    int2 stampSize = stampsSizes[stamp];
     int stampNumPix = stampSize.x * stampSize.y;
     int sampleCounter = 0;
 
@@ -137,8 +135,8 @@ static void exchangeDouble(global double *i, global double *j)
 void kernel sortSamples(global double *paddedSamples, const int paddedNSamples, const int j, const int k){
     int id = get_global_id(0);                        
     
-    const long i = id % paddedNSamples;
-    const long stamp = id / paddedNSamples;
+    const int i = id % paddedNSamples;
+    const int stamp = id / paddedNSamples;
     const int ixj=i^j; // Calculate indexing!
     if ((ixj)>i)
     {
@@ -157,13 +155,13 @@ void kernel resetGoodPixelCounts(global int *goodPixelCounts) {
 }
 
 void kernel maskStamp(global const double *img, global ushort *mask, 
-                      global const long2 *stampCoords, 
+                      global const int2 *stampCoords, 
                       global double *goodPixels, global int *goodPixelCounts,
                       const int fullStampWidth, const int w, const int h){
     int indexS = get_global_id(0);
     int stamp  = get_global_id(1);
 
-    long2 coords = stampCoords[stamp];
+    int2 coords = stampCoords[stamp];
 
     int x = indexS % fullStampWidth;
     int y = indexS / fullStampWidth;
@@ -182,15 +180,15 @@ void kernel maskStamp(global const double *img, global ushort *mask,
         return;
     }
 
-    long stampOffset = stamp * get_global_size(0);
-    long pixelOffset = atomic_inc(&goodPixelCounts[stamp]);
+    int stampOffset = stamp * get_global_size(0);
+    int pixelOffset = atomic_inc(&goodPixelCounts[stamp]);
     
     goodPixels[stampOffset + pixelOffset] = pixel;
 
 }
 
 void kernel createHistogram(global const double *img, global const ushort *mask,
-                            global const long2 *stampCoords, global const long2 *stampSizes,
+                            global const int2 *stampCoords, global const int2 *stampSizes,
                             global const double *means, global const double *invStdDevs,
                             global const double *paddedSamples, global const int *sampleCounts,
                             global int *bins, global double *fwhms, global double *skyEsts,
@@ -203,8 +201,8 @@ void kernel createHistogram(global const double *img, global const ushort *mask,
         return;
     }
 
-    long2 stampCoord = stampCoords[stampId];
-    long2 stampSize = stampSizes[stampId];
+    int2 stampCoord = stampCoords[stampId];
+    int2 stampSize = stampSizes[stampId];
 
     int sampleCount = sampleCounts[stampId];
     
@@ -242,7 +240,7 @@ void kernel createHistogram(global const double *img, global const ushort *mask,
 
         for(int y = 0; y < stampSize.y; y++) {
             for(int x = 0; x < stampSize.x; x++) {
-                long indexI = (stampCoord.x + x) + (stampCoord.y + y) * width;
+                int indexI = (stampCoord.x + x) + (stampCoord.y + y) * width;
                 double imgV = img[indexI];
 
                 if(mask[indexI] != 0 || imgV <= 1e-10) {
@@ -327,17 +325,17 @@ void kernel createHistogram(global const double *img, global const ushort *mask,
 
 double checkSStamp(global const double *img, global ushort *mask,
                    const double skyEst, const double fwhm, const long imgW,
-                   const int2 sstampCoords, const long hSStampWidth,
-                   const long2 stampCoords, const long2 stampSize,
+                   const int2 sstampCoords, const int hSStampWidth,
+                   const int2 stampCoords, const int2 stampSize,
                    const double threshHigh, const double threshKernFit,
                    const ushort badMask, const ushort badPixelMask) {
     double retVal = 0.0;
     int stamp = get_global_id(0);
 
-    long startX = max(sstampCoords.x - hSStampWidth, stampCoords.x);
-    long startY = max(sstampCoords.y - hSStampWidth, stampCoords.y);
-    long endX   = min(sstampCoords.x + hSStampWidth, stampCoords.x + stampSize.x - 1);
-    long endY   = min(sstampCoords.y + hSStampWidth, stampCoords.y + stampSize.y - 1);
+    int startX = max(sstampCoords.x - hSStampWidth, stampCoords.x);
+    int startY = max(sstampCoords.y - hSStampWidth, stampCoords.y);
+    int endX   = min(sstampCoords.x + hSStampWidth, stampCoords.x + stampSize.x - 1);
+    int endY   = min(sstampCoords.y + hSStampWidth, stampCoords.y + stampSize.y - 1);
     
     for(int y = startY; y <= endY; y++) {
         for(int x = startX; x <= endX; x++) {
@@ -381,7 +379,7 @@ void sortSubStamps(const int substampCount, local int2 *coords, local double *va
 }
 
 void kernel findSubStamps(global const double* img, global ushort *mask, 
-                          global const long2 *stampsCoords, global const long2 *stampsSizes,
+                          global const int2 *stampsCoords, global const int2 *stampsSizes,
                           global const double *skyEsts, global const double *fwhms,
                           global int2 *sstampsCoords, global double *sstampsValues,
                           global int *sstampsCounts,
@@ -399,17 +397,17 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
     double floor = skyEst + threshKernFit * fwhm;
     double dfrac = 0.9;
     
-    long2 stampCoords = stampsCoords[stamp];
-    long2 stampSize =  stampsSizes[stamp];
+    int2 stampCoords = stampsCoords[stamp];
+    int2 stampSize =  stampsSizes[stamp];
 
     int sstampCounter = 0;
     while(sstampCounter < maxSStamps) {
         double lowestPSFLim = max(floor, skyEst + (threshHigh - skyEst) * dfrac);
-        for(long y = 0; y < fStampWidth; y++) {
-            long absy = y + stampCoords.y;
-            for(long x = 0; x < fStampWidth; x++) {
-                long absx = x + stampCoords.x;
-                long absCoords  = absx + (absy * imgW);
+        for(int y = 0; y < fStampWidth; y++) {
+            int absy = y + stampCoords.y;
+            for(int x = 0; x < fStampWidth; x++) {
+                int absx = x + stampCoords.x;
+                int absCoords  = absx + (absy * imgW);
                 
                 if ((mask[absCoords] & badMask) > 0) {
                     continue;
@@ -430,15 +428,15 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
                     int2  maxCoords;
                     maxCoords.x = (int)absx;
                     maxCoords.y = (int)absy;
-                    long startX = max(absx - hSStampWidth, stampCoords.x);
-                    long startY = max(absy - hSStampWidth, stampCoords.y);
-                    long endX   = min(absx + hSStampWidth, stampCoords.x + fStampWidth - 1);
-                    long endY   = min(absy + hSStampWidth, stampCoords.y + fStampWidth - 1);
+                    int startX = max(absx - hSStampWidth, stampCoords.x);
+                    int startY = max(absy - hSStampWidth, stampCoords.y);
+                    int endX   = min(absx + hSStampWidth, stampCoords.x + fStampWidth - 1);
+                    int endY   = min(absy + hSStampWidth, stampCoords.y + fStampWidth - 1);
                     
-                    for(long ky = startY; ky <= endY; ky++) {
-                        for(long kx = startX; kx <= endX; kx++) {
+                    for(int ky = startY; ky <= endY; ky++) {
+                        for(int kx = startX; kx <= endX; kx++) {
                             
-                            long kCoords = kx + (ky * imgW);
+                            int kCoords = kx + (ky * imgW);
                             double kImgValue = img[kCoords];
                             if ((mask[kCoords] & badMask) > 0) {
                                 continue;
@@ -472,10 +470,10 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
                     localSubStampValues[localStamp * maxSStamps + sstampCounter] = maxVal;
                     sstampCounter++;
     
-                    long startX2 = max((long)(maxCoords.x - hSStampWidth), stampCoords.x);
-                    long startY2 = max((long)(maxCoords.y - hSStampWidth), stampCoords.y);
-                    long endX2 = min((long)(maxCoords.x + hSStampWidth), stampCoords.x + stampSize.x - 1);
-                    long endY2 = min((long)(maxCoords.y + hSStampWidth), stampCoords.y + stampSize.y - 1);
+                    int startX2 = max(maxCoords.x - hSStampWidth, stampCoords.x);
+                    int startY2 = max(maxCoords.y - hSStampWidth, stampCoords.y);
+                    int endX2 = min(maxCoords.x + hSStampWidth, stampCoords.x + stampSize.x - 1);
+                    int endY2 = min(maxCoords.y + hSStampWidth, stampCoords.y + stampSize.y - 1);
 
                     for(int y = startY2; y <= endY2; y++) {
                         for(int x = startX2; x <= endX2; x++) {
@@ -542,11 +540,11 @@ void kernel sortMarks(global int *keepIndeces, const int j, const int k) {
     }
 }
 
-void kernel removeEmptyStamps(global const long2 *stampCoords, global const long2 *stampSizes,
+void kernel removeEmptyStamps(global const int2 *stampCoords, global const int2 *stampSizes,
                               global const double *skyEsts, global const double *fwhms,
                               global const int *subStampCounts,
                               global const int2 *subStampCoords, global const double *subStampValues,
-                              global long2 *filteredStampCoords, global long2 *filteredStampSizes,
+                              global int2 *filteredStampCoords, global int2 *filteredStampSizes,
                               global double *filteredSkyEsts, global double *filteredFwhms,
                               global int *filteredSubStampCounts,
                               global int2 *filteredSubStampCoords, global double *filteredSubStampValues,

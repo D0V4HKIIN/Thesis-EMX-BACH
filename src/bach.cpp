@@ -62,16 +62,16 @@ void sss(const std::pair<cl_long, cl_long> &axis, std::vector<Stamp> &templateSt
   
   int subStampMaxCount{2 * args.maxKSStamps};
 
-  clData.tmpl.stampCoords    = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
-  clData.tmpl.stampSizes     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.tmpl.stampCoords    = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * args.stampsx * args.stampsy);
+  clData.tmpl.stampSizes     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * args.stampsx * args.stampsy);
   clData.tmpl.stats.skyEsts  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.stampsx * args.stampsy);
   clData.tmpl.stats.fwhms    = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.stampsx * args.stampsy);
   clData.tmpl.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy);
   clData.tmpl.subStampValues = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy);
   clData.tmpl.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * args.stampsx * args.stampsy);
 
-  clData.sci.stampCoords     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
-  clData.sci.stampSizes      = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * args.stampsx * args.stampsy);
+  clData.sci.stampCoords     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * args.stampsx * args.stampsy);
+  clData.sci.stampSizes      = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * args.stampsx * args.stampsy);
   clData.sci.stats.skyEsts   = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.stampsx * args.stampsy);
   clData.sci.stats.fwhms     = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.stampsx * args.stampsy);
   clData.sci.subStampCoords  = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy);

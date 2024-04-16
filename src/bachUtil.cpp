@@ -109,8 +109,8 @@ void calcStats(const std::pair<cl_long, cl_long> &axis, const Arguments& args, c
   static constexpr cl_int paddedNSamples{leastGreaterPow2(nSamples)};
 
   {
-    std::vector<cl_long2> stampSizes(nStamps);
-    clData.queue.enqueueReadBuffer(stampsData.stampSizes, CL_TRUE, 0, sizeof(cl_long2) * stampsData.stampCount, &stampSizes[0]);
+    std::vector<cl_int2> stampSizes(nStamps);
+    clData.queue.enqueueReadBuffer(stampsData.stampSizes, CL_TRUE, 0, sizeof(cl_int2) * stampsData.stampCount, &stampSizes[0]);
     for (size_t i{0}; i < stampsData.stampCount; i++) {
       cl_int stampNumPix = stampSizes[i].x * stampSizes[i].y;
       if(stampNumPix < nSamples) {

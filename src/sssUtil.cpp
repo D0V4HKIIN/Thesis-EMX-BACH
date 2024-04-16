@@ -19,7 +19,7 @@ void identifySStamps(const std::pair<cl_long, cl_long> &axis, const Arguments& a
 
 void createStamps(std::vector<Stamp>& stamps, const int w, const int h, ClStampsData& stampsData, const ClData& clData, const Arguments& args) {
   cl::EnqueueArgs eargsBounds{clData.queue, cl::NDRange(args.stampsx * args.stampsy)};
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_int, cl_long, cl_long, cl_long>
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int, cl_int, cl_int>
   boundsFunc(clData.program, "createStampBounds");
 
   cl::Event boundsEvent{
@@ -104,8 +104,8 @@ void removeEmptyStamps(const Arguments& args, ClStampsData& stampsData, const Cl
   cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx * args.stampsy)};
   cl::size_type paddedNStamps{static_cast<cl::size_type>(leastGreaterPow2(args.stampsx * args.stampsy))};
 
-  cl::Buffer filteredStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * nStamps};
-  cl::Buffer filteredStampSizes{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * nStamps};
+  cl::Buffer filteredStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * nStamps};
+  cl::Buffer filteredStampSizes{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * nStamps};
   cl::Buffer filteredSkyEsts{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nStamps};
   cl::Buffer filteredFwhms{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nStamps};
   cl::Buffer filteredSubStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * maxSStamps * nStamps};
