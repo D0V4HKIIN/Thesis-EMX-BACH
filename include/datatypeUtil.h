@@ -127,23 +127,14 @@ struct SubStamp {
 };
 
 struct Stamp {
-  std::pair<cl_long, cl_long> coords{};
-  std::pair<cl_long, cl_long> size{};
   std::vector<SubStamp> subStamps{};
   std::vector<std::vector<double>> W{};
   std::vector<std::vector<double>> Q{};
   std::vector<double> B{};
 
   Stamp(){};
-  Stamp(std::pair<cl_long, cl_long> stampCoords,
-        std::pair<cl_long, cl_long> stampSize,
-        const std::vector<SubStamp>& subStamps,
-        const std::vector<double>& stampData)
-      : coords{stampCoords},
-        size{stampSize},
-        subStamps{subStamps} {}
-
-  double pixels() const { return size.first * size.second; }
+  Stamp(const std::vector<SubStamp>& subStamps)
+      : subStamps{subStamps} {}
 };
 
 struct Image {

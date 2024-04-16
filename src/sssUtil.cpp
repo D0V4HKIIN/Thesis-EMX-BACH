@@ -188,23 +188,15 @@ void resetSStampSkipMask(const int w, const int h, const ClData& clData) {
 void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData, const ClData& clData, const Arguments& args) {
   cl::size_type maxSStamps(2 * args.maxKSStamps);
 
-  std::vector<cl_long2> stampCoords(stampsData.stampCount);
-  std::vector<cl_long2> stampSizes(stampsData.stampCount);
-  std::vector<cl_double> skyEsts(stampsData.stampCount);
-  std::vector<cl_double> fwhms(stampsData.stampCount);
   std::vector<cl_int2> subStampCoords(maxSStamps * stampsData.stampCount);
   std::vector<cl_double> subStampValues(maxSStamps * stampsData.stampCount);
   std::vector<cl_int> subStampCounts(maxSStamps * stampsData.stampCount);
    
-  static constexpr int nStampBuffers{7};
+  static constexpr int nStampBuffers{3};
   std::vector<cl::Event> readEvents(nStampBuffers);
-  clData.queue.enqueueReadBuffer(stampsData.stampCoords, CL_FALSE, 0, sizeof(cl_long2) * stampsData.stampCount, &stampCoords[0], nullptr, &readEvents[0]);
-  clData.queue.enqueueReadBuffer(stampsData.stampSizes, CL_FALSE, 0, sizeof(cl_long2) * stampsData.stampCount, &stampSizes[0], nullptr, &readEvents[1]);
-  clData.queue.enqueueReadBuffer(stampsData.stats.skyEsts, CL_FALSE, 0, sizeof(cl_double) * stampsData.stampCount, &skyEsts[0], nullptr, &readEvents[2]);
-  clData.queue.enqueueReadBuffer(stampsData.stats.fwhms, CL_FALSE, 0, sizeof(cl_double) * stampsData.stampCount, &fwhms[0], nullptr, &readEvents[3]);
-  clData.queue.enqueueReadBuffer(stampsData.subStampCoords, CL_FALSE, 0, sizeof(cl_int2) * maxSStamps * stampsData.stampCount, &subStampCoords[0], nullptr, &readEvents[4]);
-  clData.queue.enqueueReadBuffer(stampsData.subStampValues, CL_FALSE, 0, sizeof(cl_double) * maxSStamps * stampsData.stampCount, &subStampValues[0], nullptr, &readEvents[5]);
-  clData.queue.enqueueReadBuffer(stampsData.subStampCounts, CL_FALSE, 0, sizeof(cl_int) * maxSStamps * stampsData.stampCount, &subStampCounts[0], nullptr, &readEvents[6]);
+  clData.queue.enqueueReadBuffer(stampsData.subStampCoords, CL_FALSE, 0, sizeof(cl_int2) * maxSStamps * stampsData.stampCount, &subStampCoords[0], nullptr, &readEvents[0]);
+  clData.queue.enqueueReadBuffer(stampsData.subStampValues, CL_FALSE, 0, sizeof(cl_double) * maxSStamps * stampsData.stampCount, &subStampValues[0], nullptr, &readEvents[1]);
+  clData.queue.enqueueReadBuffer(stampsData.subStampCounts, CL_FALSE, 0, sizeof(cl_int) * maxSStamps * stampsData.stampCount, &subStampCounts[0], nullptr, &readEvents[2]);
   cl::Event::waitForEvents(readEvents);
 
   stamps.clear();
@@ -212,9 +204,7 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
 
   for (size_t i{0}; i < stampsData.stampCount; i++)
   {
-    auto &stamp{stamps.emplace_back(std::pair<cl_long, cl_long>{stampCoords[i].x, stampCoords[i].y},
-                        std::pair<cl_long, cl_long>{stampSizes[i].x, stampSizes[i].y},
-                        std::vector<SubStamp>{},std::vector<double>{})};
+    auto &stamp{stamps.emplace_back(std::vector<SubStamp>{})};
     
     auto &sstamps{stamp.subStamps};
     
