@@ -1,7 +1,7 @@
 #include "bachUtil.h"
 #include "mathUtil.h"
 
-void initFillStamps(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &axis, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
+void initFillStamps(std::vector<Stamp>& stamps, const std::pair<cl_int, cl_int> &axis, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
                     const Kernel& k, ClData& clData, ClStampsData& stampData, const Arguments& args) {
   clData.wColumns = args.fSStampWidth * args.fSStampWidth;
   clData.wRows = args.nPSF + triNum(args.backgroundOrder + 1);
@@ -23,7 +23,7 @@ void initFillStamps(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long
   fillStamps(stamps, axis, tImgBuf, sImgBuf, 0, stamps.size(), k, clData, stampData, args);
 }
 
-void fillStamps(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &axis, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
+void fillStamps(std::vector<Stamp>& stamps, const std::pair<cl_int, cl_int> &axis, const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
                int stampOffset, int stampCount, const Kernel& k, const ClData& clData, const ClStampsData& stampData, const Arguments& args) {
   /* Fills Substamp with gaussian basis convolved images around said substamp
    * and calculates CMV.

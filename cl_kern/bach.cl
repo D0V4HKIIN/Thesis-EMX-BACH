@@ -134,7 +134,7 @@ void kernel sigmaClipInitMask(global uchar *mask) {
 
 void kernel sigmaClipCalc(global double *sum, global double *sum2,
                           global const double *data, global const uchar *mask,
-                          const long count) {
+                          const int count) {
     int gid = get_global_id(0);
     int gidNoOffset = gid - get_global_offset(0);
     
@@ -144,7 +144,7 @@ void kernel sigmaClipCalc(global double *sum, global double *sum2,
     local double localD[32];
 
     if (gidNoOffset < count) {
-        double d = select(0.0, data[gid], (long)(mask[gidNoOffset] == 0));
+        double d = select(0.0, data[gid], (ulong)(mask[gidNoOffset] == 0));
 
         localD[lid] = d;
     }
@@ -155,7 +155,7 @@ void kernel sigmaClipCalc(global double *sum, global double *sum2,
         double s = 0.0;
         double s2 = 0.0;
 
-        int localCount = min((int)get_local_size(0), (int)(count - gidNoOffset));
+        int localCount = min((int)get_local_size(0), count - gidNoOffset);
 
         for (int i = 0; i < localCount; i++) {
             double d = localD[i];

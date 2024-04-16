@@ -3,7 +3,7 @@
 #include <cassert>
 #include <iostream>
 
-void identifySStamps(const std::pair<cl_long, cl_long> &axis, const Arguments& args, ClData& clData) {
+void identifySStamps(const std::pair<cl_int, cl_int> &axis, const Arguments& args, ClData& clData) {
   std::cout << "Identifying sub-stamps..." << std::endl;
 
   if (args.verbose) std::cout << "calcStats (template)" << std::endl;
@@ -31,7 +31,7 @@ void createStamps(std::vector<Stamp>& stamps, const int w, const int h, ClStamps
   stampsData.stampCount = args.stampsx * args.stampsy;
 }
 
-cl_int findSStamps(const std::pair<cl_long, cl_long> &axis, const bool isTemplate, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
+cl_int findSStamps(const std::pair<cl_int, cl_int> &axis, const bool isTemplate, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
   auto [imgW, imgH] = axis;
 
   cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx) * static_cast<cl::size_type>(args.stampsy)};
@@ -59,7 +59,7 @@ cl_int findSStamps(const std::pair<cl_long, cl_long> &axis, const bool isTemplat
                     cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer,
                     cl_double, cl_double,
-                    cl_long, cl_int, cl_int, 
+                    cl_int, cl_int, cl_int, 
                     cl_int, cl_int,
                     cl_ushort, cl_ushort, cl_ushort,
                     cl::LocalSpaceArg, cl::LocalSpaceArg> 

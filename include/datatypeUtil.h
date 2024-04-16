@@ -119,7 +119,7 @@ struct Kernel {
 };
 
 struct SubStamp {
-  std::pair<cl_long, cl_long> imageCoords{};
+  std::pair<cl_int, cl_int> imageCoords{};
   double val;
 
   bool operator<(const SubStamp& other) const { return val < other.val; }
@@ -140,12 +140,12 @@ struct Stamp {
 struct Image {
   std::string name;
   std::string path;
-  std::pair<cl_long, cl_long> axis;
+  std::pair<cl_int, cl_int> axis;
 
   std::valarray<cl_double> data{};
 
  public:
-  Image(const std::string &n, std::pair<cl_long, cl_long> a = {0L, 0L},
+  Image(const std::string &n, std::pair<cl_int, cl_int> a = {0L, 0L},
         const std::string p = "res/")
       : name{n},
         path{p},
@@ -153,7 +153,7 @@ struct Image {
         data(this->size()) {}
 
   Image(const std::string &n, size_t dataCount,
-        const std::pair<cl_long, cl_long> &a, const std::string &p = "res/")
+        const std::pair<cl_int, cl_int> &a, const std::string &p = "res/")
       : name{n},
         path{p},
         axis{a},

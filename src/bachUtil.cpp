@@ -3,7 +3,7 @@
 #include <numeric>
 #include <algorithm>
 
-void maskInput(const std::pair<cl_long, cl_long> &axis, const ClData& clData, const Arguments& args) {
+void maskInput(const std::pair<cl_int, cl_int> &axis, const ClData& clData, const Arguments& args) {
   // Create mask from input data
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int, cl_double, cl_double> maskFunc(clData.program, "maskInput");
   cl::EnqueueArgs maskEargs(clData.queue, cl::NDRange(axis.first * axis.second));
@@ -42,7 +42,7 @@ void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *me
   cl::Buffer sum2Buf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * reduceCount);
 
   cl::KernelFunctor<cl::Buffer> initMaskFunc(clData.program, "sigmaClipInitMask");
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long> calcFunc(clData.program, "sigmaClipCalc");
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int> calcFunc(clData.program, "sigmaClipCalc");
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_double, cl_double, cl_double> maskFunc(clData.program, "sigmaClipMask");
   
   cl::EnqueueArgs calcEargs(clData.queue, cl::NDRange(dataOffset), cl::NDRange(reduceCount * localSize), cl::NDRange(localSize));
@@ -97,7 +97,7 @@ void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *me
   }
 }
 
-void calcStats(const std::pair<cl_long, cl_long> &axis, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
+void calcStats(const std::pair<cl_int, cl_int> &axis, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
@@ -135,7 +135,7 @@ void calcStats(const std::pair<cl_long, cl_long> &axis, const Arguments& args, c
   cl::Buffer lowerBinVals{clData.context, CL_MEM_READ_ONLY, sizeof(cl_double) * nStamps};
 
   cl::EnqueueArgs eargsSample{clData.queue, cl::NDRange{nStamps}};
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_int>
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int>
   sampleStampFunc(clData.program, "sampleStamp");
   
   cl::EnqueueArgs eargsPadSamples{clData.queue, cl::NDRange{paddedNSamples, nStamps}};
@@ -345,7 +345,7 @@ void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
   }
 }
 
-double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, const std::pair<cl_long, cl_long> &imgSize, const int x, const int y, const Arguments& args, const ClData &clData) {
+double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, const std::pair<cl_int, cl_int> &imgSize, const int x, const int y, const Arguments& args, const ClData &clData) {
   double hWidth = 0.5 * imgSize.first;
   double hHeight = 0.5 * imgSize.second;
 
@@ -405,7 +405,7 @@ double makeKernel(const cl::Buffer &kernel, const cl::Buffer &kernSolution, cons
   return sumKernel;
 }
 
-double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> &imgSize, const int x,
+double makeKernel(Kernel& kern, const std::pair<cl_int, cl_int> &imgSize, const int x,
                   const int y, const Arguments& args) {
   /*
    * Calculates the kernel for a certain pixel, need finished kernelSol.

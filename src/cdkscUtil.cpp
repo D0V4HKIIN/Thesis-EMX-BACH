@@ -1,7 +1,7 @@
 #include "bachUtil.h"
 #include "mathUtil.h"
 
-double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &axis, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData& clData, ClStampsData& stampData, const Arguments& args) {
+double testFit(std::vector<Stamp>& stamps, const std::pair<cl_int, cl_int> &axis, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData& clData, ClStampsData& stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nBGComp = triNum(args.backgroundOrder + 1);
@@ -180,7 +180,7 @@ double testFit(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &ax
   return normMeritMean;
 }
 
-void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClData &clData, const ClStampsData &stampData, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args) {
+void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClData &clData, const ClStampsData &stampData, const std::pair<cl_int, cl_int>& imgSize, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nComp = nComp1 * nComp2;
@@ -211,7 +211,7 @@ void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClD
 }
 
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
-createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args) {
+createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_int, cl_int>& imgSize, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nComp = nComp1 * nComp2;
@@ -306,7 +306,7 @@ createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>
   return std::make_pair(matrix, weight);
 }
 
-void createScProd(const cl::Buffer &res, const cl::Buffer &weights, const cl::Buffer &img, const std::pair<cl_long, cl_long>& imgSize, const ClData &clData, const ClStampsData &stampData, const Arguments& args) {
+void createScProd(const cl::Buffer &res, const cl::Buffer &weights, const cl::Buffer &img, const std::pair<cl_int, cl_int>& imgSize, const ClData &clData, const ClStampsData &stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
   const int nComp2 = triNum(args.kernelOrder + 1);
   const int nBgComp = triNum(args.backgroundOrder + 1);
@@ -371,7 +371,7 @@ std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& 
   return res;
 }
 
-void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pair<cl_long, cl_long> &axis,
+void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pair<cl_int, cl_int> &axis,
               const cl::Buffer &model, const cl::Buffer &kernSol, const cl::Buffer &sigma,
               const ClStampsData &stampData, const ClData &clData, const Arguments& args) {
   static constexpr int localSize = 32;
@@ -544,7 +544,7 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image &sImg, const c
   while (check);
 }
 
-bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &axis, const ClData &clData, const ClStampsData &stampData,
+bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const std::pair<cl_int, cl_int> &axis, const ClData &clData, const ClStampsData &stampData,
                       const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const cl::Buffer &kernSol, const Arguments& args) {
   cl_int chi2Count = 0;
   
@@ -601,7 +601,7 @@ bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const std::pa
   return check;
 }
 
-void removeBadSubStamps(bool *check, const ClStampsData &stampData, std::vector<Stamp> &stamps, const std::vector<cl_uchar> &invalidatedSubStamps, const std::pair<cl_long, cl_long> &axis,
+void removeBadSubStamps(bool *check, const ClStampsData &stampData, std::vector<Stamp> &stamps, const std::vector<cl_uchar> &invalidatedSubStamps, const std::pair<cl_int, cl_int> &axis,
                         const cl::Buffer &sImgBuf, const cl::Buffer &tImgBuf, const Kernel &k, const ClData &clData, const Arguments &args) {
   for (int i = 0; i < invalidatedSubStamps.size(); i++) {
     if (invalidatedSubStamps[i] == 1) {

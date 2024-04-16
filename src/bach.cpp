@@ -36,7 +36,7 @@ void init(Image &templateImg, Image &scienceImg, ClData& clData, const Arguments
   maskInput(templateImg.axis, clData, args);
 }
 
-void sss(const std::pair<cl_long, cl_long> &axis, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args, ClData& clData) {
+void sss(const std::pair<cl_int, cl_int> &axis, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args, ClData& clData) {
   std::cout << "\nCreating stamps..." << std::endl;
     
   const auto [w, h] = axis;
@@ -132,7 +132,7 @@ void sss(const std::pair<cl_long, cl_long> &axis, std::vector<Stamp> &templateSt
   }
 }
 
-void cmv(const std::pair<cl_long, cl_long> &axis, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args) {
+void cmv(const std::pair<cl_int, cl_int> &axis, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args) {
   std::cout << "\nCalculating matrix variables..." << std::endl;
 
   // Generate kernel stats
@@ -245,7 +245,7 @@ void ksc(std::vector<Stamp> &templateStamps, Kernel &convolutionKernel, const Im
   fitKernel(convolutionKernel, templateStamps, sImg, tImgBuf, sImgBuf, clData, stampData, args);
 }
 
-double conv(const std::pair<cl_long, cl_long> &imgSize, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
+double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
             ClData &clData, const Arguments& args) {
   std::cout << "\nConvolving..." << std::endl;
   
@@ -318,7 +318,7 @@ double conv(const std::pair<cl_long, cl_long> &imgSize, Image &convImg, Kernel &
   return kernSum;
 }
 
-void sub(const std::pair<cl_long, cl_long> &imgSize, Image &diffImg, bool convTemplate, double kernSum,
+void sub(const std::pair<cl_int, cl_int> &imgSize, Image &diffImg, bool convTemplate, double kernSum,
          const ClData &clData, const Arguments& args) {
   std::cout << "\nSubtracting images..." << std::endl;
 

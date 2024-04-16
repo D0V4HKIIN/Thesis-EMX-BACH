@@ -81,7 +81,7 @@ double ran1(int *idum, long *ix1, long *ix2, long *ix3, double *r, int *iff) {
 void kernel sampleStamp(global const double *img, global const ushort *mask, 
                         global const int2 *stampsCoords, global const int2 *stampsSizes,
                         global double *samples, global int *sampleCounts,
-                        const long w, const int nSamples) {
+                        const int w, const int nSamples) {
     
     int stamp = get_global_id(0);
     int2 stampCoords = stampsCoords[stamp];
@@ -384,7 +384,7 @@ void kernel findSubStamps(global const double* img, global ushort *mask,
                           global int2 *sstampsCoords, global double *sstampsValues,
                           global int *sstampsCounts,
                           const double threshHigh, const double threshKernFit,
-                          const long imgW, const int fStampWidth, const int hSStampWidth,
+                          const int imgW, const int fStampWidth, const int hSStampWidth,
                           const int maxSStamps, const int maxStamps, const ushort badMask, const ushort badPixelMask, const ushort skipMask,
                           local int2 *localSubStampCoords, local double *localSubStampValues) {
     int stamp      = get_global_id(0);

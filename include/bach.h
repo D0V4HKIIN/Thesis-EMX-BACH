@@ -64,13 +64,13 @@ struct ClData {
 };
 
 void init(Image &templateImg, Image &scienceImg, ClData& clData, const Arguments& args);
-void sss(const std::pair<cl_long, cl_long> &axis, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args, ClData& clData);
-void cmv(const std::pair<cl_long, cl_long> &axis, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args);
+void sss(const std::pair<cl_int, cl_int> &axis, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args, ClData& clData);
+void cmv(const std::pair<cl_int, cl_int> &axis, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, ClData &clData, const Arguments& args);
 bool cd(Image &templateImg, Image &scienceImg, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, ClData &clData, const Arguments& args);
 void ksc(std::vector<Stamp> &templateStamps, Kernel &convolutionKernel, const Image &sImg, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf,
          ClData &clData, const ClStampsData &stampData, const Arguments& args);
-double conv(const std::pair<cl_long, cl_long> &imgSize, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
+double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
             ClData &clData, const Arguments& args);
-void sub(const std::pair<cl_long, cl_long> &imgSize, Image &diffImg, bool convTemplate, double kernSum,
+void sub(const std::pair<cl_int, cl_int> &imgSize, Image &diffImg, bool convTemplate, double kernSum,
          const ClData &clData, const Arguments& args);
 void fin(const Image &convImg, const Image &diffImg, const Arguments& args);

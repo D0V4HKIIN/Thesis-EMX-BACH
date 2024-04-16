@@ -16,7 +16,7 @@ void readImage(Image& input, const Arguments& args) {
   CCfits::PHDU& img = pIn->pHDU();
 
   // Ifloat = -32, Idouble = -64
-  cl_long type = img.bitpix();
+  long type = img.bitpix();
   if(type != CCfits::Ifloat && type != CCfits::Idouble) {
     throw std::invalid_argument("fits image of type" + std::to_string(type) +
                                 " is not supported.");
@@ -36,7 +36,7 @@ void readImage(Image& input, const Arguments& args) {
 }
 
 void writeImage(const Image& img, const Arguments& args) {
-  constexpr cl_long nAxis = 2;
+  constexpr int nAxis = 2;
   CCfits::FITS* pFits{};
 
   try {
@@ -48,7 +48,7 @@ void writeImage(const Image& img, const Arguments& args) {
     throw;
   }
 
-  cl_long fpixel(1);
+  long fpixel(1);
 
   valarray<double> data{&img, img.size()};
 
