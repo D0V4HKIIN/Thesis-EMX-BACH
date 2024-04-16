@@ -501,7 +501,7 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image &sImg, const c
     std::vector<double> solution0 = createScProd(stamps, sImg, weight0, args);
 
     std::vector<std::vector<double>> fittingMatrixCpu = std::move(fittingMatrix0);
-    std::vector<double>solutionCpu = std::move(solution0);
+    std::vector<double> solutionCpu = std::move(solution0);
 #endif
 
     // LU solve

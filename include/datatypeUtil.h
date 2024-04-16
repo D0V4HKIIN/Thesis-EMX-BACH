@@ -151,7 +151,7 @@ struct Image {
   std::string path;
   std::pair<cl_long, cl_long> axis;
 
-  std::valarray<double> data{};
+  std::valarray<cl_double> data{};
 
  public:
   Image(const std::string &n, std::pair<cl_long, cl_long> a = {0L, 0L},
@@ -168,10 +168,10 @@ struct Image {
         axis{a},
         data(dataCount) {}
 
-  const double* operator&() const {
+  const cl_double* operator&() const {
     return &data[0]; 
   }
-  double* operator&() {
+  cl_double* operator&() {
     return &data[0];
   }
 

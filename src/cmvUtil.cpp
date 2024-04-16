@@ -69,7 +69,7 @@ void fillStamps(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &a
   bgConvEvent.wait();
 
   // TEMP: move back w to CPU
-  std::vector<double> wGpu(clData.wRows * clData.wColumns * stampCount);
+  std::vector<cl_double> wGpu(clData.wRows * clData.wColumns * stampCount);
   clData.queue.enqueueReadBuffer(stampData.w, CL_TRUE, sizeof(cl_double) * stampOffset * clData.wRows * clData.wColumns, sizeof(cl_double) * wGpu.size(), wGpu.data());
   
   // TEMP: replace w with GPU data
@@ -103,8 +103,8 @@ void fillStamps(std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long> &a
   bEvent.wait();
 
   // TEMP: transfer the data back to the CPU
-  std::vector<double> gpuQ(clData.qCount * clData.qCount * stampCount);
-  std::vector<double> gpuB(clData.bCount * stampCount);
+  std::vector<cl_double> gpuQ(clData.qCount * clData.qCount * stampCount);
+  std::vector<cl_double> gpuB(clData.bCount * stampCount);
 
   clData.queue.enqueueReadBuffer(stampData.q, CL_TRUE, sizeof(cl_double) * stampOffset * clData.qCount * clData.qCount, sizeof(cl_double) * gpuQ.size(), gpuQ.data());
   clData.queue.enqueueReadBuffer(stampData.b, CL_TRUE, sizeof(cl_double) * stampOffset * clData.bCount, sizeof(cl_double) * gpuB.size(), gpuB.data());

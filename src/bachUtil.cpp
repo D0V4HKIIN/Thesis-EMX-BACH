@@ -33,8 +33,8 @@ void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *me
   constexpr int localSize = 32;
   int reduceCount = (dataCount + localSize - 1) / localSize;
 
-  std::vector<double> sumVec(reduceCount);
-  std::vector<double> sum2Vec(reduceCount);
+  std::vector<cl_double> sumVec(reduceCount);
+  std::vector<cl_double> sum2Vec(reduceCount);
 
   cl::Buffer intMask(clData.context, CL_MEM_READ_WRITE, sizeof(cl_uchar) * dataCount);
   cl::Buffer clipCountBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int));
@@ -82,7 +82,7 @@ void sigmaClip(const cl::Buffer &data, int dataOffset, int dataCount, double *me
     
     double invStdDev = 1.0 / tempStdDev;
 
-    int clipCount = 0;
+    cl_int clipCount = 0;
     clData.queue.enqueueWriteBuffer(clipCountBuf, CL_TRUE, 0, sizeof(cl_int), &clipCount);
 
     // Mask bad values

@@ -104,7 +104,6 @@ void removeEmptyStamps(const Arguments& args, ClStampsData& stampsData, const Cl
   cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx * args.stampsy)};
   cl::size_type paddedNStamps{static_cast<cl::size_type>(leastGreaterPow2(args.stampsx * args.stampsy))};
 
-
   cl::Buffer filteredStampCoords{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * nStamps};
   cl::Buffer filteredStampSizes{clData.context, CL_MEM_READ_WRITE, sizeof(cl_long2) * nStamps};
   cl::Buffer filteredSkyEsts{clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nStamps};
@@ -154,10 +153,11 @@ void removeEmptyStamps(const Arguments& args, ClStampsData& stampsData, const Cl
     }
   }
   
-  clData.queue.enqueueReadBuffer(keepCounter, CL_TRUE, 0, sizeof(cl_int), &nStamps);
+  cl_int removedStampCount{};
+  clData.queue.enqueueReadBuffer(keepCounter, CL_TRUE, 0, sizeof(cl_int), &removedStampCount);
 
-  stampsData.stampCount = nStamps;
-  stampsData.currentSubStamps = {clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * nStamps};
+  stampsData.stampCount = removedStampCount;
+  stampsData.currentSubStamps = {clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * removedStampCount};
 
   cl::Event removeEvent = removeFunc(eargsRemove, 
       stampsData.stampCoords, stampsData.stampSizes,

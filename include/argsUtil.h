@@ -41,7 +41,7 @@ struct Arguments {
   cl_int kernelOrder = 2;
 
   std::array<cl_int, 3> dg = {6, 4, 2};  // ngauss = length of dg
-  std::array<float, 3> bg = {
+  std::array<cl_float, 3> bg = {
       (1.0 / (2.0 * 0.7 * 0.7)),
       (1.0 / (2.0 * 1.5 * 1.5)),
       (1.0 / (2.0 * 3.0 * 3.0)),
