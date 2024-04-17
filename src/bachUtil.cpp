@@ -7,29 +7,63 @@ void checkError(const cl_int err) {
   }
 }
 
-void maskInput(ImageMask& mask, const ClData& clData, const Arguments& args) {
-  cl::EnqueueArgs eargs{clData.queue, cl::NullRange, cl::NDRange(mask.axis.first * mask.axis.second), cl::NullRange};
+void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask, const Arguments& args) {
+  int borderSize = args.hSStampWidth + args.hKernelWidth;
 
-  // Create mask from input data
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_double, cl_double>
-      maskFunc(clData.program, "maskInput");
-  cl::Event maskEvent = maskFunc(eargs, clData.tImgBuf, clData.sImgBuf, clData.maskBuf,
-    mask.axis.first, mask.axis.second, args.hSStampWidth + args.hKernelWidth,
-    args.threshHigh, args.threshLow);
-  maskEvent.wait();
+  for (int y = 0; y < mask.axis.second; y++) {
+    for (int x = 0; x < mask.axis.first; x++) {
+      int id = y * mask.axis.first + x;
 
-  // Spread mask
-  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl_long>
-      spreadFunc(clData.program, "spreadMask");
-  cl::Event spreadEvent = spreadFunc(eargs, clData.maskBuf,
-    mask.axis.first, mask.axis.second,
-    static_cast<int>(args.hKernelWidth * args.inSpreadMaskFactor));
-  spreadEvent.wait();
+      double t = tImg[id];
+      double s = sImg[id];
+
+      if (t == 0.0 || s == 0.0) {
+        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
+      }
+
+      if (t >= args.threshHigh || s >= args.threshHigh) {
+        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
+      }
+
+      if (t <= args.threshLow || s <= args.threshLow) {
+        mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
+      }
+
+      if (x < borderSize || x >= mask.axis.first - borderSize ||
+          y < borderSize || y >= mask.axis.second - borderSize) {
+        mask.maskPix(x, y, ImageMask::BAD_PIXEL_S | ImageMask::BAD_PIXEL_T);
+      }
+    }
+  }
+
+  spreadMask(mask, static_cast<int>(args.hKernelWidth * args.inSpreadMaskFactor));
+}
+
+void spreadMask(ImageMask& mask, int spreadWidth) {
+  int w2 = spreadWidth / 2;
   
-  // For now, return the image mask to the CPU
-  cl_int err = clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
-    sizeof(cl_ushort) * mask.axis.first * mask.axis.second, &mask);
-  checkError(err);
+  for (int y = 0; y < mask.axis.second; y++) {
+    for (int x = 0; x < mask.axis.first; x++) {
+      int id = y * mask.axis.first + x;
+
+      if (mask.isMasked(id, ImageMask::BAD_INPUT)) {
+        int sx = std::max<int>(x - w2, 0);
+        int sy = std::max<int>(y - w2, 0);
+        int ex = std::min<int>(x + w2, mask.axis.first - 1);
+        int ey = std::min<int>(y + w2, mask.axis.second - 1);
+
+        for (int y2 = sy; y2 <= ey; y2++) {
+          for (int x2 = sx; x2 <= ex; x2++) {
+            int id2 = y2 * mask.axis.first + x2;
+
+            if (!mask.isMasked(id2, ImageMask::BAD_INPUT)) {
+              mask.maskPix(x2, y2, ImageMask::OK_CONV);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
