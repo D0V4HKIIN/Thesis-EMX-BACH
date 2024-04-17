@@ -12,16 +12,32 @@
 #define MASK_SKIP_S (1 << 11)
 #define MASK_BAD_OUTPUT (1 << 12)
 
-void kernel conv(global const double *convKern, const long convWidth, const long xSteps,
+void kernel createConvMask(global const double *img, global ushort *mask,
+                           const int w, const double threshHigh, const double threshLow) {
+  int x = get_global_id(0);
+  int y = get_global_id(1);
+
+  int id = x + y * w;
+  double t = img[id];
+  ushort m = 0;
+
+  m |= select(0, MASK_BAD_INPUT | MASK_BAD_PIX_VAL, t == 0.0);
+  m |= select(0, MASK_BAD_INPUT | MASK_SAT_PIXEL, t >= threshHigh);
+  m |= select(0, MASK_BAD_INPUT | MASK_LOW_PIXEL, t <= threshLow);
+
+  mask[id] = m;
+}
+
+void kernel conv(global const double *convKern, const int convWidth, const int xSteps,
                  global const double *image, global double *outimg,
-                 global const ushort *convMask, global ushort *outMask,
-                 const long w, const long h) {
+                 global const ushort *convMask, global ushort *outMask, global const double *kernSolution,
+                 const int w, const int h, const int bgOrder, const int nBgComp, const double invKernMult) {
   const int id = get_global_id(0);
   double acc = 0.0;
-  const long x = id % w;
-  const long y = id / w;
+  const int x = id % w;
+  const int y = id / w;
 
-  long halfConvWidth = convWidth / 2;
+  int halfConvWidth = convWidth / 2;
 
   if(x >= halfConvWidth && x < w - halfConvWidth && y >= halfConvWidth &&
      y < h - halfConvWidth) {
@@ -35,13 +51,13 @@ void kernel conv(global const double *convKern, const long convWidth, const long
     double aks = 0.0;
     double uks = 0.0;
 
-    for(long j = y - halfConvWidth; j <= y + halfConvWidth; j++) {
+    for(int j = y - halfConvWidth; j <= y + halfConvWidth; j++) {
       int jk = y - j + halfConvWidth;
-      for(long i = x - halfConvWidth; i <= x + halfConvWidth; i++) {
+      for(int i = x - halfConvWidth; i <= x + halfConvWidth; i++) {
         int ik = x - i + halfConvWidth;
-        long convIndex = ik + jk * convWidth;
+        int convIndex = ik + jk * convWidth;
         convIndex += convOffset;
-        long imgIndex = i + w * j;
+        int imgIndex = i + w * j;
 
         double kk = convKern[convIndex];
         acc += kk * image[imgIndex];
@@ -53,6 +69,9 @@ void kernel conv(global const double *convKern, const long convWidth, const long
         }
       }
     }
+
+    acc += getBackground(x, y, kernSolution, w, h, bgOrder, nBgComp);
+    acc *= invKernMult;
 
     outimg[id] = acc;
 
@@ -71,8 +90,24 @@ void kernel conv(global const double *convKern, const long convWidth, const long
       }
     }
     
-    outMask[id] |= newMask;
+    outMask[id] = newMask;
   } else {
     outimg[id] = 1e-30;
   }
+}
+
+void kernel maskAfterConv(global const double *img, global ushort *mask,
+                          const int w, const double threshHigh, const double threshLow) {
+  int x = get_global_id(0);
+  int y = get_global_id(1);
+
+  int id = x + y * w;
+  double t = img[id];
+  ushort m = 0;
+
+  m |= select(0, MASK_BAD_OUTPUT | MASK_BAD_INPUT | MASK_BAD_PIX_VAL, t == 0.0);
+  m |= select(0, MASK_BAD_OUTPUT | MASK_BAD_INPUT | MASK_SAT_PIXEL, t >= threshHigh);
+  m |= select(0, MASK_BAD_OUTPUT | MASK_BAD_INPUT | MASK_LOW_PIXEL, t <= threshLow);
+
+  mask[id] |= m;
 }

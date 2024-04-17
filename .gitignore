@@ -1,7 +1,10 @@
 *.exe
 *.dll
 *.pdb
+
+.vs
 .vscode
+
 __pycache__
 
 /build

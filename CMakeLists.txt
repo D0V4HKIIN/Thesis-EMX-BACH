@@ -95,14 +95,18 @@ set(Header_Files
     "include/fitsUtil.h"
     "include/bachUtil.h"
     "include/datatypeUtil.h"
+    "include/mathUtil.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
 set(Source_Files
+    "src/argsUtil.cpp"
     "src/bach.cpp"
     "src/bachUtil.cpp"
     "src/cdkscUtil.cpp"
+    "src/clUtil.cpp"
     "src/cmvUtil.cpp"
+    "src/fitsUtil.cpp"
     "src/sssUtil.cpp"
     "src/main.cpp"
 )

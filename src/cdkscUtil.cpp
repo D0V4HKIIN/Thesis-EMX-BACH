@@ -1,90 +1,221 @@
 #include "bachUtil.h"
+#include "mathUtil.h"
 
-double testFit(std::vector<Stamp>& stamps, const Image& tImg, const Image& sImg, ImageMask& mask, const Arguments& args) {
+double testFit(std::vector<Stamp>& stamps, const std::pair<cl_int, cl_int> &axis, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, ClData& clData, ClStampsData& stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
-  const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
-  const int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
+  const int nComp2 = triNum(args.kernelOrder + 1);
+  const int nBGComp = triNum(args.backgroundOrder + 1);
   const int matSize = nComp1 * nComp2 + nBGComp + 1;
   const int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
+  cl_int meritsCount = 0;
 
-  std::vector<double> kernelSum(stamps.size(), 0.0);
-  std::vector<int> index(nKernSolComp);  // Internal between ludcmp and lubksb.
+  std::vector<int> index1(nKernSolComp);  // Internal between ludcmp and lubksb.
 
-  int count = 0;
-  for(auto& s : stamps) {
-    if(!s.subStamps.empty()) {
-      double d;
-      std::vector<double> testVec(args.nPSF + 2, 0.0);
-      std::vector<std::vector<double>> testMat(
-          args.nPSF + 2, std::vector<double>(args.nPSF + 2, 0.0));
+  // Create buffers
+  cl::Buffer index(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * nKernSolComp * stamps.size());
+  cl::Buffer vv(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * std::max<int>(matSize + 1, (args.nPSF + 2) * stamps.size()));
+  cl::Buffer testVec(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.bCount * stamps.size());
+  cl::Buffer testMat(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * clData.qCount * clData.qCount * stamps.size());
+  cl::Buffer kernelSums(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size());
+  cl::Buffer weights(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stamps.size() * nComp2);
+  cl::Buffer matrix(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1) * (matSize + 1));
+  cl::Buffer testKernSol(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nKernSolComp);
+  cl::Buffer meritsCounter(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int));
 
-      for(int i = 1; i <= args.nPSF + 1; i++) {
-        testVec[i] = s.B[i];
-        for(int j = 1; j <= i; j++) {
-          testMat[i][j] = s.Q[i][j];
-          testMat[j][i] = testMat[i][j];
-        }
-      }
+  clData.queue.enqueueWriteBuffer(meritsCounter, CL_TRUE, 0, sizeof(cl_int), &meritsCount);
 
-      ludcmp(testMat, args.nPSF + 1, index, d, args);
-      lubksb(testMat, args.nPSF + 1, index, testVec);
-      s.stats.norm = testVec[1];
-      kernelSum[count++] = testVec[1];
-    }
-  }
+  // Create test vec
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int> testVecFunc(clData.program, "createTestVec");
+  cl::EnqueueArgs testVecEargs(clData.queue, cl::NDRange(clData.bCount, stamps.size()));
+  cl::Event testVecEvent = testVecFunc(testVecEargs, stampData.b, testVec, clData.bCount);
+
+  // Create test mat
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int> testMatFunc(clData.program, "createTestMat");
+  cl::EnqueueArgs testMatEargs(clData.queue, cl::NDRange(clData.qCount, clData.qCount, stamps.size()));
+  cl::Event testMatEvent = testMatFunc(testMatEargs, stampData.q, testMat, clData.qCount);
+
+  testVecEvent.wait();
+  testMatEvent.wait();
+
+  // LU-solve
+  ludcmp(testMat, args.nPSF + 2, stamps.size(), index, vv, clData);
+  lubksb(testMat, args.nPSF + 2, stamps.size(), index, testVec, clData);
+
+  // Save kernel sums
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int> kernelSumFunc(clData.program, "saveKernelSums");
+  cl::EnqueueArgs kernelSumEargs(clData.queue, cl::NDRange(stamps.size()));
+  cl::Event kernelSumEvent = kernelSumFunc(kernelSumEargs, testVec, kernelSums, args.nPSF + 2);
+
+  kernelSumEvent.wait();
 
   double kernelMean, kernelStdev;
-  sigmaClip(kernelSum, kernelMean, kernelStdev, 10, args);
+  sigmaClip(kernelSums, 0, stamps.size(), &kernelMean, &kernelStdev, 10, clData, args);
 
-  // normalise
-  for(auto& s : stamps) {
-    s.stats.diff = std::abs((s.stats.norm - kernelMean) / kernelStdev);
+  // Fit stamps, generate test stamps
+  cl_int testStampCount = 0;
+  
+  cl::Buffer testStampCountBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int));
+  cl::Buffer testStampIndices(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stamps.size());
+  clData.queue.enqueueWriteBuffer(testStampCountBuf, CL_TRUE, 0, sizeof(cl_int), &testStampCount);
+
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_double, cl_double, cl_double, cl_int> testStampFunc(clData.program, "genCdTestStamps");
+  cl::EnqueueArgs testStampEargs(clData.queue, cl::NDRange(roundUpToMultiple(stamps.size(), 8)), cl::NDRange(8));
+  cl::Event testStampEvent = testStampFunc(testStampEargs, kernelSums, testStampIndices, testStampCountBuf,
+                                           kernelMean, kernelStdev, args.sigKernFit, stamps.size());
+
+  clData.queue.enqueueReadBuffer(testStampCountBuf, CL_TRUE, 0, sizeof(cl_int), &testStampCount);
+
+  if (testStampCount == 0) {
+    return 666;
   }
 
-  // global fit
-  std::vector<Stamp> testStamps{};
-  int c = 0;
-  for(auto& s : stamps) {
-    if(s.stats.diff < args.sigKernFit && !s.subStamps.empty()) {
-      testStamps.push_back(s);
-      c++;
+  // Allocate test stamps, so we have continuous stamp data, since
+  // some stamps may be removed
+  ClStampsData testStampData{};
+  testStampData.subStampCoords = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int2) * (2 * args.maxKSStamps) * testStampCount);
+  testStampData.currentSubStamps = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * testStampCount);
+  testStampData.subStampCounts = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * testStampCount);
+  testStampData.w = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount * clData.wColumns * clData.wRows);
+  testStampData.q = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount * clData.qCount * clData.qCount);
+  testStampData.b = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount * clData.bCount);
+  testStampData.stampCount = testStampCount;
+
+  std::vector<cl::Event> testEvents{};
+
+  // Copy sub-stamp coordinates
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int> copySsCoordsFunc(clData.program, "copyTestSubStampsCoords");
+  cl::EnqueueArgs copySsCoordsEargs(clData.queue, cl::NDRange(2 * args.maxKSStamps, testStampCount));
+  testEvents.push_back(copySsCoordsFunc(copySsCoordsEargs, stampData.subStampCoords, testStampIndices, testStampData.subStampCoords, 2 * args.maxKSStamps));
+
+  // Copy substamp counts
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer> copySsCountsFunc(clData.program, "copyTestSubStampsCounts");
+  cl::EnqueueArgs copySsCountsEargs(clData.queue, cl::NDRange(testStampCount));
+  testEvents.push_back(copySsCountsFunc(copySsCountsEargs, stampData.currentSubStamps, stampData.subStampCounts, testStampIndices,
+                                        testStampData.currentSubStamps, testStampData.subStampCounts));
+
+  // Copy W
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int> copyWFunc(clData.program, "copyTestStampsW");
+  cl::EnqueueArgs copyWEargs(clData.queue, cl::NDRange(clData.wColumns, clData.wRows, testStampCount));
+  testEvents.push_back(copyWFunc(copyWEargs, stampData.w, testStampIndices, testStampData.w, clData.wRows, clData.wColumns));
+
+  // Copy Q
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int> copyQFunc(clData.program, "copyTestStampsQ");
+  cl::EnqueueArgs copyQEargs(clData.queue, cl::NDRange(clData.qCount, clData.qCount, testStampCount));
+  testEvents.push_back(copyQFunc(copyQEargs, stampData.q, testStampIndices, testStampData.q, clData.qCount));
+
+  // Copy B
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_int> copyBFunc(clData.program, "copyTestStampsB");
+  cl::EnqueueArgs copyBEargs(clData.queue, cl::NDRange(clData.bCount, testStampCount));
+  testEvents.push_back(copyBFunc(copyBEargs, stampData.b, testStampIndices, testStampData.b, clData.bCount));
+
+  cl::Event::waitForEvents(testEvents);
+
+  // Do fit
+  createMatrix(matrix, weights, clData, testStampData, axis, args);
+  createScProd(testKernSol, weights, sImgBuf, axis, clData, testStampData, args);
+
+  // TEMP: parallel matrix solver is currently very slow, so temporarly use CPU version
+#if true
+  // TEMP: transfer matrix back to CPU
+  std::vector<cl_double> matrixCpu2((matSize + 1) * (matSize + 1));
+  clData.queue.enqueueReadBuffer(matrix, CL_TRUE, 0, sizeof(cl_double) * matrixCpu2.size(), matrixCpu2.data());
+
+  std::vector<std::vector<cl_double>> matrixCpu(matSize + 1, std::vector<cl_double>(matSize + 1));
+
+  for (int i = 0; i < matSize + 1; i++) {
+    for (int j = 0; j < matSize + 1; j++) {
+      matrixCpu[i][j] = matrixCpu2[i * (matSize + 1) + j];
     }
   }
 
-  // do fit
-  auto [matrix, weight] = createMatrix(testStamps, tImg.axis, args);
-  std::vector<double> testKernSol = createScProd(testStamps, sImg, weight, args);
+  // TEMP: transfer kernel solution back to CPU
+  std::vector<cl_double> testKernSolCpu(nKernSolComp);
+  clData.queue.enqueueReadBuffer(testKernSol, CL_TRUE, 0, sizeof(cl_double) * testKernSolCpu.size(), testKernSolCpu.data());
 
   double d;
-  ludcmp(matrix, matSize, index, d, args);
-  lubksb(matrix, matSize, index, testKernSol);
+  ludcmp(matrixCpu, matSize, index1, d, args);
+  lubksb(matrixCpu, matSize, index1, testKernSolCpu);
 
-  Kernel testKern(args);
-  testKern.solution = testKernSol;
-  kernelMean = makeKernel(testKern, tImg.axis, 0, 0, args);
+  // TEMP: transfer back to GPU
+  clData.queue.enqueueWriteBuffer(testKernSol, CL_TRUE, 0, sizeof(cl_double) * testKernSolCpu.size(), testKernSolCpu.data());
+#else
+  ludcmp(matrix, matSize + 1, 1, index, vv, clData);
+  lubksb(matrix, matSize + 1, 1, index, testKernSol, clData);
+  
+  // TEMP: transfer kernel solution back (again) to CPU
+  std::vector<cl_double> testKernSolCpu(nKernSolComp);
+  clData.queue.enqueueReadBuffer(testKernSol, CL_TRUE, 0, sizeof(cl_double) * testKernSolCpu.size(), testKernSolCpu.data());
+#endif
+  
+  cl::Buffer kernel(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * args.fKernelWidth * args.fKernelWidth);
+  kernelMean = makeKernel(kernel, testKernSol, axis, 0, 0, args, clData);
 
-  // calc merit value
-  std::vector<double> merit{};
-  double sig{};
-  for(auto& ts : testStamps) {
-    sig = calcSig(ts, testKern.solution, tImg, sImg, mask, args);
-    if(sig != -1 && sig <= 1e10) merit.push_back(sig);
+  // Calc merit value
+  cl::Buffer model(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * testStampCount * args.fSStampWidth * args.fSStampWidth);
+  cl::Buffer merits(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount);
+  calcSigs(tImgBuf, sImgBuf, axis, model, testKernSol, merits, testStampData, clData, args);
+
+  // Remove bad merits
+  static constexpr int badLocalSize = 16;
+  cl::Buffer cleanMerits(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * testStampCount);
+
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int> badMeritsFunc(clData.program, "removeBadSigs");
+  cl::EnqueueArgs badMeritsEargs(clData.queue, cl::NDRange(roundUpToMultiple(testStampCount, badLocalSize)), cl::NDRange(badLocalSize));
+  cl::Event badMeritsEvent = badMeritsFunc(badMeritsEargs, merits, cleanMerits, meritsCounter, cl::Local(badLocalSize * sizeof(cl_double)), testStampCount);
+
+  badMeritsEvent.wait();
+
+  clData.queue.enqueueReadBuffer(meritsCounter, CL_TRUE, 0, sizeof(cl_int), &meritsCount);
+
+  if (meritsCount == 0) {
+    return 666;
   }
-  double meritMean, meritStdDev;
-  sigmaClip(merit, meritMean, meritStdDev, 10, args);
-  //TODO: Add other merits before 666
-  meritMean /= kernelMean;
-  if(merit.size() > 0) return meritMean;
-  return 666;
+
+  double meritMean;
+  double meritStdDev;
+  sigmaClip(cleanMerits, 0, meritsCount, &meritMean, &meritStdDev, 10, clData, args);
+
+  double normMeritMean = meritMean / kernelMean;
+  return normMeritMean;
+}
+
+void createMatrix(const cl::Buffer &matrix, const cl::Buffer &weights, const ClData &clData, const ClStampsData &stampData, const std::pair<cl_int, cl_int>& imgSize, const Arguments& args) {
+  const int nComp1 = args.nPSF - 1;
+  const int nComp2 = triNum(args.kernelOrder + 1);
+  const int nComp = nComp1 * nComp2;
+  const int nBGVectors = triNum(args.backgroundOrder + 1);
+  const int matSize = nComp + nBGVectors + 1;
+
+  const int pixStamp = args.fSStampWidth * args.fSStampWidth;
+
+  // Create weights
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_int, cl_int, cl_int, cl_int> weightFunc(clData.program, "createMatrixWeights");
+  cl::EnqueueArgs weightEargs(clData.queue, cl::NDRange(nComp2, stampData.stampCount));
+  cl::Event weightEvent = weightFunc(weightEargs, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, clData.cd.kernelXy,
+                                     weights, imgSize.first, imgSize.second, 2 * args.maxKSStamps, nComp2);
+
+  weightEvent.wait();
+
+  // Create matrix
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_int, cl_int, cl_int, cl_int, cl_int,
+                    cl_int, cl_int, cl_int> matrixFunc(clData.program, "createMatrix");
+  cl::EnqueueArgs matrixEargs(clData.queue, cl::NDRange(matSize + 1, matSize + 1));
+  cl::Event matrixEvent = matrixFunc(matrixEargs, weights, stampData.w, stampData.q, matrix,
+                                     stampData.stampCount, matSize + 1, pixStamp, nComp1, nComp2,
+                                     clData.wRows, clData.wColumns, clData.qCount);
+
+  matrixEvent.wait();
 }
 
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
-createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>& imgSize, const Arguments& args) {
+createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_int, cl_int>& imgSize, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
-  const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;  // = 6
+  const int nComp2 = triNum(args.kernelOrder + 1);
   const int nComp = nComp1 * nComp2;
-  const int nBGVectors =
-      ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;  // = 3
+  const int nBGVectors = triNum(args.backgroundOrder + 1);
   const int matSize = nComp + nBGVectors + 1;
 
   const int pixStamp = args.fSStampWidth * args.fSStampWidth;
@@ -175,11 +306,30 @@ createMatrix(const std::vector<Stamp>& stamps, const std::pair<cl_long, cl_long>
   return std::make_pair(matrix, weight);
 }
 
+void createScProd(const cl::Buffer &res, const cl::Buffer &weights, const cl::Buffer &img, const std::pair<cl_int, cl_int>& imgSize, const ClData &clData, const ClStampsData &stampData, const Arguments& args) {
+  const int nComp1 = args.nPSF - 1;
+  const int nComp2 = triNum(args.kernelOrder + 1);
+  const int nBgComp = triNum(args.backgroundOrder + 1);
+  const int nKernSolComp = args.nPSF * nComp2 + nBgComp + 1;
+  
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_int, cl_int, cl_int, cl_int, cl_int,
+                    cl_int, cl_int, cl_int, cl_int, cl_int> prodFunc(clData.program, "createScProd");
+  cl::EnqueueArgs prodEargs(clData.queue, cl::NDRange(nKernSolComp));
+  cl::Event prodEvent = prodFunc(prodEargs, img, weights, stampData.b, stampData.w,
+                                 stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, res,
+                                 imgSize.first, stampData.stampCount, nComp1, nComp2, nBgComp,
+                                 clData.bCount, clData.wRows, clData.wColumns, args.fSStampWidth, 2 * args.maxKSStamps);
+
+  prodEvent.wait();
+}
+
 std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& img,
                                  const std::vector<std::vector<double>>& weight, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
-  const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
-  const int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
+  const int nComp2 = triNum(args.kernelOrder + 1);
+  const int nBGComp = triNum(args.backgroundOrder + 1);
   const int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
 
   std::vector<double> res(nKernSolComp, 0.0);
@@ -221,186 +371,258 @@ std::vector<double> createScProd(const std::vector<Stamp>& stamps, const Image& 
   return res;
 }
 
-double calcSig(Stamp& s, const std::vector<double>& kernSol, const Image& tImg,
-               const Image& sImg, ImageMask& mask, const Arguments& args) {
-  if(s.subStamps.empty()) return -1.0;
-  auto [ssx, ssy] = s.subStamps[0].imageCoords;
+void calcSigs(const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const std::pair<cl_int, cl_int> &axis,
+              const cl::Buffer &model, const cl::Buffer &kernSol, const cl::Buffer &sigma,
+              const ClStampsData &stampData, const ClData &clData, const Arguments& args) {
+  static constexpr int localSize = 32;
 
-  double background = getBackground(ssx, ssy, kernSol, tImg.axis, args);
-  std::vector<float> tmp{makeModel(s, kernSol, tImg.axis, args)};
+  int reduceCount = (args.fSStampWidth * args.fSStampWidth + localSize - 1) / localSize;
+  int stampCount = stampData.stampCount;
 
-  int sigCount = 0;
-  double signal = 0.0;
-  for(int y = 0; y < args.fSStampWidth; y++) {
-    int absY = y - args.hSStampWidth + ssy;
-    for(int x = 0; x < args.fSStampWidth; x++) {
-      int absX = x - args.hSStampWidth + ssx;
+  // Create buffers
+  cl::Buffer bg(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampCount);
+  cl::Buffer sigTemp1(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampCount * reduceCount);
+  cl::Buffer sigTemp2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampCount * reduceCount);
+  cl::Buffer sigCount1(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stampCount * reduceCount);
+  cl::Buffer sigCount2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * stampCount * reduceCount);
 
-      int intIndex = x + y * args.fSStampWidth;
-      int absIndex = absX + absY * tImg.axis.first;
-      double tDat = tmp[intIndex];
+  // Create bg
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_int, cl_int, cl_int, cl_int, cl_int> bgFunc(clData.program, "calcSigBg");
+  cl::EnqueueArgs bgEargs(clData.queue, cl::NDRange(stampCount));
+  cl::Event bgEvent = bgFunc(bgEargs, kernSol, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts, bg,
+                             2 * args.maxKSStamps, axis.first, axis.second, args.backgroundOrder,
+                             (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1);
 
-      double diff = tDat - sImg[absIndex] + background;
-      if(mask.isMasked(absIndex, ImageMask::BAD_INPUT) ||
-         std::abs(sImg[absIndex]) <= 1e-10) {
-        continue;
-      } else {
-        tmp[intIndex] = diff;
-      }
-      if(std::isnan(tDat) || std::isnan(sImg[absIndex])) {
-        mask.maskPix(absX, absY, ImageMask::NAN_PIXEL);
-        continue;
-      }
+  // Create model
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl_int, cl_int, cl_int, cl_int, cl_int,
+                    cl_int, cl_int, cl_int> modelFunc(clData.program, "makeModel");
+  cl::EnqueueArgs modelEargs(clData.queue, cl::NDRange(args.fSStampWidth * args.fSStampWidth, stampCount));
+  cl::Event modelEvent = modelFunc(modelEargs, stampData.w, kernSol, stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts,
+                                   model, args.nPSF, args.kernelOrder, clData.wRows, clData.wColumns, 2 * args.maxKSStamps,
+                                   axis.first, axis.second, args.fSStampWidth * args.fSStampWidth);
 
-      sigCount++;
-      signal +=
-          diff * diff / (std::abs(tImg[absIndex]) + std::abs(sImg[absIndex]));
-    }
+  bgEvent.wait();
+  modelEvent.wait();
+
+  // Create sigmas
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg,
+                    cl_int, cl_int, cl_int, cl_int, cl_int> sigmaFunc(clData.program, "calcSig");
+  cl::EnqueueArgs sigmaEargs(clData.queue, cl::NDRange(reduceCount * localSize, stampCount), cl::NDRange(localSize, 1));
+  cl::Event sigmaEvent = sigmaFunc(sigmaEargs, model, bg, tImgBuf, sImgBuf,
+                                   stampData.subStampCoords, stampData.currentSubStamps, stampData.subStampCounts,
+                                   sigTemp1, sigCount1, clData.maskBuf, cl::Local(localSize * sizeof(cl_double)), axis.first, args.fSStampWidth,
+                                   2 * args.maxKSStamps, args.fSStampWidth * args.fSStampWidth, reduceCount);
+
+  sigmaEvent.wait();
+
+  // Reduce
+  bool isFirst = true;
+  int count = reduceCount;
+  cl::Buffer *sigIn = &sigTemp1;
+  cl::Buffer *sigOut = &sigTemp2;
+  cl::Buffer *sigCountIn = &sigCount1;
+  cl::Buffer *sigCountOut = &sigCount2;
+
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg,
+                    cl_int, cl_int> reduceFunc(clData.program, "reduceSig");
+
+  while (count > 1 || isFirst) {
+    int nextCount = (count + localSize - 1) / localSize;
+
+    cl::EnqueueArgs reduceEargs(clData.queue, cl::NDRange(roundUpToMultiple(count, localSize), stampCount), cl::NDRange(localSize, 1));
+    cl::Event reduceEvent = reduceFunc(reduceEargs, *sigIn, *sigCountIn, *sigOut, *sigCountOut, cl::Local(localSize * sizeof(cl_double)), count, nextCount);
+
+    reduceEvent.wait();
+
+    count = nextCount;
+    std::swap(sigIn, sigOut);
+    std::swap(sigCountIn, sigCountOut);
+
+    isFirst = false;
   }
-  if(sigCount > 0) {
-    signal /= sigCount;
-    if(signal >= 1e10) signal = -1.0;
-  } else {
-    signal = -1.0;
-  }
-  return signal;
+
+  // Copy buffer
+  cl::Event copyEvent{};
+  clData.queue.enqueueCopyBuffer(*sigIn, sigma, 0, 0, sizeof(cl_double) * stampCount, nullptr, &copyEvent);
+
+  copyEvent.wait();
 }
 
-double getBackground(const int x, const int y, const std::vector<double>& kernSol,
-                     const std::pair<cl_long, cl_long> imgSize, const Arguments& args) {
-  int BGComp = (args.nPSF - 1) *
-                   (((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2) +
-               1;
-  double bg = 0.0;
-  double xf = (x - 0.5 * imgSize.first) / (0.5 * imgSize.first);
-  double yf = (y - 0.5 * imgSize.second) / (0.5 * imgSize.second);
-
-  double ax = 1.0;
-  for(int i = 0, k = 1; i <= args.backgroundOrder; i++) {
-    double ay = 1.0;
-    for(int j = 0; j <= args.backgroundOrder - i; j++) {
-      bg += kernSol[BGComp + k++] * ax * ay;
-      ay *= yf;
-    }
-    ax *= xf;
-  }
-  return bg;
-}
-
-std::vector<float> makeModel(const Stamp& s, const std::vector<double>& kernSol,
-                             const std::pair<cl_long, cl_long> imgSize, const Arguments& args) {
-  std::vector<float> model(args.fSStampWidth * args.fSStampWidth, 0.0);
-
-  std::pair<float, float> hImgAxis =
-      std::make_pair(0.5 * imgSize.first, 0.5 * imgSize.second);
-  auto [ssx, ssy] = s.subStamps.front().imageCoords;
-
-  for(int i = 0; i < args.fSStampWidth * args.fSStampWidth; i++) {
-    model[i] += kernSol[1] * s.W[0][i];
-  }
-
-  for(int i = 1, k = 2; i < args.nPSF; i++) {
-    double aX = 1.0, coeff = 0.0;
-    for(int iX = 0; iX <= args.kernelOrder; iX++) {
-      double aY = 1.0;
-      for(int iY = 0; iY <= args.kernelOrder - iX; iY++) {
-        coeff += kernSol[k++] * aX * aY;
-        aY *= double(ssy - hImgAxis.second) / hImgAxis.second;
-      }
-      aX *= double(ssx - hImgAxis.first) / hImgAxis.first;
-    }
-
-    for(int j = 0; j < args.fSStampWidth * args.fSStampWidth; j++) {
-      model[j] += coeff * s.W[i][j];
-    }
-  }
-
-  return model;
-}
-
-void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
-               const Image& sImg, ImageMask& mask, const Arguments& args) {
+void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image &sImg, const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf,
+               ClData &clData, const ClStampsData &stampData, const Arguments& args) {
   const int nComp1 = args.nPSF - 1;
-  const int nComp2 = ((args.kernelOrder + 1) * (args.kernelOrder + 2)) / 2;
-  const int nBGComp = ((args.backgroundOrder + 1) * (args.backgroundOrder + 2)) / 2;
+  const int nComp2 = triNum(args.kernelOrder + 1);
+  const int nBGComp = triNum(args.backgroundOrder + 1);
   const int matSize = nComp1 * nComp2 + nBGComp + 1;
+  const int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
 
-  auto [fittingMatrix, weight] = createMatrix(stamps, tImg.axis, args);
-  std::vector<double> solution = createScProd(stamps, sImg, weight, args);
+  // Create buffers
+  cl::Buffer fitMatrix(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1) * (matSize + 1));
+  cl::Buffer weights(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nComp2 * stampData.stampCount);
+  clData.kernel.solution = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * nKernSolComp);
+  cl::Buffer index(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int) * (matSize + 1));
+  cl::Buffer vv(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * (matSize + 1));
 
-  std::vector<int> index(matSize, 0);
-  double d{};
-  ludcmp(fittingMatrix, matSize, index, d, args);
-  lubksb(fittingMatrix, matSize, index, solution);
+  std::vector<int> index0(matSize, 0);
 
-  k.solution = solution;
-  bool check = checkFitSolution(k, stamps, tImg, sImg, mask, args);
-  while(check) {
-    if(args.verbose) std::cout << "Re-expanding matrix..." << std::endl;
-    auto [fittingMatrix, weight] = createMatrix(stamps, tImg.axis, args);
-    solution = createScProd(stamps, sImg, weight, args);
+  int iteration = 0;
+  bool check{};
 
-    ludcmp(fittingMatrix, matSize, index, d, args);
-    lubksb(fittingMatrix, matSize, index, solution);
+  do
+  {
+    if (args.verbose && iteration > 0) {
+      std::cout << "Re-expanding matrix..." << std::endl;
+    }
+    
+    // Create matrix
+#if false
+    createMatrix(fitMatrix, weights, clData, stampData, axis, args);
+    createScProd(solution, weights, sImgBuf, axis, clData, stampData, args);
+    
+    // TEMP: transfer back to CPU
+    std::vector<std::vector<double>> fittingMatrixCpu(matSize + 1, std::vector<double>(matSize + 1));
+    std::vector<cl_double> solutionCpu(nKernSolComp);
+    std::vector<cl_double> fittingMatrixTemp((matSize + 1) * (matSize + 1));
 
-    k.solution = solution;
-    check = checkFitSolution(k, stamps, tImg, sImg, mask, args);
+    clData.queue.enqueueReadBuffer(fitMatrix, CL_TRUE, 0, sizeof(cl_double) * fittingMatrixTemp.size(), fittingMatrixTemp.data());
+    clData.queue.enqueueReadBuffer(solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
+    
+    for (int i = 0; i <= matSize; i++) {
+      for (int j = 0; j <= matSize; j++) {
+        fittingMatrixCpu[i][j] = fittingMatrixTemp[i * (matSize + 1) + j];
+      }
+    }
+#else
+    auto [fittingMatrix0, weight0] = createMatrix(stamps, sImg.axis, args);
+    std::vector<double> solution0 = createScProd(stamps, sImg, weight0, args);
+
+    std::vector<std::vector<double>> fittingMatrixCpu = std::move(fittingMatrix0);
+    std::vector<double> solutionCpu = std::move(solution0);
+#endif
+
+    // LU solve
+#if false
+    // TEMP: transfer matrix to GPU
+    std::vector<cl_double> flatFitMatrix{};
+
+    for (auto& row : fittingMatrixCpu) {
+      for (double value : row) {
+        flatFitMatrix.push_back(value);
+      }
+    }
+
+    clData.queue.enqueueWriteBuffer(fitMatrix, CL_TRUE, 0, sizeof(cl_double) * flatFitMatrix.size(), flatFitMatrix.data());
+
+    // TEMP: transfer solution to GPU
+    clData.queue.enqueueWriteBuffer(solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
+
+    ludcmp(fitMatrix, matSize + 1, 1, index, vv, clData);
+    lubksb(fitMatrix, matSize + 1, 1, index, solution, clData);
+
+    // TEMP: transfer solution back to CPU
+    clData.queue.enqueueReadBuffer(solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
+
+#else
+    double d{};
+    ludcmp(fittingMatrixCpu, matSize, index0, d, args);
+    lubksb(fittingMatrixCpu, matSize, index0, solutionCpu);
+#endif
+
+    k.solution = solutionCpu;
+    
+    // TEMP: transfer kernel solution to GPU
+    clData.queue.enqueueWriteBuffer(clData.kernel.solution, CL_TRUE, 0, sizeof(cl_double) * solutionCpu.size(), solutionCpu.data());
+
+    check = checkFitSolution(k, stamps, sImg.axis, clData, stampData, tImgBuf, sImgBuf, clData.kernel.solution, args);
+
+    iteration++;
   }
+  while (check);
 }
 
-bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const Image& tImg,
-                      const Image& sImg, ImageMask& mask, const Arguments& args) {
-  std::vector<double> ssValues{};
+bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps, const std::pair<cl_int, cl_int> &axis, const ClData &clData, const ClStampsData &stampData,
+                      const cl::Buffer &tImgBuf, const cl::Buffer &sImgBuf, const cl::Buffer &kernSol, const Arguments& args) {
+  cl_int chi2Count = 0;
+  
+  // Create buffers
+  cl::Buffer model(clData.context, CL_MEM_READ_WRITE, sizeof(cl_float) * stampData.stampCount * args.fSStampWidth * args.fSStampWidth);
+  cl::Buffer sigmaVals(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampData.stampCount);
+  cl::Buffer chi2(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * stampData.stampCount);
+  cl::Buffer invalidatedSubStampsBuf(clData.context, CL_MEM_READ_WRITE, sizeof(cl_uchar) * stampData.stampCount);
+  cl::Buffer chi2Counter(clData.context, CL_MEM_READ_WRITE, sizeof(cl_int));
 
+  clData.queue.enqueueWriteBuffer(chi2Counter, CL_TRUE, 0, sizeof(cl_int), &chi2Count);
+
+  // Calculate sigmas
+  calcSigs(tImgBuf, sImgBuf, axis, model, kernSol, sigmaVals, stampData, clData, args);
+
+  // Find bad sub-stamps
+  static constexpr int badLocalSize = 16;
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int> badSsFunc(clData.program, "checkBadSubStamps");
+  cl::EnqueueArgs badSsEargs(clData.queue, cl::NDRange(roundUpToMultiple(stampData.stampCount, badLocalSize)), cl::NDRange(badLocalSize));
+  cl::Event badSsEvent = badSsFunc(badSsEargs, sigmaVals, stampData.subStampCounts,
+                                   chi2, invalidatedSubStampsBuf, stampData.currentSubStamps, chi2Counter,
+                                   cl::Local(badLocalSize * sizeof(cl_double)), stampData.stampCount);
+
+  badSsEvent.wait();
+
+  clData.queue.enqueueReadBuffer(chi2Counter, CL_TRUE, 0, sizeof(cl_int), &chi2Count);
+
+  // Read which sub-stamps are bad
+  std::vector<cl_uchar> invalidatedSubStamps(stampData.stampCount);
+  clData.queue.enqueueReadBuffer(invalidatedSubStampsBuf, CL_TRUE, 0, sizeof(cl_uchar) * invalidatedSubStamps.size(), invalidatedSubStamps.data());
+
+  // Remove the bad sub-stamps
   bool check = false;
+  removeBadSubStamps(&check, stampData, stamps, invalidatedSubStamps, axis, sImgBuf, tImgBuf, k, clData, args);
 
-  for(Stamp& s : stamps) {
-    if(!s.subStamps.empty()) {
-      double sig = calcSig(s, k.solution, tImg, sImg, mask, args);
+  // Sigma clip
+  double mean = 0.0;
+  double stdDev = 0.0;
+  sigmaClip(chi2, 0, chi2Count, &mean, &stdDev, 10, clData, args);
 
-      if(sig == -1) {
-        s.subStamps.erase(s.subStamps.begin(), next(s.subStamps.begin()));
-        fillStamp(s, tImg, sImg, mask, k, args);
-        check = true;
-      } else {
-        s.stats.chi2 = sig;
-        ssValues.push_back(sig);
-      }
-    }
-  }
+  // Find bad sub-stamps based on the sigma clip
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_double, cl_double, cl_double> badSsClipFunc(clData.program, "checkBadSubStampsFromSigmaClip");
+  cl::EnqueueArgs badSsClipEargs(clData.queue, cl::NDRange(stampData.stampCount));
+  cl::Event badSsClipEvent = badSsClipFunc(badSsClipEargs, sigmaVals, stampData.subStampCounts, invalidatedSubStampsBuf, stampData.currentSubStamps, mean, stdDev, args.sigKernFit);
 
-  double mean = 0.0, stdDev = 0.0;
-  sigmaClip(ssValues, mean, stdDev, 10, args);
+  badSsClipEvent.wait();
+  
+  // Read which sub-stamps are bad (again)
+  clData.queue.enqueueReadBuffer(invalidatedSubStampsBuf, CL_TRUE, 0, sizeof(cl_uchar) * invalidatedSubStamps.size(), invalidatedSubStamps.data());
 
-  if(args.verbose) {
-    std::cout << "Mean sig: " << mean << " stdev: " << stdDev << '\n'
-              << "    Iterating through stamps with sig >"
-              << (mean + args.sigKernFit * stdDev) << std::endl;
-  }
+  // Remove the bad sub-stamps
+  removeBadSubStamps(&check, stampData, stamps, invalidatedSubStamps, axis, sImgBuf, tImgBuf, k, clData, args);
 
-  for(Stamp& s : stamps) {
-    if(!s.subStamps.empty()) {
-      if((s.stats.chi2 - mean) > args.sigKernFit * stdDev) {
-        s.subStamps.erase(s.subStamps.begin(), next(s.subStamps.begin()));
-        fillStamp(s, tImg, sImg, mask, k, args);
-        check = true;
-      }
-    }
-  }
-
-  int cnt = 0;
-  for(auto s : stamps) {
-    if(!s.subStamps.empty()) cnt++;
-  }
-  if(args.verbose) {
-    std::cout << "We use " << cnt << " sub-stamps" << std::endl;
-    std::cout << "Remaining sub-stamps are:" << std::endl;
-    for(auto s : stamps) {
-      if(!s.subStamps.empty()) {
-        std::cout << "x = " << s.coords.first << ", y = " << s.coords.second
-                  << std::endl;
-      }
-    }
-  }
   return check;
+}
+
+void removeBadSubStamps(bool *check, const ClStampsData &stampData, std::vector<Stamp> &stamps, const std::vector<cl_uchar> &invalidatedSubStamps, const std::pair<cl_int, cl_int> &axis,
+                        const cl::Buffer &sImgBuf, const cl::Buffer &tImgBuf, const Kernel &k, const ClData &clData, const Arguments &args) {
+  for (int i = 0; i < invalidatedSubStamps.size(); i++) {
+    if (invalidatedSubStamps[i] == 1) {
+      // Count concecutive invalidated sub-stamps, so that
+      // multiple new sub-stamps can be filled at the same time
+      int firstIndex = i;
+      int count = 1;
+
+      while (firstIndex + count < invalidatedSubStamps.size() && invalidatedSubStamps[i + 1] == 1) {
+        count++;
+        i++;
+      }
+
+      // TEMP: delete bad sub-stamps on CPU
+      for (int j = 0; j < count; j++) {
+        Stamp &s = stamps[firstIndex + j];
+        s.subStamps.erase(s.subStamps.begin(), std::next(s.subStamps.begin()));
+      }
+
+      fillStamps(stamps, axis, tImgBuf, sImgBuf, firstIndex, count, k, clData, stampData, args);
+      *check = true;
+    }
+  }
 }
