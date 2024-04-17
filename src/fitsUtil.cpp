@@ -50,9 +50,7 @@ void writeImage(const Image& img, const Arguments& args) {
 
   long fpixel(1);
 
-  valarray<double> data{&img, img.size()};
-
-  pFits->pHDU().write(fpixel, data.size(), data);
+  pFits->pHDU().write(fpixel, img.data.size(), img.data);
 
   if(args.verbose) {
     std::cout << pFits->pHDU() << std::endl;
