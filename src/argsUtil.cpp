@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
+#include <sstream>
 
 const char* getCmdOption(const char** begin, const char** end, const std::string& option) {
   const char** itr = std::find(begin, end, option);
@@ -28,6 +29,16 @@ void getArguments(const int argc, const char* argv[], Arguments& args) {
 
   if(cmdOptionExists(argv, argv + argc, "-ip")) {
     args.inputPath = getCmdOption(argv, argv + argc, "-ip");
+  }
+
+  if(cmdOptionExists(argv, argv+argc, "-sx")){
+    std::stringstream sstr{getCmdOption(argv, argv+argc, "-sx")};
+    sstr >> args.stampsx;
+  }
+  
+  if(cmdOptionExists(argv, argv+argc, "-sy")){
+    std::stringstream sstr{getCmdOption(argv, argv+argc, "-sy")};
+    sstr >> args.stampsy;
   }
 
   if(cmdOptionExists(argv, argv + argc, "-v")) {
