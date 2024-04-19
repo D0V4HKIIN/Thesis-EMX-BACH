@@ -9,11 +9,12 @@ import time
 from astropy.io import fits
 
 TEST_TABLE = [
-    # ID | Fast? | Speed | Science       | Template      | HOTPANTS conv    | HOTPANTS sub    | Max abs error S,T | Max rel error S,T
+    # ID | Fast? | Science       | Template      | HOTPANTS conv    | HOTPANTS sub    | Max abs error S,T | Max rel error S,T
     ( 1,   True,  "test0",        "test1",        "test01_conv",     "test01_sub",     (2e-4, 5e-4),       (5e-3, 4e-3)),
     ( 2,   True,  "testScience",  "testTemplate", "testST_conv",     "testST_sub",     (8e-3, 2e-3),       (5e-6, 9e-1)),
-    ( 3,   False, "ptf_m82_s_2k", "ptf_m82_t_2k", "ptf_m82_2k_conv", "ptf_m82_2k_sub", (2e-1, 3e1),        (1e-5, 4e-1)),
-    ( 4,   False, "sparse0",      "sparse1",      "sparse01_conv",   "sparse01_sub",   (2e1,  5e0),        (3e-4, 5e-4))
+    ( 3,   True,  "ptf_m82_s_2k", "ptf_m82_t_2k", "ptf_m82_2k_conv", "ptf_m82_2k_sub", (2e-1, 3e1),        (1e-5, 4e-1)),
+    ( 4,   False, "sparse0",      "sparse1",      "sparse01_conv",   "sparse01_sub",   (2e1,  5e0),        (3e-4, 5e-4)),
+    ( 5,   True,  "ztf_m1_s_3k",  "ztf_m1_t_3k",  "ztf_m1_3k_conv",  "ztf_m1_3k_sub",  (1e-3, 1e-2),       (1e-6, 1e0))
 ]
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
