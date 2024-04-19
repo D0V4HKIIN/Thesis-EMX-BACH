@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <sstream>
 
 struct Arguments {
   std::string templateName;
@@ -79,6 +80,16 @@ inline void getArguments(const int argc, const char* argv[], Arguments& args) {
 
   if(cmdOptionExists(argv, argv + argc, "-ip")) {
     args.inputPath = getCmdOption(argv, argv + argc, "-ip");
+  }
+
+  if(cmdOptionExists(argv, argv+argc, "-sx")){
+    std::stringstream sstr{getCmdOption(argv, argv+argc, "-sx")};
+    sstr >> args.stampsx;
+  }
+  
+  if(cmdOptionExists(argv, argv+argc, "-sy")){
+    std::stringstream sstr{getCmdOption(argv, argv+argc, "-sy")};
+    sstr >> args.stampsy;
   }
 
   if(cmdOptionExists(argv, argv + argc, "-v")) {
