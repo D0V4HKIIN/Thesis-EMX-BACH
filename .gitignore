@@ -10,3 +10,4 @@ __pycache__
 /build
 /CMakeListsUser.txt
 /tests/out
+/tools/test_config.txt
