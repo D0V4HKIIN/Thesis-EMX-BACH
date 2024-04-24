@@ -20,6 +20,10 @@ def main(args):
     print(f"Using times: {sorted_times}")
     print(f"n = {n}")
 
+    if n < 6:
+        print(f"{color_print.RED}Need at least 6 measurements!")
+        return False
+
     lower_rank = math.floor((n - z_alpha_2 * math.sqrt(n)) / 2)
     upper_rank = math.ceil(1 + (n + z_alpha_2 * math.sqrt(n)) / 2)
     median = statistics.median(times)

@@ -10,6 +10,7 @@ from scipy import stats
 import datetime
 import os
 import sys
+import time
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
 BIN_PATH = ROOT_PATH / "bin"
@@ -45,6 +46,7 @@ def run(binary, template_name, science_name, id, in_path, out_path):
                 "-t", f"{template_name}.fits",
                 "-s", f"{science_name}.fits",
                 "-op", str(out_path / f"{binary}-{id}_"),
+                "-v",
                 "-vt"
             ])
         case "hotpants":
@@ -56,9 +58,10 @@ def run(binary, template_name, science_name, id, in_path, out_path):
             ])
     
     with open(out_path / f"{binary}-{id}_out.txt", "w") as out_stream:
-        subprocess.run(args=exe_args, stdout=out_stream, stderr=out_stream)
+        if not subprocess.run(args=exe_args, stdout=out_stream, stderr=out_stream):
+            print(f"{color_print.RED}Process exited with error status for binary {binary}.")
 
-
+    time.sleep(500 / 1000)
 
 time_matcher = re.compile(r".*took (?:(\d+) ?s )?(\d+) ?ms")
 def measure_execution_time(binary, out_path, external_path):
@@ -92,6 +95,11 @@ def measure_execution_time(binary, out_path, external_path):
                             times.append(int(s_str)*1000 + int(ms_str))
                         case (s_str, ms_str) if s_str == '':
                             times.append(int(ms_str))
+
+            if binary in { "xbach", "bach" } and len(times) != 9 or binary == "hotpants" and len(times) != 1:
+                print(f"{color_print.YELLOW}Ignoring failed run...")
+                continue
+
             runs.append(times)
             print(times)
         
