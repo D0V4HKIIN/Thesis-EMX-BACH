@@ -5,7 +5,6 @@ import numpy as np
 import pathlib
 import statistics
 import sys
-import timedb
 
 SOFTWARE = {
     "xbach": "X-BACH",
@@ -28,6 +27,35 @@ COMPUTERS = [
     "gpu",
     "igpu"
 ]
+
+ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
+
+def load_db(res_path):
+    db = []
+
+    for gpu in ["gpu", "igpu"]:
+        for software in ["xbach", "bach", "hotpants"]:
+            for test_id in range(1, 13):
+                test = f"t{test_id}"
+                file_name = f"{gpu}-{software}-{test}.txt"
+
+                with open(res_path / file_name, "r") as input:
+                    for line in input:
+                        if not line:
+                            continue
+
+                        split = line.split(":")
+                        assert len(split) == 2
+
+                        label = split[0].strip()
+                        times_str = split[1].strip()
+
+                        time_split = times_str.split(" ")
+                        times = list(map(int, time_split))
+
+                        db.append((gpu, software, test, label, times))
+
+    return db
 
 def make_time(db, part, out_path):
     LABELS = [f"T{i}" for i in range(1, 13)]
@@ -108,7 +136,7 @@ def make_time(db, part, out_path):
             for j, m in enumerate(measurements):
                 (ci_lower, ci_upper) = exetime.calc_ci(m)
 
-                CI_BOUND = 0.4 * 1e-2
+                CI_BOUND = 1 * 1e-2
 
                 if (ci_upper - ci_lower) / max_time < CI_BOUND:
                     continue
@@ -188,7 +216,12 @@ def make_speedup(db, part, out_path):
 
         for j in range(1, len(data)):
             for k in range(len(data[j][1])):
-                data[j][1][k] /= data[0][1][k]
+                speed_up = 0
+
+                if min(data[0][1][k], data[j][1][k]) > 5:
+                    speed_up = data[j][1][k] / data[0][1][k]
+            
+                data[j][1][k] = speed_up
 
         if len(data) > 0:
             del data[0]
@@ -219,10 +252,67 @@ def make_speedup(db, part, out_path):
         ax.set_title(f"{part} speed-up on computer {COMPUTER[computer]}")
         ax.set_xticks(label_locations + bar_width, labels=LABELS, fontsize=12)
         ax.legend(loc='upper left', ncols=3)
-        ax.set_ylabel("X-BACH Speed-up", fontsize=BIG_FONT)
+        ax.set_ylabel("X-BACH speed-up", fontsize=BIG_FONT)
         ax.tick_params(labelsize=SMALL_FONT)
 
     fig.savefig(out_path / f"speedup_{part.lower()}.pdf")
+
+def make_breakdown(db, out_path):
+    db = list(filter(lambda x: x[1] == "xbach" and x[3] != "Total", db))
+
+    for i in range(len(db)):
+        db[i] = (db[i][0], db[i][1], db[i][2], db[i][3], statistics.median(db[i][4]))
+    
+    BIG_FONT = 16
+    SMALL_FONT = 12
+
+    fig, axes = plt.subplots(nrows=2)
+    plt.rc("font", size=BIG_FONT)
+    plt.subplots_adjust(left=0.12, bottom=0.04, right=0.80, top=0.94, hspace=0.26)
+    #plt.yscale("log")
+    fig.set_size_inches(8, 9, forward=True)
+
+    BAR_WIDTH = 0.75
+    LABELS = [f"T{i}" for i in range(1, 13)]
+    PARTS = ["Ini", "SSS", "CMV", "CD", "KSC", "Conv", "Sub", "Fin"]
+    label_locations = np.arange(len(LABELS))
+    
+    for i in range(len(axes)):
+        ax = axes[i]
+        computer = COMPUTERS[i]
+
+        fig_db = list(filter(lambda x: x[0] == computer, db))
+
+        test_sums = dict()
+
+        for tid in range(1, 13):
+            tstr = f"t{tid}"
+            sum = 0
+
+            for d in filter(lambda x: x[2] == tstr, fig_db):
+                sum += d[4]
+
+            test_sums[tstr] = sum
+
+        bottom = np.zeros(len(LABELS))
+
+        for part in PARTS:
+            data = list(filter(lambda x: x[3] == part, fig_db))
+            
+            values = [d[4] / test_sums[d[2]] * 100 for d in data]
+
+            ax.bar(LABELS, values, BAR_WIDTH, label=part, bottom=bottom)
+
+            for j in range(len(values)):
+                bottom[j] += values[j]
+            
+        ax.set_title(f"Execution time breakdown on computer {COMPUTER[computer]}")
+        ax.set_xticks(label_locations, labels=LABELS, fontsize=12)
+        ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
+        ax.set_ylabel("Percentage [%]", fontsize=BIG_FONT)
+        ax.tick_params(labelsize=SMALL_FONT)
+
+    fig.savefig(out_path / f"exec_breakdown.pdf")
 
 def main(args):
     color_print.init()
@@ -234,7 +324,10 @@ def main(args):
     res_path = pathlib.Path(args[0])
     out_path = pathlib.Path(args[1])
 
-    db = timedb.load(res_path)
+    db = load_db(res_path)
+
+    print(f"{color_print.CYAN}Making figure for breakdown")
+    make_breakdown(db, out_path)
 
     for part in ["Total", "Ini", "SSS", "CMV", "CD", "KSC", "Conv", "Sub", "Fin"]:
         print(f"{color_print.CYAN}Making figure for {part} execution time")
