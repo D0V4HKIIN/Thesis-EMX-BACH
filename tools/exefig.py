@@ -188,7 +188,7 @@ def make_time_separate(db, part, out_path):
 
         fig.savefig(out_path / f"presentation_exec_{part.lower()}_{computer.lower()}.svg")
 
-def make_speedup(db, part, out_path):
+def make_relative_speed(db, part, out_path):
     LABELS = [f"T{i}" for i in range(1, 13)]
 
     db = list(filter(lambda x: x[3] == part, db))
@@ -269,10 +269,10 @@ def make_speedup(db, part, out_path):
 
         # Add some text for labels, title and custom x-axis tick labels, etc.
         #ax.yaxis.grid(True)
-        ax.set_title(f"{part} speed-up on computer {COMPUTER[computer]}")
+        ax.set_title(f"{part} relative speed on computer {COMPUTER[computer]}")
         ax.set_xticks(label_locations + bar_width, labels=LABELS, fontsize=12)
         ax.legend(loc='upper left', ncols=3)
-        ax.set_ylabel("X-BACH speed-up", fontsize=BIG_FONT)
+        ax.set_ylabel("Relative speed", fontsize=BIG_FONT)
         ax.tick_params(labelsize=SMALL_FONT)
 
     fig.savefig(out_path / f"speedup_{part.lower()}.pdf")
@@ -353,8 +353,8 @@ def main(args):
         make_time(db, part, out_path)
         make_time_separate(db, part, out_path)
 
-        print(f"{color_print.CYAN}Making figure for {part} speed-up")
-        make_speedup(db, part, out_path)
+        print(f"{color_print.CYAN}Making figure for {part} relative speed")
+        make_relative_speed(db, part, out_path)
 
     color_print.destroy()
 
