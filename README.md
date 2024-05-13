@@ -1,80 +1,34 @@
+# X-BACH
+X-BACH (Extended Basic Accelerated C++ HOTPANTS) is an astronomical image subtraction software created by Gustav Arneving and Hugo Wilhelmsson, as part of a master's thesis conducted at MindRoad Öst AB. It is based on [BACH](https://github.com/MindRoadAB/Thesis-BACH), an earlier master's thesis by [Annie Wång](https://github.com/th3tard1sparadox) and [Victor Lells](https://github.com/vollells).
 
-Start original BACH README:
+X-BACH is a parallelization of the popular image subtraction tool [HOTPANTS](https://github.com/acbecker/hotpants), rewritten in C++, and using OpenCL for task acceleration. It operates on two FITS images, one called science and one called template, generates a difference image by subtraction. The purpose of X-BACH was to explore the parallelization potential of non-trivial parallelizable tasks in the HOTPANTS algorithm and check how it would perform.
 
----
+## Build
+See [here](docs/Build.md).
 
-BACH was created as a part of a master thesis conducted at Linköping University during the spring of 2023 by [Annie Wång](https://github.com/th3tard1sparadox) and [Victor Lells](https://github.com/vollells). It is a PSF-alignment and image subtraction tool based on [HOTPANTS](https://github.com/acbecker/hotpants).
+## Usage
+The usage of X-BACH is highlighted below:
 
-BACH is currently capable at aligning the PSFs of two FITS images, but has trouble with the subtraction. It cannot handle too large images, but in our general testing up to around 5K x 5K should work fine.
+```
+BACH -t <template image name> -s <science image name>
+```
 
-# Installation
+X-BACH also supports some optional arguments. These arguments are presented below:
 
-Install all dependencies and then clone the repo by running the following command:
+- `-o <convolved output name>`: name of the convolved output FITS image. Defaults to `diff.fits`.
+- `-op <output path>`: name of the output folder, where the output images will be stored. Defaults to `out/`.
+- `-ip <input path>`: name of the input folder, where the input images are located. Defaults to `res/`.
+- `-v`: turns on verbose mode.
+- `-vt`: prints execution time.
 
-    git clone git@github.com:MindRoadAB/Exjobb-HOTPANTS.git
+For instance, if the input files are stored in `C:\in`, called `science.fits` and `template.fits`, and the output files would be written to `C:\out`, the following command would be used:
 
-You can then use the program. See how to use BACH further below.
+```
+BACH -t template.fits -s science.fits -ip "C:\in\" -op "C:\out\"
+```
 
-## Dependencies
+This would generate two files, `diff.fits` (convolved image) and `sub.fits` (subtracted image) in `C:\out`.
 
-BACH depends on the following packages:
-- [CCfits](https://heasarc.gsfc.nasa.gov/fitsio/CCfits/)
-- [C++ for OpenCL 2021](https://www.khronos.org/opencl/assets/CXX_for_OpenCL.html)
-
-## Requirements
-
-- CMake or Make depending on your OS
-    - If you are using CMake, Visual Studio 17 2022 is also required
-- C++20
-
-# Usage
-
-BACH will be compiled differently depending on what system you are on, follow the guide for your system below.
-
-There will always be two output images, the convolved image and the subtracted image. The subtracted image will always be named `sub.fits`, while the convolved is `diff.fits` by default.
-
-## Windows
-
-We recommend that you use CMake if you run Windows. 
-
-To compile BACH with CMake, make sure that `CMakeLists.txt` contain the correct paths to the libraries used. These can be found under `Include directories` and `Dependencies`.
-
-When the paths are set correctly, open a terminal and navigate into the folder containing `CMakeLists.txt` and run the commands
-
-    cmake -S . -B "build" -G "Visual Studio 17 2022" -A "x64"
-    cmake --build .\build\
-
-The exe file can be found in the folder `build/Debug` named `BACH.exe`. Move this file to the folder containing all `.cl` files. This can be done using the following command if you are standing in the `BACH` folder.
-
-    mv .\build\Debug\BACH.exe .
-
-Then run the file:
-
-    .\BACH.exe -t [template image filename] -s [science image filename]
-
-## Linux
-
-If you are running Linux, we recommend that you use Make. Navigate to the folder containing `Makefile` and run
-
-    make
-
-Then execute the file by running
-
-    ./BACH -t [template image filename] -s [science image filename]
-
-## Command line options
-
-These are the available command line options. The values within the parenthesis are the default values.
-
-### Required
-
-    -t [template image filename] // needs to be a FITS image
-    -s [science image filename]  // needs to be a FITS image
-
-### Optional
-
-    -o [output image filename] // will output the convolved FITS image (diff.fits)
-    -op [output path]          // (out/)
-    -ip [input path]           // (res/)
-    -v                         // turn on verbose mode
-    -vt                        // turn on timers
+## Known Issues
+- Input and output path arguments are glitchy. Always put '/' (or '\\') at the end of the path.
+- Non-deterministic behaviour is observed between computers in some rare test cases.
