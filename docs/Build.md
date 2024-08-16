@@ -8,7 +8,13 @@ This document describes how to build the project from source.
 - [OpenCL SDK](https://github.com/KhronosGroup/OpenCL-SDK)
 
 CCfits and OpenCL SDK are the only required dependencies. However, CCfits depends on more dependencies. CCfits also has to be built as a dynamic library, which at the time of writing requires it to be built as a static library first.
-To do this, first compile CCfits as per their instruction, then run `cmake -B <your build folder> -DBUILD_SHARED_LIBS=ON` and build again.
+To do this, first compile CCfits as per their instruction, then update the dynamic library flag:
+
+```
+cmake -B <your build folder> -DBUILD_SHARED_LIBS=ON
+```
+
+and build again.
 
 On Windows, it is unfortunaly probably required to build all those from source, which may be a pain to do.
 
