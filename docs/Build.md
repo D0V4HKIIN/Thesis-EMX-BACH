@@ -7,7 +7,7 @@ This document describes how to build the project from source.
         - [ZLib](https://www.zlib.net/)
 - [OpenCL SDK](https://github.com/KhronosGroup/OpenCL-SDK)
 
-On Windows, it is unfortunaly probably required to build all those from source, which may be a pain to do.
+On Windows, it is unfortunaly probably required to build all those from source, which may be a pain to do. In addition, if multiconfig builds are needed, all dependencies need to be compiled in both release and debug mode, and stored separately.
 
 CCfits and OpenCL SDK are the only required dependencies. However, CCfits depends on more dependencies. CCfits also has to be built as a dynamic library, which at the time of writing requires it to be built as a static library first.
 To do this, first compile CCfits as per their instruction, then update the dynamic library flag:
