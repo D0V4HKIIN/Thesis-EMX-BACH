@@ -38,6 +38,8 @@ cmake --build build --config <config>
 where `<config>` is `Debug` or `Release`. The executable will be available in `/build/Debug` or `/build/Release`, depending on the chosen config.
 
 ## Linux
+idk what is going on above but this section is the only relevant part if you are on linux. Ignore cmake
+
 Dependencies on Ubuntu with Nvidia graphics card:
 ```bash
 apt install ocl-icd-opencl-dev
