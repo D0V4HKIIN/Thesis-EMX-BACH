@@ -112,7 +112,7 @@ void calcStats(const std::pair<cl_int, cl_int> &axis, const Arguments& args, con
     std::vector<cl_int2> stampSizes(nStamps);
     clData.queue.enqueueReadBuffer(stampsData.stampSizes, CL_TRUE, 0, sizeof(cl_int2) * stampsData.stampCount, &stampSizes[0]);
     for (size_t i{0}; i < stampsData.stampCount; i++) {
-      cl_int stampNumPix = stampSizes[i].x * stampSizes[i].y;
+      cl_int stampNumPix = stampSizes[i].s[0] * stampSizes[i].s[1];
       if(stampNumPix < nSamples) {
         std::cout << "Not enough pixels in a stamp" << std::endl;
         std::exit(1);

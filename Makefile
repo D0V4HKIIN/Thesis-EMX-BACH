@@ -1,45 +1,48 @@
 # compiler
 CXX    = g++
 
-CXXFLAGS = -std=c++20 -pedantic -Wall -Wextra -fcommon -O3
-LOADLIBES  = -lCCfits -lcfitsio -lOpenCL
+SRC_DIR = src
+INCLUDE_DIR = include
+
+CXXFLAGS = -std=c++20 -pedantic -Wall -Wextra -fcommon -O3 -I$(INCLUDE_DIR)
+LOADLIBES  = -lOpenCL -lCCfits -lcfitsio
 
 BIN = main.o argsUtil.o bach.o bachUtil.o cdkscUtil.o clUtil.o cmvUtil.o fitsUtil.o sssUtil.o
 
 all: $(BIN)
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -o BACH $(BIN)
+	$(CXX) $(CXXFLAGS) -o BACH $(BIN) $(LOADLIBES)
 	rm -f *.o
 
 debug: override CXXFLAGS = -std=c++20 -pedantic -Wall -Wextra -fcommon -g3
 debug:	$(BIN)
 	$(CXX) $(CXXFLAGS) $(LOADLIBES) -o BACH $(BIN)
 
-main.o: main.cpp
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c main.cpp
+main.o: $(SRC_DIR)/main.cpp
+	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c $(SRC_DIR)/main.cpp
 	
-argsUtil.o: argsUtil.cpp
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c argsUtil.cpp
+argsUtil.o: $(SRC_DIR)/argsUtil.cpp
+	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c $(SRC_DIR)/argsUtil.cpp
 
-bach.o: bach.cpp
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c bach.cpp
+bach.o: $(SRC_DIR)/bach.cpp
+	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c $(SRC_DIR)/bach.cpp
 
-bachUtil.o: bachUtil.cpp
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c bachUtil.cpp
+bachUtil.o: $(SRC_DIR)/bachUtil.cpp
+	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c $(SRC_DIR)/bachUtil.cpp
 
-cdkscUtil.o: cdkscUtil.cpp
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c cdkscUtil.cpp
+cdkscUtil.o: $(SRC_DIR)/cdkscUtil.cpp
+	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c $(SRC_DIR)/cdkscUtil.cpp
 
-clUtil.o: clUtil.cpp
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c clUtil.cpp
+clUtil.o: $(SRC_DIR)/clUtil.cpp
+	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c $(SRC_DIR)/clUtil.cpp
 
-cmvUtil.o: cmvUtil.cpp
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c cmvUtil.cpp
+cmvUtil.o: $(SRC_DIR)/cmvUtil.cpp
+	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c $(SRC_DIR)/cmvUtil.cpp
 
-fitsUtil.o: fitsUtil.cpp
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c fitsUtil.cpp
+fitsUtil.o: $(SRC_DIR)/fitsUtil.cpp
+	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c $(SRC_DIR)/fitsUtil.cpp
 
-sssUtil.o: sssUtil.cpp
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c sssUtil.cpp
+sssUtil.o: $(SRC_DIR)/sssUtil.cpp
+	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c $(SRC_DIR)/sssUtil.cpp
 
 .PHONY: clean
 clean:

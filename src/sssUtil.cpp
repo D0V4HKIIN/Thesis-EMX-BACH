@@ -211,8 +211,8 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
     for (size_t j{0}; j < subStampCounts[i]; j++)
     {
       size_t offset{i * maxSStamps + j};
-      std::pair<cl_int, cl_int> imageCoords{subStampCoords[offset].x, subStampCoords[offset].y};
-      sstamps.emplace_back(imageCoords, subStampValues[offset]);
+      std::pair<cl_int, cl_int> imageCoords{subStampCoords[offset].s[0], subStampCoords[offset].s[1]};
+      sstamps.emplace_back(SubStamp{imageCoords, subStampValues[offset]});
     }
   }
 
