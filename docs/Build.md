@@ -38,4 +38,11 @@ cmake --build build --config <config>
 where `<config>` is `Debug` or `Release`. The executable will be available in `/build/Debug` or `/build/Release`, depending on the chosen config.
 
 ## Linux
+Dependencies on Ubuntu with Nvidia graphics card:
+```bash
+apt install ocl-icd-opencl-dev
+apt install libccfits-dev
+apt install nvidia-opencl-dev
+```
+
 GCC is required to compile on Linux. First, clone the repository. Run `make`. Now, compilation should be done. If there are errors, check the Makefile and make sure you have the dependencies installed.
