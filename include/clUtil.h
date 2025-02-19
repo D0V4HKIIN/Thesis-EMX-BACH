@@ -1,12 +1,14 @@
 #pragma once
 
+#include "argsUtil.h"
+
 #include <CL/opencl.hpp>
 #include <filesystem>
 #include <iostream>
 
-cl::Platform getDefaultPlatform();
+cl::Platform getDefaultPlatform(const Arguments& args);
 
-cl::Device getDefaultDevice(const cl::Platform &platform);
+cl::Device getDefaultDevice(const cl::Platform &platform, const Arguments& args);
 
 void printVerboseClInfo(const cl::Platform &platform, const cl::Device &device);
 

@@ -85,7 +85,7 @@ void sss(const std::pair<cl_int, cl_int> &axis, std::vector<Stamp> &templateStam
     std::cout << "Stamps created for science image" << std::endl;
   }
 
-  /* == Check Template Stamps  ==*/
+  /* == Check Template Stamps  == */
   
   
   identifySStamps(axis, args, clData);

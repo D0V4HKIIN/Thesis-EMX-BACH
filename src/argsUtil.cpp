@@ -1,11 +1,12 @@
 #include "argsUtil.h"
 
 #include <algorithm>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
-#include <sstream>
 
-const char* getCmdOption(const char** begin, const char** end, const std::string& option) {
+const char* getCmdOption(const char** begin, const char** end,
+                         const std::string& option) {
   const char** itr = std::find(begin, end, option);
   if(itr != end && ++itr != end) {
     return *itr;
@@ -14,7 +15,7 @@ const char* getCmdOption(const char** begin, const char** end, const std::string
 }
 
 bool cmdOptionExists(const char** begin, const char** end,
-                            const std::string& option) {
+                     const std::string& option) {
   return std::find(begin, end, option) != end;
 }
 
@@ -31,13 +32,13 @@ void getArguments(const int argc, const char* argv[], Arguments& args) {
     args.inputPath = getCmdOption(argv, argv + argc, "-ip");
   }
 
-  if(cmdOptionExists(argv, argv+argc, "-sx")){
-    std::stringstream sstr{getCmdOption(argv, argv+argc, "-sx")};
+  if(cmdOptionExists(argv, argv + argc, "-sx")) {
+    std::stringstream sstr{getCmdOption(argv, argv + argc, "-sx")};
     sstr >> args.stampsx;
   }
-  
-  if(cmdOptionExists(argv, argv+argc, "-sy")){
-    std::stringstream sstr{getCmdOption(argv, argv+argc, "-sy")};
+
+  if(cmdOptionExists(argv, argv + argc, "-sy")) {
+    std::stringstream sstr{getCmdOption(argv, argv + argc, "-sy")};
     sstr >> args.stampsy;
   }
 
@@ -47,6 +48,14 @@ void getArguments(const int argc, const char* argv[], Arguments& args) {
 
   if(cmdOptionExists(argv, argv + argc, "-vt")) {
     args.verboseTime = true;
+  }
+
+  if(cmdOptionExists(argv, argv + argc, "-p")) {
+    args.platform = atoi(getCmdOption(argv, argv + argc, "-p"));
+  }
+
+  if(cmdOptionExists(argv, argv + argc, "-d")) {
+    args.device = atoi(getCmdOption(argv, argv + argc, "-d"));
   }
 
   if(cmdOptionExists(argv, argv + argc, "-t")) {

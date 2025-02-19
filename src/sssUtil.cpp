@@ -31,6 +31,7 @@ void createStamps(std::vector<Stamp>& stamps, const int w, const int h, ClStamps
   stampsData.stampCount = args.stampsx * args.stampsy;
 }
 
+// why is this not a void function?
 cl_int findSStamps(const std::pair<cl_int, cl_int> &axis, const bool isTemplate, const Arguments& args, const cl::Buffer& imgBuf, const ClStampsData& stampsData, const ClData& clData) {
   auto [imgW, imgH] = axis;
 

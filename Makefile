@@ -15,7 +15,7 @@ all: $(BIN)
 
 debug: override CXXFLAGS = -std=c++20 -pedantic -Wall -Wextra -fcommon -g3
 debug:	$(BIN)
-	$(CXX) $(CXXFLAGS) $(LOADLIBES) -o BACH $(BIN)
+	$(CXX) $(CXXFLAGS) -o BACH $(BIN) $(LOADLIBES)
 
 main.o: $(SRC_DIR)/main.cpp
 	$(CXX) $(CXXFLAGS) $(LOADLIBES) -c $(SRC_DIR)/main.cpp

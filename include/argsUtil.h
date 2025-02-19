@@ -12,6 +12,9 @@ struct Arguments {
   std::string inputPath = "res/";
   std::string outPath = "out/";
 
+  int platform = 0; // default platform and devices
+  int device = 0;
+
   int stampsx = 10;
   int stampsy = 10;
 
