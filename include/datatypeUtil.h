@@ -132,9 +132,8 @@ struct Stamp {
   std::vector<std::vector<double>> Q{};
   std::vector<double> B{};
 
-  Stamp(){};
-  Stamp(const std::vector<SubStamp>& subStamps)
-      : subStamps{subStamps} {}
+  Stamp() {};
+  Stamp(const std::vector<SubStamp>& subStamps) : subStamps{subStamps} {}
 };
 
 struct Image {
@@ -145,26 +144,16 @@ struct Image {
   std::valarray<cl_double> data{};
 
  public:
-  Image(const std::string &n, std::pair<cl_int, cl_int> a = {0L, 0L},
+  Image(const std::string& n, std::pair<cl_int, cl_int> a = {0L, 0L},
         const std::string p = "res/")
-      : name{n},
-        path{p},
-        axis{a},
-        data(this->size()) {}
+      : name{n}, path{p}, axis{a}, data(this->size()) {}
 
-  Image(const std::string &n, size_t dataCount,
-        const std::pair<cl_int, cl_int> &a, const std::string &p = "res/")
-      : name{n},
-        path{p},
-        axis{a},
-        data(dataCount) {}
+  Image(const std::string& n, size_t dataCount,
+        const std::pair<cl_int, cl_int>& a, const std::string& p = "res/")
+      : name{n}, path{p}, axis{a}, data(dataCount) {}
 
-  const cl_double* operator&() const {
-    return &data[0]; 
-  }
-  cl_double* operator&() {
-    return &data[0];
-  }
+  const cl_double* operator&() const { return &data[0]; }
+  cl_double* operator&() { return &data[0]; }
 
   double operator[](size_t index) const { return float(data[index]); }
 
@@ -180,43 +169,38 @@ struct Image {
   std::string getOutFile() const { return "!" + path + name; }
 };
 
-enum ImageMasks
-{
+enum ImageMasks {
   NONE = 0,
-  BAD_PIX_VAL = 1 << 0, // FLAG_BAD_PIXVAL
-  SAT_PIXEL = 1 << 1, // FLAG_SAT_PIXEL
-  LOW_PIXEL = 1 << 2, // FLAG_LOW_PIXEL
-  NAN_PIXEL = 1 << 3, // FLAG_ISNAN
-  BAD_CONV = 1 << 4, // FLAG_BAD_CONV
-  INPUT_MASK = 1 << 5, // FLAG_INPUT_MASK
-  OK_CONV = 1 << 6, // FLAG_OK_CONV
-  BAD_INPUT = 1 << 7, // FLAG_INPUT_ISBAD
-  BAD_PIXEL_T = 1 << 8, // FLAG_T_BAD
-  SKIP_T = 1 << 9, // FLAG_T_SKIP
-  BAD_PIXEL_S = 1 << 10, // FLAG_I_BAD
-  SKIP_S = 1 << 11, // FLAG_I_SKIP
-  BAD_OUTPUT = 1 << 12, // FLAG_OUTPUT_ISBAD
+  BAD_PIX_VAL = 1 << 0,   // FLAG_BAD_PIXVAL
+  SAT_PIXEL = 1 << 1,     // FLAG_SAT_PIXEL
+  LOW_PIXEL = 1 << 2,     // FLAG_LOW_PIXEL
+  NAN_PIXEL = 1 << 3,     // FLAG_ISNAN
+  BAD_CONV = 1 << 4,      // FLAG_BAD_CONV
+  INPUT_MASK = 1 << 5,    // FLAG_INPUT_MASK
+  OK_CONV = 1 << 6,       // FLAG_OK_CONV
+  BAD_INPUT = 1 << 7,     // FLAG_INPUT_ISBAD
+  BAD_PIXEL_T = 1 << 8,   // FLAG_T_BAD
+  SKIP_T = 1 << 9,        // FLAG_T_SKIP
+  BAD_PIXEL_S = 1 << 10,  // FLAG_I_BAD
+  SKIP_S = 1 << 11,       // FLAG_I_SKIP
+  BAD_OUTPUT = 1 << 12,   // FLAG_OUTPUT_ISBAD
   ALL = (1 << 13) - 1
 };
 
-inline ImageMasks operator~(ImageMasks a)
-{
-    return static_cast<ImageMasks>(~static_cast<int>(a));
+inline ImageMasks operator~(ImageMasks a) {
+  return static_cast<ImageMasks>(~static_cast<int>(a));
 }
 
-inline ImageMasks operator&(ImageMasks a, ImageMasks b)
-{
-    return static_cast<ImageMasks>(static_cast<int>(a) & static_cast<int>(b));
+inline ImageMasks operator&(ImageMasks a, ImageMasks b) {
+  return static_cast<ImageMasks>(static_cast<int>(a) & static_cast<int>(b));
 }
 
-inline ImageMasks& operator&=(ImageMasks& a, ImageMasks b)
-{
-    a = static_cast<ImageMasks>(static_cast<int>(a) & static_cast<int>(b));
+inline ImageMasks& operator&=(ImageMasks& a, ImageMasks b) {
+  a = static_cast<ImageMasks>(static_cast<int>(a) & static_cast<int>(b));
 
-    return a;
+  return a;
 }
 
-inline ImageMasks operator|(ImageMasks a, ImageMasks b)
-{
-    return static_cast<ImageMasks>(static_cast<int>(a) | static_cast<int>(b));
+inline ImageMasks operator|(ImageMasks a, ImageMasks b) {
+  return static_cast<ImageMasks>(static_cast<int>(a) | static_cast<int>(b));
 }

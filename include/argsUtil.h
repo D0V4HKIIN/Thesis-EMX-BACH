@@ -1,7 +1,7 @@
 #pragma once
 
-#include <array>
 #include <CL/opencl.hpp>
+#include <array>
 #include <string>
 
 struct Arguments {
@@ -12,7 +12,7 @@ struct Arguments {
   std::string inputPath = "res/";
   std::string outPath = "out/";
 
-  int platform = 0; // default platform and devices
+  int platform = 0;  // default platform and devices
   int device = 0;
 
   int stampsx = 10;
@@ -38,7 +38,7 @@ struct Arguments {
   cl_int fStampWidth = 0;    // full stamp width
 
   double inSpreadMaskFactor = 1.0;
-  bool normalizeTemplate = true; // If false, normalize science
+  bool normalizeTemplate = true;  // If false, normalize science
 
   cl_int backgroundOrder = 1;
   cl_int kernelOrder = 2;
@@ -54,8 +54,10 @@ struct Arguments {
   bool verboseTime = false;
 };
 
-const char* getCmdOption(const char** begin, const char** end, const std::string& option);
+const char* getCmdOption(const char** begin, const char** end,
+                         const std::string& option);
 
-bool cmdOptionExists(const char** begin, const char** end, const std::string& option);
+bool cmdOptionExists(const char** begin, const char** end,
+                     const std::string& option);
 
 void getArguments(const int argc, const char* argv[], Arguments& args);

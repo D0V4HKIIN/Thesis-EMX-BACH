@@ -1,6 +1,7 @@
 #pragma once
 
 #include <CCfits/CCfits>
+
 #include "argsUtil.h"
 #include "datatypeUtil.h"
 

@@ -27,6 +27,7 @@ int main(int argc, const char* argv[]) {
     return 1;
   }
 
+  // such a lie!!! it's just creating the struct. The images are read in init()
   std::cout << "\nReading in images..." << std::endl;
   Image templateImg{args.templateName};
   Image scienceImg{args.scienceName};

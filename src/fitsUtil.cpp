@@ -9,8 +9,9 @@ void readImage(Image& input, const Arguments& args) {
   CCfits::FITS* pIn{};
   try {
     pIn = new CCfits::FITS(input.getFile(), CCfits::RWmode::Read, true);
-  } catch(const CCfits::FITS::CantOpen &err) {
-    std::cout << "Unable to open file '" << input.getFile() << "'" << std::endl << err.message() << std::endl;
+  } catch(const CCfits::FITS::CantOpen& err) {
+    std::cout << "Unable to open file '" << input.getFile() << "'" << std::endl
+              << err.message() << std::endl;
     throw;
   }
   CCfits::PHDU& img = pIn->pHDU();
@@ -22,8 +23,9 @@ void readImage(Image& input, const Arguments& args) {
                                 " is not supported.");
   }
 
-  input = Image(input.name, img.axis(0) * img.axis(1), std::make_pair(img.axis(0), img.axis(1)));
-  
+  input = Image(input.name, img.axis(0) * img.axis(1),
+                std::make_pair(img.axis(0), img.axis(1)));
+
   img.readAllKeys();
   img.read(input.data);
 
@@ -43,8 +45,9 @@ void writeImage(const Image& img, const Arguments& args) {
     long axisArr[nAxis]{img.axis.first, img.axis.second};
 
     pFits = new CCfits::FITS(img.getOutFile(), FLOAT_IMG, nAxis, axisArr);
-  } catch(const CCfits::FITS::CantCreate &err) {
-    std::cout << "Unable to save file '" << img.getFile() << "'" << std::endl << err.message() << std::endl;
+  } catch(const CCfits::FITS::CantCreate& err) {
+    std::cout << "Unable to save file '" << img.getFile() << "'" << std::endl
+              << err.message() << std::endl;
     throw;
   }
 
