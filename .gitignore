@@ -14,3 +14,4 @@ __pycache__
 /tools/test_config.txt
 BACH
 out/
+venv/

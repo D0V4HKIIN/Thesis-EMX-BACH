@@ -36,7 +36,7 @@ TEST_CASES = [
 
 def run(binary, template_name, science_name, id, in_path, out_path):
     
-    exe_path = BIN_PATH / binary / f"{binary}.exe"
+    exe_path = BIN_PATH / binary
     exe_args = [str(exe_path)]
     
     match binary:
@@ -149,8 +149,8 @@ def main(args):
     
     (OUTPUT_PATH / date / str(n)).mkdir(parents=True, exist_ok=True)
     path = (OUTPUT_PATH / date) / str(n)
-    measure_execution_time("bach", path, external_path)
-    measure_execution_time("xbach", path, external_path)
+    # measure_execution_time("bach", path, external_path)
+    # measure_execution_time("xbach", path, external_path)
     measure_execution_time("hotpants", path, external_path)
     color_print.destroy()
 
