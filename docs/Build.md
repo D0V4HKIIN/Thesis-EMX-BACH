@@ -43,6 +43,7 @@ idk what is going on above but this section is the only relevant part if you are
 Dependencies on Ubuntu with Nvidia graphics card:
 ```bash
 apt install ocl-icd-opencl-dev # don't know
+apt install libomp-dev # openmp
 apt install libccfits-dev # fits images
 apt install nvidia-opencl-dev # to use nvidia grahics card with opencl
 apt install intel-opencl-icd # to use intel cpu with opencl

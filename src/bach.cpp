@@ -179,7 +179,7 @@ void cmv(const std::pair<cl_int, cl_int> &axis,
   std::vector<int> kernelGaussCpu{};
   std::vector<cl_int2> kernelXy{};
 
-  for(int gauss = 0; gauss < args.dg.size(); gauss++) {
+  for(size_t gauss = 0; gauss < args.dg.size(); gauss++) {
     for(int x = 0; x <= args.dg[gauss]; x++) {
       for(int y = 0; y <= args.dg[gauss] - x; y++) {
         kernelGaussCpu.push_back(gauss);
@@ -329,8 +329,8 @@ double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg,
   std::cout << "\nConvolving..." << std::endl;
 
   const auto [w, h] = imgSize;
-  bool scaleConv = args.normalizeTemplate && convTemplate ||
-                   !args.normalizeTemplate && !convTemplate;
+  bool scaleConv = (args.normalizeTemplate && convTemplate) ||
+                   (!args.normalizeTemplate && !convTemplate);
 
   // Convolution kernels generated beforehand since we only need on per
   // kernelsize.
@@ -419,8 +419,8 @@ void sub(const std::pair<cl_int, cl_int> &imgSize, Image &diffImg,
   std::cout << "\nSubtracting images..." << std::endl;
 
   const auto [w, h] = imgSize;
-  bool scaleConv = args.normalizeTemplate && convTemplate ||
-                   !args.normalizeTemplate && !convTemplate;
+  bool scaleConv = (args.normalizeTemplate && convTemplate) ||
+                   (!args.normalizeTemplate && !convTemplate);
 
   cl::Buffer diffImgBuf(clData.context, CL_MEM_WRITE_ONLY,
                         sizeof(cl_double) * w * h);

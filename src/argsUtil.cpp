@@ -1,6 +1,7 @@
 #include "argsUtil.h"
 
 #include <algorithm>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -40,6 +41,13 @@ void getArguments(const int argc, const char* argv[], Arguments& args) {
   if(cmdOptionExists(argv, argv + argc, "-sy")) {
     std::stringstream sstr{getCmdOption(argv, argv + argc, "-sy")};
     sstr >> args.stampsy;
+  }
+
+  if(cmdOptionExists(argv, argv + argc, "-sss")) {
+    args.sssMode = getCmdOption(argv, argv + argc, "-sss");
+    if(args.sssMode != "mp" && args.sssMode != "cl") {
+      throw std::invalid_argument("sss mode should be mp or cl");
+    }
   }
 
   if(cmdOptionExists(argv, argv + argc, "-v")) {

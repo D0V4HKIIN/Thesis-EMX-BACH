@@ -20,8 +20,9 @@ X-BACH also supports some optional arguments. These arguments are presented belo
 - `-ip <input path>`: name of the input folder, where the input images are located. Defaults to `res/`.
 - `-v`: turns on verbose mode.
 - `-vt`: prints execution time.
-- `-p`: integer to choose which platform to use. Platforms are listed when in verbose mode. Defaults to 0.
-- `-d`: integer to choose which device to use. Devices are listed when in verbose mode. Defaults to 0.
+- `-p <int>`: integer to choose which platform to use. Platforms are listed when in verbose mode. Defaults to `0`.
+- `-d <int>`: integer to choose which device to use. Devices are listed when in verbose mode. Defaults to `0`.
+- `-sss <mp|cl>` : use openmp or opencl to compute Stamp and SubStamps. Defaults to `mp`.
 
 For instance, if the input files are stored in `C:\in`, called `science.fits` and `template.fits`, and the output files would be written to `C:\out`, the following command would be used:
 

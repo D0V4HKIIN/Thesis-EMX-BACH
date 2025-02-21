@@ -1,3 +1,4 @@
+#include <omp.h>
 #include <time.h>
 
 #include <CL/opencl.hpp>
@@ -14,6 +15,7 @@
 
 int main(int argc, const char* argv[]) {
   auto p1 = std::chrono::steady_clock::now();
+  double start = omp_get_wtime();
 
   CCfits::FITS::setVerboseMode(true);
 
@@ -144,6 +146,9 @@ int main(int argc, const char* argv[]) {
   if(args.verboseTime) {
     std::cout << "Fin took " << timeDiff(p16, p15) << " ms" << std::endl;
   }
+
+  double end = omp_get_wtime();
+  std::cout << "omp time " << end - start << std::endl;
 
   std::cout << "\nBACH finished." << std::endl;
 
