@@ -4,7 +4,7 @@
 void initFillStamps(std::vector<Stamp>& stamps,
                     const std::pair<cl_int, cl_int>& axis,
                     const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
-                    const Kernel& k, ClData& clData, ClStampsData& stampData,
+                    ClData& clData, ClStampsData& stampData,
                     const Arguments& args) {
   clData.wColumns = args.fSStampWidth * args.fSStampWidth;
   clData.wRows = args.nPSF + triNum(args.backgroundOrder + 1);
@@ -30,16 +30,15 @@ void initFillStamps(std::vector<Stamp>& stamps,
     stamp.B = std::vector<double>(clData.bCount);
   }
 
-  fillStamps(stamps, axis, tImgBuf, sImgBuf, 0, stamps.size(), k, clData,
+  fillStamps(stamps, axis, tImgBuf, sImgBuf, 0, stamps.size(), clData,
              stampData, args);
 }
 
 void fillStamps(std::vector<Stamp>& stamps,
                 const std::pair<cl_int, cl_int>& axis,
                 const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
-                int stampOffset, int stampCount, const Kernel& k,
-                const ClData& clData, const ClStampsData& stampData,
-                const Arguments& args) {
+                int stampOffset, int stampCount, const ClData& clData,
+                const ClStampsData& stampData, const Arguments& args) {
   /* Fills Substamp with gaussian basis convolved images around said substamp
    * and calculates CMV.
    */

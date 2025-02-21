@@ -19,6 +19,8 @@ void identifySStamps(const std::pair<cl_int, cl_int>& axis,
   findSStamps(axis, false, args, clData.sImgBuf, clData.sci, clData);
 }
 
+// feels like this function should fill stamps but it just calls an opencl
+// kernel
 void createStamps(std::vector<Stamp>& stamps, const int w, const int h,
                   ClStampsData& stampsData, const ClData& clData,
                   const Arguments& args) {
@@ -90,7 +92,7 @@ cl_int findSStamps(const std::pair<cl_int, cl_int>& axis, const bool isTemplate,
                                    sizeof(cl_int) * sstampCounts.size(),
                                    &sstampCounts[0]);
 
-    for(int i{0}; i < nStamps; i++) {
+    for(size_t i{0}; i < nStamps; i++) {
       if(sstampCounts[i] == 0) {
         std::cout << "No suitable substamps found in stamp " << i << std::endl;
       } else {
@@ -159,12 +161,10 @@ void removeEmptyStamps(const Arguments& args, ClStampsData& stampsData,
   padEvent.wait();
 
   cl::Event sortEvent;
-  for(cl_int k = 2; k <= paddedNStamps;
-      k = 2 * k)  // Outer loop, double size for each step
-  {
-    for(cl_int j = k >> 1; j > 0;
-        j = j >> 1)  // Inner loop, half size for each step
-    {
+  // Outer loop, double size for each step
+  for(size_t k = 2; k <= paddedNStamps; k = 2 * k) {
+    // Inner loop, half size for each step
+    for(int j = k >> 1; j > 0; j = j >> 1) {
       sortEvent = sortFunc(eargsSort, keepIndeces, j, k);
       sortEvent.wait();
     }
@@ -236,7 +236,7 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
 
     auto& sstamps{stamp.subStamps};
 
-    for(size_t j{0}; j < subStampCounts[i]; j++) {
+    for(int j{0}; j < subStampCounts[i]; j++) {
       size_t offset{i * maxSStamps + j};
       std::pair<cl_int, cl_int> imageCoords{subStampCoords[offset].s[0],
                                             subStampCoords[offset].s[1]};

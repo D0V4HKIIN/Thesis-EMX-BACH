@@ -49,8 +49,7 @@ cl::Device getDefaultDevice(const cl::Platform &platform,
   return defaultDevice;
 }
 
-void printVerboseClInfo(const cl::Platform &platform,
-                        const cl::Device &device) {
+void printVerboseClInfo(const cl::Device &device) {
   cl::size_type maxWorkGroupSize =
       device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
   std::vector<cl::size_type> maxWorkItemSizes =
@@ -61,7 +60,7 @@ void printVerboseClInfo(const cl::Platform &platform,
   std::cout << "Max work group size: " << maxWorkGroupSize << std::endl;
   std::cout << "Max work item sizes: (";
 
-  for(int i = 0; i < maxWorkItemSizes.size(); i++) {
+  for(size_t i = 0; i < maxWorkItemSizes.size(); i++) {
     std::cout << maxWorkItemSizes[i];
 
     if(i < maxWorkItemSizes.size() - 1) {

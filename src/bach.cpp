@@ -171,8 +171,7 @@ void sss(const std::pair<cl_int, cl_int> &axis,
 
 void cmv(const std::pair<cl_int, cl_int> &axis,
          std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
-         const Kernel &convolutionKernel, ClData &clData,
-         const Arguments &args) {
+         ClData &clData, const Arguments &args) {
   std::cout << "\nCalculating matrix variables..." << std::endl;
 
   // Generate kernel stats
@@ -261,11 +260,11 @@ void cmv(const std::pair<cl_int, cl_int> &axis,
           (2 * (args.hSStampWidth + args.hKernelWidth) + 1) *
           (2 * args.hSStampWidth + 1));
 
-  initFillStamps(templateStamps, axis, clData.tImgBuf, clData.sImgBuf,
-                 convolutionKernel, clData, clData.tmpl, args);
+  initFillStamps(templateStamps, axis, clData.tImgBuf, clData.sImgBuf, clData,
+                 clData.tmpl, args);
 
-  initFillStamps(sciStamps, axis, clData.sImgBuf, clData.tImgBuf,
-                 convolutionKernel, clData, clData.sci, args);
+  initFillStamps(sciStamps, axis, clData.sImgBuf, clData.tImgBuf, clData,
+                 clData.sci, args);
 }
 
 bool cd(Image &templateImg, Image &scienceImg,

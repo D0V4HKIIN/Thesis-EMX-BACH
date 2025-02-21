@@ -60,14 +60,13 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
 void initFillStamps(std::vector<Stamp>& stamps,
                     const std::pair<cl_int, cl_int>& axis,
                     const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
-                    const Kernel& k, ClData& clData, ClStampsData& stampData,
+                    ClData& clData, ClStampsData& stampData,
                     const Arguments& args);
 void fillStamps(std::vector<Stamp>& stamps,
                 const std::pair<cl_int, cl_int>& axis,
                 const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
-                int stampOffset, int stampCount, const Kernel& k,
-                const ClData& clData, const ClStampsData& stampData,
-                const Arguments& args);
+                int stampOffset, int stampCount, const ClData& clData,
+                const ClStampsData& stampData, const Arguments& args);
 
 /* CD && KSC */
 double testFit(std::vector<Stamp>& stamps,
@@ -99,7 +98,7 @@ void fitKernel(Kernel& k, std::vector<Stamp>& stamps, const Image& sImg,
                const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
                ClData& clData, const ClStampsData& stampData,
                const Arguments& args);
-bool checkFitSolution(const Kernel& k, std::vector<Stamp>& stamps,
+bool checkFitSolution(std::vector<Stamp>& stamps,
                       const std::pair<cl_int, cl_int>& axis,
                       const ClData& clData, const ClStampsData& stampData,
                       const cl::Buffer& tImgBuf, const cl::Buffer& sImgBuf,
@@ -109,5 +108,4 @@ void removeBadSubStamps(bool* check, const ClStampsData& stampData,
                         const std::vector<cl_uchar>& invalidatedSubStamps,
                         const std::pair<cl_int, cl_int>& axis,
                         const cl::Buffer& sImgBuf, const cl::Buffer& tImgBuf,
-                        const Kernel& k, const ClData& clData,
-                        const Arguments& args);
+                        const ClData& clData, const Arguments& args);

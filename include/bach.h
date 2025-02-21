@@ -19,7 +19,7 @@ struct ClStampsData {
   cl::Buffer w;
   cl::Buffer q;
   cl::Buffer b;
-  int stampCount;
+  unsigned int stampCount;
 };
 
 struct ClData {
@@ -70,8 +70,7 @@ void sss(const std::pair<cl_int, cl_int> &axis,
          Arguments &args, ClData &clData);
 void cmv(const std::pair<cl_int, cl_int> &axis,
          std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
-         const Kernel &convolutionKernel, ClData &clData,
-         const Arguments &args);
+         ClData &clData, const Arguments &args);
 bool cd(Image &templateImg, Image &scienceImg,
         std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
         ClData &clData, const Arguments &args);

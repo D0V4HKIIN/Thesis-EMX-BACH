@@ -48,7 +48,7 @@ int main(int argc, const char* argv[]) {
   cl::CommandQueue queue(context, device);
 
   if(args.verbose) {
-    printVerboseClInfo(platform, device);
+    printVerboseClInfo(device);
   }
 
   ClData clData{device, context, program, queue};
@@ -79,8 +79,7 @@ int main(int argc, const char* argv[]) {
   auto p5 = std::chrono::steady_clock::now();
 
   Kernel convolutionKernel{args};
-  cmv(templateImg.axis, templateStamps, sciStamps, convolutionKernel, clData,
-      args);
+  cmv(templateImg.axis, templateStamps, sciStamps, clData, args);
 
   auto p6 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
