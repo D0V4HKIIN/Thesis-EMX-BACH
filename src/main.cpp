@@ -13,7 +13,6 @@
 #include "fitsUtil.h"
 
 int main(int argc, const char* argv[]) {
-  auto start = std::chrono::steady_clock::now();
   auto p1 = std::chrono::steady_clock::now();
 
   CCfits::FITS::setVerboseMode(true);
