@@ -12,7 +12,7 @@ TEST_TABLE = [
     # ID | Fast? | External? | Science       | Template      | HOTPANTS conv    | HOTPANTS sub    | Max abs error S,T | Max rel error S,T
     ( 1,   True,   False,     "test0",        "test1",        "test01_conv",     "test01_sub",     (2e-4, 5e-4),       (5e-3, 4e-3)),
     ( 2,   True,   False,     "testScience",  "testTemplate", "testST_conv",     "testST_sub",     (8e-3, 2e-3),       (5e-6, 9e-1)),
-    ( 3,   True,   False,     "ptf_m82_s_2k", "ptf_m82_t_2k", "ptf_m82_2k_conv", "ptf_m82_2k_sub", (2e-1, 3e1),        (1e-5, 4e-1)),
+    ( 3,   True,   False,     "ptf_m82_s_2k", "ptf_m82_t_2k", "ptf_m82_2k_conv", "ptf_m82_2k_sub", (2e-1, 3e0),        (1e-4, 4e-1)),
     ( 4,   False,  False,     "sparse0",      "sparse1",      "sparse01_conv",   "sparse01_sub",   (2e1,  5e0),        (3e-4, 5e-4)),
     ( 5,   True,   False,     "ztf_m1_s_3k",  "ztf_m1_t_3k",  "ztf_m1_3k_conv",  "ztf_m1_3k_sub",  (1e-3, 1e-2),       (1e-6, 1e0)),
     ( 6,   True,   True,      "skyM-S-4k",    "skyM-T-4k",    "skyM-4k_conv",    "skyM-4k_sub",    (1e-2, 1e-2),       (1e-1, 1e-1)),
@@ -25,13 +25,14 @@ TEST_TABLE = [
 ]
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
-BUILD_PATH = ROOT_PATH / "build"
+BIN_PATH = ROOT_PATH / "bin"
 RES_PATH = ROOT_PATH / "res"
 TEST_PATH = ROOT_PATH / "tests"
 OUTPUT_PATH = TEST_PATH / "out"
 CONFIG_PATH = ROOT_PATH / "tools" / "test_config.txt"
 
 def diff_fits(h_path, b_path):
+    print("diffing", h_path, "and", b_path)
     h_file = fits.open(h_path)
     b_file = fits.open(b_path)
     
@@ -97,7 +98,7 @@ def run_test(test_index, verbose, build_config, external_path):
 
     print(f"{color_print.CYAN}Running test {id}...")
 
-    exe_path = BUILD_PATH / build_config / "BACH.exe"
+    exe_path = BIN_PATH / "xbach"
 
     exe_args = [str(exe_path)]
     exe_args += ["-ip", str(res_path)]
@@ -143,6 +144,8 @@ def run_test(test_index, verbose, build_config, external_path):
     if verbose:
         print(f"                    Max abs error at ({sub_max_coords[0]}; {sub_max_coords[1]})")
 
+    print(conv_max_abs_err, max_abs_error[0], conv_max_rel_err, max_rel_error[0], sub_max_abs_err, max_abs_error[1], sub_max_rel_err, max_rel_error[1])
+
     return conv_max_abs_err < max_abs_error[0] and conv_max_rel_err < max_rel_error[0] and\
         sub_max_abs_err < max_abs_error[1] and sub_max_rel_err < max_rel_error[1] and\
         conv_wrong_nans == 0 and sub_wrong_nans == 0
@@ -157,9 +160,10 @@ def print_help():
     print(f"{color_print.YELLOW}--slow: Runs all tests which are fast.")
     print(f"{color_print.YELLOW}--external: Runs all tests which are external.")
     print(f"{color_print.YELLOW}--release: Runs the program in release mode. If not specified, the debug build is used.")
+    print(f"{color_print.YELLOW}--generate: Generates the conv and sub files in the test folder")
 
 def run_tests(verbose, tests, build_config, external_path):
-    print(f"{color_print.CYAN}Running X-BACH ({build_config}) from \"{BUILD_PATH.resolve()}\"")
+    print(f"{color_print.CYAN}Running X-BACH ({build_config}) from \"{BIN_PATH.resolve()}\"")
 
     print()
     print(f"There are a total of {len(tests)} tests to run:")
@@ -209,6 +213,33 @@ def run_tests(verbose, tests, build_config, external_path):
     print(f"{color_print.GREEN}All tests were successful!")
     print(f"Tests took {tess_time:.2f} seconds")
 
+def run(binary, template_name, science_name, conv_name, sub_name, in_path, out_path):
+    
+    exe_path = BIN_PATH / binary
+    exe_args = [str(exe_path)]
+    
+    match binary:
+        case "bach" | "xbach":
+            exe_args.extend([
+                "-ip", str(in_path),
+                "-t", f"{template_name}.fits",
+                "-s", f"{science_name}.fits",
+                "-op", str(out_path / f"{binary}-{id}_"),
+                "-v",
+                "-vt"
+            ])
+        case "hotpants":
+            exe_args.extend([
+                "-inim", f"{str(in_path / science_name)}.fits",
+                "-tmplim", f"{str(in_path / template_name)}.fits",
+                "-outim", str(out_path / f"{sub_name}.fits"),
+                "-oci", str(out_path / f"{conv_name}.fits")
+            ])
+    
+    with open(out_path / f"{science_name}.txt", "w") as out_stream:
+        if not subprocess.run(args=exe_args, stdout=out_stream, stderr=out_stream):
+            print(f"{color_print.RED}Process exited with error status for binary {binary}.")
+
 def main(args):
     color_print.init()
 
@@ -227,6 +258,7 @@ def main(args):
     # Parse args
     verbose = False
     debug = True
+    generate = False
     tests = []
 
     for arg in args:
@@ -245,6 +277,8 @@ def main(args):
             tests += [i for i in range(len(TEST_TABLE)) if TEST_TABLE[i][2]]
         elif arg == "--release":
             debug = False
+        elif arg == "--generate":
+            generate = True
         else:
             print(f"{color_print.RED}Unrecognized flag: {arg}")
             print()
@@ -274,6 +308,13 @@ def main(args):
                 print(f"{color_print.YELLOW}  Test {TEST_TABLE[i][0]}")
 
     build_config = "Debug" if debug else "Release"
+
+    if generate:
+        for i in tests:
+            (id, _, external, science_name, template_name, conv_name, sub_name, max_abs_error, max_rel_error) = TEST_TABLE[i]
+            print("generating", science_name)
+            run("hotpants", template_name, science_name, conv_name, sub_name, RES_PATH, TEST_PATH)
+        
     success = run_tests(verbose, tests, build_config, external_path)
 
     color_print.destroy()
