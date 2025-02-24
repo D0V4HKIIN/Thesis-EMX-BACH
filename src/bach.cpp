@@ -38,12 +38,12 @@ void init(Image &templateImg, Image &scienceImg, ClData &clData,
   clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0,
                                   sizeof(cl_double) * pixelCount, &scienceImg);
 
-  maskInput(templateImg.axis, clData, args);
+  maskInputCl(templateImg.axis, clData, args);
 }
 
-void sss(const std::pair<cl_int, cl_int> &axis,
-         std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
-         Arguments &args, ClData &clData) {
+void sssCl(const std::pair<cl_int, cl_int> &axis,
+           std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
+           Arguments &args, ClData &clData) {
   std::cout << "\nCreating stamps..." << std::endl;
 
   const auto [w, h] = axis;
@@ -114,8 +114,8 @@ void sss(const std::pair<cl_int, cl_int> &axis,
       cl::Buffer(clData.context, CL_MEM_READ_WRITE,
                  sizeof(cl_int) * args.stampsx * args.stampsy);
 
-  createStamps(w, h, clData.tmpl, clData, args);
-  createStamps(w, h, clData.sci, clData, args);
+  createStampsCl(w, h, clData.tmpl, clData, args);
+  createStampsCl(w, h, clData.sci, clData, args);
   if(args.verbose) {
     std::cout << "Stamps created for template image" << std::endl;
     std::cout << "Stamps created for science image" << std::endl;
@@ -123,11 +123,11 @@ void sss(const std::pair<cl_int, cl_int> &axis,
 
   /* == Check Template Stamps  == */
 
-  identifySStamps(axis, args, clData);
+  identifySStampsCl(axis, args, clData);
 
   int oldCount = args.stampsx * args.stampsy;
-  removeEmptyStamps(args, clData.tmpl, clData);
-  removeEmptyStamps(args, clData.sci, clData);
+  removeEmptyStampsCl(args, clData.tmpl, clData);
+  removeEmptyStampsCl(args, clData.sci, clData);
 
   double filledTempl{static_cast<double>(clData.tmpl.stampCount) / oldCount};
   double filledScience{static_cast<double>(clData.sci.stampCount) / oldCount};
@@ -148,24 +148,93 @@ void sss(const std::pair<cl_int, cl_int> &axis,
     templateStamps.clear();
     sciStamps.clear();
 
-    resetSStampSkipMask(w, h, clData);
+    resetSStampSkipMaskCl(w, h, clData);
 
-    createStamps(w, h, clData.tmpl, clData, args);
-    createStamps(w, h, clData.sci, clData, args);
+    createStampsCl(w, h, clData.tmpl, clData, args);
+    createStampsCl(w, h, clData.sci, clData, args);
 
-    identifySStamps(axis, args, clData);
+    identifySStampsCl(axis, args, clData);
 
-    removeEmptyStamps(args, clData.tmpl, clData);
-    removeEmptyStamps(args, clData.sci, clData);
+    removeEmptyStampsCl(args, clData.tmpl, clData);
+    removeEmptyStampsCl(args, clData.sci, clData);
     args.threshLow /= 0.5;
   }
 
-  readFinalStamps(templateStamps, clData.tmpl, clData, args);
-  readFinalStamps(sciStamps, clData.sci, clData, args);
+  readFinalStampsCl(templateStamps, clData.tmpl, clData, args);
+  readFinalStampsCl(sciStamps, clData.sci, clData, args);
 
   if(templateStamps.size() == 0 && sciStamps.size() == 0) {
     std::cout << "No substamps found" << std::endl;
     std::exit(1);
+  }
+}
+
+void sssMp(const Image &templateImg, const Image &scienceImg, ImageMask &mask,
+           std::vector<StampMp> &templateStamps,
+           std::vector<StampMp> &sciStamps, Arguments &args) {
+  std::cout << "\nCreating stamps..." << std::endl;
+
+  const auto [w, h] = templateImg.axis;
+  args.fStampWidth = std::min(int(templateImg.axis.first / args.stampsx),
+                              int(templateImg.axis.second / args.stampsy));
+  args.fStampWidth -= args.fKernelWidth;
+  args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
+
+  if(args.fStampWidth < args.fSStampWidth) {
+    args.fStampWidth = args.fSStampWidth + args.fKernelWidth;
+    args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
+
+    args.stampsx = int(templateImg.axis.first / args.fStampWidth);
+    args.stampsy = int(templateImg.axis.second / args.fStampWidth);
+
+    if(args.verbose)
+      std::cout << "Too many stamps requested, using " << args.stampsx << "x"
+                << args.stampsy << " stamps instead." << std::endl;
+  }
+
+  createStampsMp(templateImg, templateStamps, w, h, args);
+  if(args.verbose) {
+    std::cout << "Stamps created for " << templateImg.name << std::endl;
+  }
+
+  createStampsMp(scienceImg, sciStamps, w, h, args);
+  if(args.verbose) {
+    std::cout << "Stamps created for " << scienceImg.name << std::endl;
+  }
+
+  /* == Check Template Stamps  ==*/
+  double filledTempl{};
+  double filledScience{};
+  identifySStampsMp(templateStamps, templateImg, sciStamps, scienceImg, mask,
+                    &filledTempl, &filledScience, args);
+  if(filledTempl < 0.1 || filledScience < 0.1) {
+    if(args.verbose)
+      std::cout << "Not enough substamps found in " << templateImg.name
+                << " trying again with lower thresholds..." << std::endl;
+    args.threshLow *= 0.5;
+
+    templateStamps.clear();
+    sciStamps.clear();
+
+    for(int y = 0; y < h; y++) {
+      for(int x = 0; x < w; x++) {
+        int index = y * w + x;
+        mask.unmask(index, ImageMask::SKIP_S | ImageMask::SKIP_T);
+      }
+    }
+
+    createStampsMp(templateImg, templateStamps, w, h, args);
+
+    createStampsMp(scienceImg, sciStamps, w, h, args);
+
+    identifySStampsMp(templateStamps, templateImg, sciStamps, scienceImg, mask,
+                      &filledTempl, &filledScience, args);
+    args.threshLow /= 0.5;
+  }
+
+  if(templateStamps.size() == 0 && sciStamps.size() == 0) {
+    std::cout << "No substamps found" << std::endl;
+    exit(1);
   }
 }
 

@@ -13,18 +13,8 @@
 #include "datatypeUtil.h"
 
 /* Utils */
-void maskInput(const std::pair<cl_int, cl_int>& axis, const ClData& clData,
-               const Arguments& args);
-void sigmaClip(const cl::Buffer& data, int dataOffset, int dataCount,
-               double* mean, double* stdDev, int maxIter, const ClData& clData,
-               const Arguments& args);
-
-void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
-               const cl::Buffer& imgBuf, const ClStampsData& stampsData,
-               const ClData& clData);
 int timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
              std::chrono::time_point<std::chrono::steady_clock> start);
-
 void ludcmp(const cl::Buffer& matrix, int matrixSize, int stampCount,
             const cl::Buffer& index, const cl::Buffer& vv,
             const ClData& clData);
@@ -41,19 +31,48 @@ double makeKernel(const cl::Buffer& kernel, const cl::Buffer& kernSolution,
 double makeKernel(Kernel& kern, const std::pair<cl_int, cl_int>& imgSize,
                   const int x, const int y, const Arguments& args);
 
-/* SSS */
-void createStamps(const int w, const int h, ClStampsData& stampsData,
-                  const ClData& clData, const Arguments& args);
-cl_int findSStamps(const std::pair<cl_int, cl_int>& axis, const bool isTemplate,
-                   const Arguments& args, const cl::Buffer& imgBuf,
-                   const ClStampsData& stampsData, const ClData& clData);
-void removeEmptyStamps(const Arguments& args, ClStampsData& stampsData,
-                       const ClData& clData);
-void identifySStamps(const std::pair<cl_int, cl_int>& axis,
-                     const Arguments& args, ClData& clData);
-void resetSStampSkipMask(const int w, const int h, const ClData& clData);
-void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
-                     const ClData& clData, const Arguments& args);
+/* SSS for OpenCl */
+void createStampsCl(const int w, const int h, ClStampsData& stampsData,
+                    const ClData& clData, const Arguments& args);
+cl_int findSStampsCl(const std::pair<cl_int, cl_int>& axis,
+                     const bool isTemplate, const Arguments& args,
+                     const cl::Buffer& imgBuf, const ClStampsData& stampsData,
+                     const ClData& clData);
+void removeEmptyStampsCl(const Arguments& args, ClStampsData& stampsData,
+                         const ClData& clData);
+void identifySStampsCl(const std::pair<cl_int, cl_int>& axis,
+                       const Arguments& args, ClData& clData);
+void resetSStampSkipMaskCl(const int w, const int h, const ClData& clData);
+void readFinalStampsCl(std::vector<Stamp>& stamps,
+                       const ClStampsData& stampsData, const ClData& clData,
+                       const Arguments& args);
+void sigmaClipCl(const cl::Buffer& data, int dataOffset, int dataCount,
+                 double* mean, double* stdDev, int maxIter,
+                 const ClData& clData, const Arguments& args);
+void maskInputCl(const std::pair<cl_int, cl_int>& axis, const ClData& clData,
+                 const Arguments& args);
+void calcStatsCl(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
+                 const cl::Buffer& imgBuf, const ClStampsData& stampsData,
+                 const ClData& clData);
+
+/* SSS for OpenMP */
+void createStampsMp(const Image& img, std::vector<StampMp>& stamps, const int w,
+                    const int h, const Arguments& args);
+void identifySStampsMp(std::vector<StampMp>& templStamps,
+                       const Image& templImage,
+                       std::vector<StampMp>& scienceStamps,
+                       const Image& scienceImage, ImageMask& mask,
+                       double* filledTempl, double* filledScience,
+                       const Arguments& args);
+cl_int findSStampsMp(StampMp& stamp, const Image& image, ImageMask& mask,
+                     const int index, const bool isTemplate,
+                     const Arguments& args);
+double checkSStampMp(const SubStampMp& sstamp, const Image& image,
+                     ImageMask& mask, const StampMp& stamp,
+                     const ImageMask::masks badMask, const bool isTemplate,
+                     const Arguments& args);
+void calcStatsMp(StampMp& stamp, const Image& image, ImageMask& mask,
+                 const Arguments& args);
 
 /* CMV */
 void initFillStamps(std::vector<Stamp>& stamps,

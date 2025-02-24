@@ -51,8 +51,53 @@ int main(int argc, const char* argv[]) {
     printVerboseClInfo(device);
   }
 
-  ClData clData{device, context, program, queue};
+  ClData clData{device,
+                context,
+                program,
+                queue,
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                0,
+                0,
+                0,
+                0,
+                0,
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                0,
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                0
 
+  };
   init(templateImg, scienceImg, clData, args);
 
   auto p2 = std::chrono::steady_clock::now();
@@ -65,7 +110,15 @@ int main(int argc, const char* argv[]) {
   auto p3 = std::chrono::steady_clock::now();
   std::vector<Stamp> templateStamps{};
   std::vector<Stamp> sciStamps{};
-  sss(templateImg.axis, templateStamps, sciStamps, args, clData);
+
+  if(args.sssMode == "cl") {
+    sssCl(templateImg.axis, templateStamps, sciStamps, args, clData);
+  } else {
+    ImageMask mask(std::make_pair(0, 0));
+    std::vector<StampMp> templateStamps{};
+    std::vector<StampMp> sciStamps{};
+    sssMp(templateImg, scienceImg, mask, templateStamps, sciStamps, args);
+  }
 
   auto p4 = std::chrono::steady_clock::now();
   if(args.verboseTime) {

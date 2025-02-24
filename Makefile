@@ -13,7 +13,7 @@ FLAGS = $(CXXFLAGS) $(RELEASEFLAGS)
 
 LOADLIBES  = -lOpenCL -lCCfits -lcfitsio -fopenmp
 
-BIN = main.o argsUtil.o bach.o bachUtil.o cdkscUtil.o clUtil.o cmvUtil.o fitsUtil.o sssUtil.o
+BIN = main.o argsUtil.o bach.o bachUtil.o cdkscUtil.o clUtil.o cmvUtil.o fitsUtil.o sssUtilCl.o sssUtilMp.o
 
 all: $(BIN)
 	$(CXX) $(FLAGS) -o BACH $(BIN) $(LOADLIBES)
@@ -48,8 +48,11 @@ cmvUtil.o: $(SRC_DIR)/cmvUtil.cpp
 fitsUtil.o: $(SRC_DIR)/fitsUtil.cpp
 	$(CXX) $(FLAGS) $(LOADLIBES) -c $(SRC_DIR)/fitsUtil.cpp
 
-sssUtil.o: $(SRC_DIR)/sssUtil.cpp
-	$(CXX) $(FLAGS) $(LOADLIBES) -c $(SRC_DIR)/sssUtil.cpp
+sssUtilCl.o: $(SRC_DIR)/sssUtilCl.cpp
+	$(CXX) $(FLAGS) $(LOADLIBES) -c $(SRC_DIR)/sssUtilCl.cpp
+
+sssUtilMp.o: $(SRC_DIR)/sssUtilMp.cpp
+	$(CXX) $(FLAGS) $(LOADLIBES) -c $(SRC_DIR)/sssUtilMp.cpp
 
 .PHONY: clean
 clean:

@@ -72,8 +72,8 @@ double testFit(std::vector<Stamp> &stamps,
   kernelSumEvent.wait();
 
   double kernelMean, kernelStdev;
-  sigmaClip(kernelSums, 0, stamps.size(), &kernelMean, &kernelStdev, 10, clData,
-            args);
+  sigmaClipCl(kernelSums, 0, stamps.size(), &kernelMean, &kernelStdev, 10,
+              clData, args);
 
   // Fit stamps, generate test stamps
   cl_int testStampCount = 0;
@@ -258,8 +258,8 @@ double testFit(std::vector<Stamp> &stamps,
 
   double meritMean;
   double meritStdDev;
-  sigmaClip(cleanMerits, 0, meritsCount, &meritMean, &meritStdDev, 10, clData,
-            args);
+  sigmaClipCl(cleanMerits, 0, meritsCount, &meritMean, &meritStdDev, 10, clData,
+              args);
 
   double normMeritMean = meritMean / kernelMean;
   return normMeritMean;
@@ -742,7 +742,7 @@ bool checkFitSolution(std::vector<Stamp> &stamps,
   // Sigma clip
   double mean = 0.0;
   double stdDev = 0.0;
-  sigmaClip(chi2, 0, chi2Count, &mean, &stdDev, 10, clData, args);
+  sigmaClipCl(chi2, 0, chi2Count, &mean, &stdDev, 10, clData, args);
 
   // Find bad sub-stamps based on the sigma clip
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_double,

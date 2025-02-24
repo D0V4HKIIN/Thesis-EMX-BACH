@@ -65,9 +65,12 @@ struct ClData {
 
 void init(Image &templateImg, Image &scienceImg, ClData &clData,
           const Arguments &args);
-void sss(const std::pair<cl_int, cl_int> &axis,
-         std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
-         Arguments &args, ClData &clData);
+void sssCl(const std::pair<cl_int, cl_int> &axis,
+           std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
+           Arguments &args, ClData &clData);
+void sssMp(const Image &templateImg, const Image &scienceImg, ImageMask &mask,
+           std::vector<StampMp> &templateStamps,
+           std::vector<StampMp> &sciStamps, Arguments &args);
 void cmv(const std::pair<cl_int, cl_int> &axis,
          std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
          ClData &clData, const Arguments &args);
