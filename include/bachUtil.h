@@ -42,9 +42,8 @@ double makeKernel(Kernel& kern, const std::pair<cl_int, cl_int>& imgSize,
                   const int x, const int y, const Arguments& args);
 
 /* SSS */
-void createStamps(std::vector<Stamp>& stamps, const int w, const int h,
-                  ClStampsData& stampsData, const ClData& clData,
-                  const Arguments& args);
+void createStamps(const int w, const int h, ClStampsData& stampsData,
+                  const ClData& clData, const Arguments& args);
 cl_int findSStamps(const std::pair<cl_int, cl_int>& axis, const bool isTemplate,
                    const Arguments& args, const cl::Buffer& imgBuf,
                    const ClStampsData& stampsData, const ClData& clData);

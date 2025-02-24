@@ -114,8 +114,8 @@ void sss(const std::pair<cl_int, cl_int> &axis,
       cl::Buffer(clData.context, CL_MEM_READ_WRITE,
                  sizeof(cl_int) * args.stampsx * args.stampsy);
 
-  createStamps(templateStamps, w, h, clData.tmpl, clData, args);
-  createStamps(sciStamps, w, h, clData.sci, clData, args);
+  createStamps(w, h, clData.tmpl, clData, args);
+  createStamps(w, h, clData.sci, clData, args);
   if(args.verbose) {
     std::cout << "Stamps created for template image" << std::endl;
     std::cout << "Stamps created for science image" << std::endl;
@@ -150,8 +150,8 @@ void sss(const std::pair<cl_int, cl_int> &axis,
 
     resetSStampSkipMask(w, h, clData);
 
-    createStamps(templateStamps, w, h, clData.tmpl, clData, args);
-    createStamps(sciStamps, w, h, clData.sci, clData, args);
+    createStamps(w, h, clData.tmpl, clData, args);
+    createStamps(w, h, clData.sci, clData, args);
 
     identifySStamps(axis, args, clData);
 

@@ -19,11 +19,10 @@ void identifySStamps(const std::pair<cl_int, cl_int>& axis,
   findSStamps(axis, false, args, clData.sImgBuf, clData.sci, clData);
 }
 
-// feels like this function should fill stamps but it just calls an opencl
-// kernel
-void createStamps(std::vector<Stamp>& stamps, const int w, const int h,
-                  ClStampsData& stampsData, const ClData& clData,
-                  const Arguments& args) {
+// feels like this function should fill the stamps vector but it just calls an
+// opencl kernel my guess is that it was before a cpu only implementation
+void createStamps(const int w, const int h, ClStampsData& stampsData,
+                  const ClData& clData, const Arguments& args) {
   cl::EnqueueArgs eargsBounds{clData.queue,
                               cl::NDRange(args.stampsx * args.stampsy)};
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int, cl_int,
