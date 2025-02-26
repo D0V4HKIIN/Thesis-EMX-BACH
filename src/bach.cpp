@@ -41,9 +41,9 @@ void init(Image &templateImg, Image &scienceImg, ClData &clData,
   maskInput(templateImg.axis, clData, args);
 }
 
-void sss(const std::pair<cl_int, cl_int> &axis,
-         std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
-         Arguments &args, ClData &clData) {
+void sssCl(const std::pair<cl_int, cl_int> &axis,
+           std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
+           Arguments &args, ClData &clData) {
   std::cout << "\nCreating stamps..." << std::endl;
 
   const auto [w, h] = axis;
@@ -167,6 +167,44 @@ void sss(const std::pair<cl_int, cl_int> &axis,
     std::cout << "No substamps found" << std::endl;
     std::exit(1);
   }
+}
+
+void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
+           std::vector<Stamp> &sciStamps, const Image &scienceImg,
+           Arguments &args) {
+  std::cout << "\nCreating stamps..." << std::endl;
+
+  const auto [w, h] = templateImg.axis;
+
+  args.fStampWidth = std::min(int(w / args.stampsx), int(h / args.stampsy));
+  args.fStampWidth -= args.fKernelWidth;
+  args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
+
+  if(args.fStampWidth < args.fSStampWidth) {
+    args.fStampWidth = args.fSStampWidth + args.fKernelWidth;
+    args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
+
+    args.stampsx = int(w / args.fStampWidth);
+    args.stampsy = int(h / args.fStampWidth);
+
+    if(args.verbose)
+      std::cout << "Too many stamps requested, using " << args.stampsx << "x"
+                << args.stampsy << " stamps instead." << std::endl;
+  }
+
+  createStampsMp(w, h, templateStamps, args);
+  if(args.verbose) {
+    std::cout << "Stamps created for template image" << std::endl;
+  }
+
+  createStampsMp(w, h, sciStamps, args);
+  if(args.verbose) {
+    std::cout << "Stamps created for science image" << std::endl;
+  }
+
+  ImageMask mask{templateImg.axis};
+  identifySStampsMp(templateStamps, templateImg, sciStamps, scienceImg, mask,
+                    args);
 }
 
 void cmv(const std::pair<cl_int, cl_int> &axis,

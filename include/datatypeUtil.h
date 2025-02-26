@@ -132,7 +132,15 @@ struct Stamp {
   std::vector<std::vector<double>> Q{};
   std::vector<double> B{};
 
+  // only used by openmp
+  std::pair<int, int> coords;
+  std::pair<int, int> size;
+
   Stamp() {};
+  // used for openmp
+  Stamp(std::pair<int, int> coords, std::pair<int, int> size)
+      : coords{coords}, size{size} {}
+  // used by opencl
   Stamp(const std::vector<SubStamp>& subStamps) : subStamps{subStamps} {}
 };
 
@@ -204,3 +212,20 @@ inline ImageMasks& operator&=(ImageMasks& a, ImageMasks b) {
 inline ImageMasks operator|(ImageMasks a, ImageMasks b) {
   return static_cast<ImageMasks>(static_cast<int>(a) | static_cast<int>(b));
 }
+
+class ImageMask {
+ public:
+  ImageMask(const std::pair<int, int>& axis)
+      : axis{axis}, dataMask(axis.first * axis.second, ImageMasks::NONE) {}
+
+  bool isMaskedAny(int index) const { return dataMask[index] != NONE; }
+
+  void maskPix(int x, int y, ImageMasks mask) {
+    int index = x + (y * axis.first);
+    dataMask[index] |= mask;
+  }
+
+ private:
+  std::pair<int, int> axis;
+  std::vector<uint16_t> dataMask;
+};

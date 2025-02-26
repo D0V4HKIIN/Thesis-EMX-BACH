@@ -51,7 +51,51 @@ int main(int argc, const char* argv[]) {
     printVerboseClInfo(device);
   }
 
-  ClData clData{device, context, program, queue};
+  ClData clData{device,
+                context,
+                program,
+                queue,
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                0,
+                0,
+                0,
+                0,
+                0,
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                0,
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                cl::Buffer(),
+                0};
 
   init(templateImg, scienceImg, clData, args);
 
@@ -65,7 +109,46 @@ int main(int argc, const char* argv[]) {
   auto p3 = std::chrono::steady_clock::now();
   std::vector<Stamp> templateStamps{};
   std::vector<Stamp> sciStamps{};
-  sss(templateImg.axis, templateStamps, sciStamps, args, clData);
+  if(args.sssMode == "cl") {
+    sssCl(templateImg.axis, templateStamps, sciStamps, args, clData);
+  } else if(args.sssMode == "mp") {
+    sssMp(templateStamps, templateImg, sciStamps, scienceImg, args);
+  } else if(args.sssMode == "compare") {
+    std::vector<Stamp> templateStampsCl{};
+    std::vector<Stamp> sciStampsCl{};
+    std::vector<Stamp> templateStampsMp{};
+    std::vector<Stamp> sciStampsMp{};
+    sssCl(templateImg.axis, templateStampsCl, sciStampsCl, args, clData);
+    sssMp(templateStampsMp, templateImg, sciStampsMp, scienceImg, args);
+
+    std::cout << "sizes " << templateStampsCl.size()
+              << " == " << templateStampsMp.size() << std::endl;
+
+    std::vector<std::pair<int, int>> clCoords(templateStampsCl.size());
+    clData.queue.enqueueReadBuffer(
+        clData.tmpl.stampCoords, CL_TRUE, 0,
+        sizeof(std::pair<int, int>) * clCoords.size(), &clCoords[0]);
+
+    for(size_t i = 0; i < clCoords.size(); i++) {
+      if(clCoords[i] != templateStampsMp[i].coords) {
+        std::cout << clCoords[i].first << "-" << clCoords[i].second << " and "
+                  << templateStampsMp[i].coords.first << "-"
+                  << templateStampsMp[i].coords.second
+                  << " are not the same!!!!!!!!!!!\n";
+      }
+    }
+
+    // std::cout << "\nmp:" << std::endl;
+
+    // for(size_t i = 0; i < templateStampsMp.size(); i++) {
+    //   std::cout << templateStampsMp[i].coords.first << ",";
+    // }
+
+    exit(0);
+  } else {
+    std::cout << "expected sssMode to be cl or mp" << std::endl;
+    exit(1);
+  }
 
   auto p4 = std::chrono::steady_clock::now();
   if(args.verboseTime) {

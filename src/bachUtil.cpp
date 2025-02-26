@@ -127,6 +127,62 @@ void sigmaClip(const cl::Buffer& data, int dataOffset, int dataCount,
   }
 }
 
+void sigmaClipMp(const std::vector<double>& data, double& mean, double& stdDev,
+                 const int iter, const Arguments& args) {
+  /* Does sigma clipping on data to provide the mean and stdDev of said
+   * data
+   */
+  if(data.empty()) {
+    std::cout << "Cannot send in empty vector to Sigma Clip" << std::endl;
+    mean = 0.0;
+    stdDev = 1e10;
+    return;
+  }
+
+  size_t currNPoints = 0;
+  size_t prevNPoints = data.size();
+  std::vector<bool> intMask(data.size(), false);
+
+  // Do three times or a stable solution has been found.
+  for(int i = 0; (i < iter) && (currNPoints != prevNPoints); i++) {
+    currNPoints = prevNPoints;
+    mean = 0;
+    stdDev = 0;
+
+    for(size_t i = 0; i < data.size(); i++) {
+      if(!intMask[i]) {
+        mean += data[i];
+        stdDev += data[i] * data[i];
+      }
+    }
+
+    if(prevNPoints > 1) {
+      mean = mean / prevNPoints;
+      stdDev = stdDev - prevNPoints * mean * mean;
+      stdDev = std::sqrt(stdDev / double(prevNPoints - 1));
+    } else {
+      std::cout << "prevNPoints is: " << prevNPoints
+                << "Needs to be greater than 1" << std::endl;
+      mean = 0.0;
+      stdDev = 1e10;
+      return;
+    }
+
+    prevNPoints = 0;
+    double invStdDev = 1.0 / stdDev;
+    for(size_t i = 0; i < data.size(); i++) {
+      if(!intMask[i]) {
+        // Doing the sigmaClip
+        if(std::abs(data[i] - mean) * invStdDev > args.sigClipAlpha) {
+          intMask[i] = true;
+        } else {
+          prevNPoints++;
+        }
+      }
+    }
+  }
+}
+
 void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
                const cl::Buffer& imgBuf, const ClStampsData& stampsData,
                const ClData& clData) {
@@ -141,6 +197,7 @@ void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
   static constexpr cl_int nSamples{100};
   static constexpr cl_int paddedNSamples{leastGreaterPow2(nSamples)};
 
+  // check that stamps are big enough
   {
     std::vector<cl_int2> stampSizes(nStamps);
     clData.queue.enqueueReadBuffer(stampsData.stampSizes, CL_TRUE, 0,
@@ -277,6 +334,187 @@ void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
       nStamps, nSamples, paddedNSamples, args.iqRange, args.sigClipAlpha);
 
   histogramEvent.wait();
+}
+
+#define M1 259200
+#define IA1 7141
+#define IC1 54773
+#define RM1 (1.0 / M1)
+#define M2 134456
+#define IA2 8121
+#define IC2 28411
+#define RM2 (1.0 / M2)
+#define M3 243000
+#define IA3 4561
+#define IC3 51349
+double ran1(int* idum) {
+  static long ix1, ix2, ix3;
+  static double r[98];
+  double temp;
+  static int iff = 0;
+  int j;
+  /* void nrerror(char *error_text); */
+
+  if(*idum < 0 || iff == 0) {
+    iff = 1;
+    ix1 = (IC1 - (*idum)) % M1;
+    ix1 = (IA1 * ix1 + IC1) % M1;
+    ix2 = ix1 % M2;
+    ix1 = (IA1 * ix1 + IC1) % M1;
+    ix3 = ix1 % M3;
+    for(j = 1; j <= 97; j++) {
+      ix1 = (IA1 * ix1 + IC1) % M1;
+      ix2 = (IA2 * ix2 + IC2) % M2;
+      r[j] = (ix1 + ix2 * RM2) * RM1;
+    }
+    *idum = 1;
+  }
+  ix1 = (IA1 * ix1 + IC1) % M1;
+  ix2 = (IA2 * ix2 + IC2) % M2;
+  ix3 = (IA3 * ix3 + IC3) % M3;
+  j = 1 + ((97 * ix3) / M3);
+  /* if (j > 97 || j < 1) nrerror("RAN1: This cannot happen."); */
+  temp = r[j];
+  r[j] = (ix1 + ix2 * RM2) * RM1;
+  return temp;
+}
+#undef M1
+#undef IA1
+#undef IC1
+#undef RM1
+#undef M2
+#undef IA2
+#undef IC2
+#undef RM2
+#undef M3
+#undef IA3
+#undef IC3
+
+void calcStatsMp(std::vector<Stamp>& stamps, const Image& image,
+                 ImageMask& mask, const Arguments& args) {
+  // TODO
+  std::cout << "calc stats todo" << std::endl;
+  constexpr int nSamples = 100;
+
+  // pragma omp here
+  for(size_t i = 0; i < stamps.size(); i++) {
+    Stamp& stamp = stamps[i];
+
+    // check that stamps are big enough
+    int numPix = stamp.size.first * stamp.size.second;
+    if(numPix < nSamples) {
+      std::cout << "Not enough pixels in a stamp" << std::endl;
+      exit(1);
+    }
+
+    // seed for random number generator (?)
+    int idum = -666;
+
+    // sample randomly
+    std::array<double, nSamples> samples{};
+    int samplesCount = 0;
+
+    // Stop after randomly having selected a pixel numPix times.
+    for(int iter = 0; samplesCount < nSamples && iter < numPix; iter++) {
+      int randX = std::floor(ran1(&idum) * stamp.size.first);
+      int randY = std::floor(ran1(&idum) * stamp.size.second);
+
+      // Random pixel in stamp in Image coords.
+      cl_int xI = randX + stamp.coords.first;
+      cl_int yI = randY + stamp.coords.second;
+      int indexI = xI + yI * image.axis.first;
+
+      if(mask.isMaskedAny(indexI) || std::abs(image[indexI]) <= 1e-10) {
+        continue;
+      }
+
+      samples[samplesCount++] = image[indexI];
+    }
+
+    std::sort(samples.begin(), samples.end());
+
+    double upProc = 0.9;
+    double midProc = 0.5;
+    // Width of a histogram bin.
+    double binSize = (samples[(int)(upProc * samplesCount)] -
+                      samples[(int)(midProc * samplesCount)]) /
+                     (double)nSamples;
+
+    // Value of lowest bin.
+    double lowerBinVal =
+        samples[(int)(midProc * samplesCount)] - (128.0 * binSize);
+
+    // Contains all good Pixels in the stamp, aka not masked.
+    std::vector<double> maskedStamp{};
+    for(int y = 0; y < stamp.size.second; y++) {
+      for(int x = 0; x < stamp.size.first; x++) {
+        // Pixel in stamp in Image coords.
+        cl_int xI = x + stamp.coords.first;
+        cl_int yI = y + stamp.coords.second;
+        int indexI = xI + yI * image.axis.first;
+
+        if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
+          continue;
+        }
+
+        if(std::isnan(image[indexI])) {
+          mask.maskPix(xI, yI, ImageMasks::NAN_PIXEL | ImageMasks::BAD_INPUT);
+          continue;
+        }
+
+        maskedStamp.push_back(image[indexI]);
+      }
+    }
+
+    // sigma clip of maskedStamp to get mean and sd.
+    double mean, stdDev, invStdDev;
+    sigmaClipMp(maskedStamp, mean, stdDev, 3, args);
+    invStdDev = 1.0 / stdDev;
+
+    int attempts = 5;
+    std::vector<int> bins(256, 0);
+    while(true) {
+      if(attempts >= 5) {
+        std::cout << "Creation of histogram unsuccessful after 5 attempts"
+                  << std::endl;
+        return;
+      }
+
+      std::fill(bins.begin(), bins.end(), 0);
+
+      int okCount = 0;
+
+      for(int y = 0; y < stamp.size.second; y++) {
+        for(int x = 0; x < stamp.size.first; x++) {
+          // Pixel in stamp in Image coords.
+          cl_int xI = x + stamp.coords.first;
+          cl_int yI = y + stamp.coords.second;
+          int indexI = xI + yI * image.axis.first;
+
+          if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
+            continue;
+          }
+
+          if((std::abs(image[indexI] - mean) * invStdDev) > args.sigClipAlpha) {
+            continue;
+          }
+          int index = std::clamp(
+              (int)std::floor((image[indexI] - lowerBinVal) / binSize) + 1, 0,
+              255);
+
+          bins[index]++;
+          okCount++;
+        }
+      }
+
+      if(okCount == 0 || binSize == 0.0) {
+        std::cout << "No good pixels or variation in pixels" << std::endl;
+        return;
+      }
+    }
+
+    // continue here!!
+  }
 }
 
 int timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,

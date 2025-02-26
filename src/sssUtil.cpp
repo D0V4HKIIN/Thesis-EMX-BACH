@@ -1,3 +1,5 @@
+#include <omp.h>
+
 #include <cassert>
 #include <iostream>
 
@@ -19,8 +21,21 @@ void identifySStamps(const std::pair<cl_int, cl_int>& axis,
   findSStamps(axis, false, args, clData.sImgBuf, clData.sci, clData);
 }
 
-// feels like this function should fill the stamps vector but it just calls an
-// opencl kernel my guess is that it was before a cpu only implementation
+void identifySStampsMp(std::vector<Stamp>& templStamps, const Image& templImage,
+                       std::vector<Stamp>& scienceStamps,
+                       const Image& scienceImage, ImageMask& mask,
+                       const Arguments& args) {
+  std::cout << "Identifying sub-stamps..." << std::endl;
+
+  if(args.verbose) std::cout << "calcStats (template)" << std::endl;
+  calcStatsMp(templStamps, templImage, mask, args);
+  if(args.verbose) std::cout << "calcStats (science)" << std::endl;
+  calcStatsMp(scienceStamps, scienceImage, mask, args);
+
+  // if(args.verbose) std::cout << "findSStamps (template)" << std::endl;
+  // findSStampsMp(templStamps, templImage, true, args);
+}
+
 void createStamps(const int w, const int h, ClStampsData& stampsData,
                   const ClData& clData, const Arguments& args) {
   cl::EnqueueArgs eargsBounds{clData.queue,
@@ -36,7 +51,36 @@ void createStamps(const int w, const int h, ClStampsData& stampsData,
   boundsEvent.wait();
 }
 
-// why is this not a void function?
+void createStampsMp(const int w, const int h, std::vector<Stamp>& stamps,
+                    Arguments& args) {
+  double start = omp_get_wtime();
+  stamps.resize(args.stampsx * args.stampsy, Stamp{});
+
+  // #pragma omp parallel for // collapse(2)  // there is not enough work to be
+  // done to gain from parallelization
+  for(int stampY = 0; stampY < args.stampsy; stampY++) {
+    for(int stampX = 0; stampX < args.stampsx; stampX++) {
+      int startX = stampX * w / args.stampsx;
+      int startY = stampY * h / args.stampsy;
+
+      int stopX = std::min(startX + args.fStampWidth, w);
+      int stopY = std::min(startY + args.fStampWidth, h);
+
+      int stampW = stopX - startX;
+      int stampH = stopY - startY;
+
+      size_t id = stampX + stampY * args.stampsx;
+      stamps[id].coords = std::make_pair(startX, startY);
+      stamps[id].size = std::make_pair(stampW, stampH);
+    }
+  }
+
+  double end = omp_get_wtime();
+  std::cout << "creating stamps time: " << end - start << std::endl;
+}
+
+// why is this not a void function? (This used to be a function that would
+// return 1 on error)
 cl_int findSStamps(const std::pair<cl_int, cl_int>& axis, const bool isTemplate,
                    const Arguments& args, const cl::Buffer& imgBuf,
                    const ClStampsData& stampsData, const ClData& clData) {

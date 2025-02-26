@@ -41,7 +41,7 @@ double makeKernel(const cl::Buffer& kernel, const cl::Buffer& kernSolution,
 double makeKernel(Kernel& kern, const std::pair<cl_int, cl_int>& imgSize,
                   const int x, const int y, const Arguments& args);
 
-/* SSS */
+/* SSS for OpenCl*/
 void createStamps(const int w, const int h, ClStampsData& stampsData,
                   const ClData& clData, const Arguments& args);
 cl_int findSStamps(const std::pair<cl_int, cl_int>& axis, const bool isTemplate,
@@ -54,6 +54,18 @@ void identifySStamps(const std::pair<cl_int, cl_int>& axis,
 void resetSStampSkipMask(const int w, const int h, const ClData& clData);
 void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
                      const ClData& clData, const Arguments& args);
+
+/* SSS for OpenMP*/
+void createStampsMp(const int w, const int h, std::vector<Stamp>& stamps,
+                    Arguments& args);
+void identifySStampsMp(std::vector<Stamp>& templStamps, const Image& templImage,
+                       std::vector<Stamp>& scienceStamps,
+                       const Image& scienceImage, ImageMask& mask,
+                       const Arguments& args);
+void calcStatsMp(std::vector<Stamp>& stamps, const Image& image,
+                 ImageMask& mask, const Arguments& args);
+cl_int findSStamps(Stamp& stamp, const Image& image, const bool isTemplate,
+                   const Arguments& args);
 
 /* CMV */
 void initFillStamps(std::vector<Stamp>& stamps,

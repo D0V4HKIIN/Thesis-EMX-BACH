@@ -45,7 +45,8 @@ void getArguments(const int argc, const char* argv[], Arguments& args) {
 
   if(cmdOptionExists(argv, argv + argc, "-sss")) {
     args.sssMode = getCmdOption(argv, argv + argc, "-sss");
-    if(args.sssMode != "mp" && args.sssMode != "cl") {
+    if(args.sssMode != "mp" && args.sssMode != "cl" &&
+       args.sssMode != "compare") {
       throw std::invalid_argument("sss mode should be mp or cl");
     }
   }
