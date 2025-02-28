@@ -126,6 +126,15 @@ struct SubStamp {
   bool operator>(const SubStamp& other) const { return val > other.val; }
 };
 
+struct StampStats {
+  double skyEst{};  // Mode of stamp
+  double fwhm{};    // Middle part value diff (full width half max)
+  // not used?
+  // double norm{};
+  // double diff{};
+  // double chi2{};
+};
+
 struct Stamp {
   std::vector<SubStamp> subStamps{};
   std::vector<std::vector<double>> W{};
@@ -135,6 +144,7 @@ struct Stamp {
   // only used by openmp
   std::pair<int, int> coords;
   std::pair<int, int> size;
+  StampStats stats{};
 
   Stamp() {};
   // used for openmp
@@ -220,6 +230,10 @@ class ImageMask {
 
   bool isMaskedAny(int index) const { return dataMask[index] != NONE; }
 
+  bool isMasked(int index, ImageMasks mask) const {
+    return (dataMask[index] & mask) != NONE;
+  }
+
   void maskPix(int x, int y, ImageMasks mask) {
     int index = x + (y * axis.first);
     dataMask[index] |= mask;
@@ -227,5 +241,7 @@ class ImageMask {
 
  private:
   std::pair<int, int> axis;
+
+ public:
   std::vector<uint16_t> dataMask;
 };

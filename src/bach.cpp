@@ -68,7 +68,7 @@ void sssCl(const std::pair<cl_int, cl_int> &axis,
   templateStamps.reserve(args.stampsx * args.stampsy);
   sciStamps.reserve(args.stampsx * args.stampsy);
 
-  int subStampMaxCount{2 * args.maxKSStamps};
+  size_t subStampMaxCount{2 * args.maxKSStamps};
 
   clData.tmpl.stampCoords =
       cl::Buffer(clData.context, CL_MEM_READ_WRITE,
@@ -170,8 +170,8 @@ void sssCl(const std::pair<cl_int, cl_int> &axis,
 }
 
 void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
-           std::vector<Stamp> &sciStamps, const Image &scienceImg,
-           Arguments &args) {
+           std::vector<Stamp> &scienceStamps, const Image &scienceImg,
+           ImageMask &mask, Arguments &args) {
   std::cout << "\nCreating stamps..." << std::endl;
 
   const auto [w, h] = templateImg.axis;
@@ -192,19 +192,49 @@ void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
                 << args.stampsy << " stamps instead." << std::endl;
   }
 
-  createStampsMp(w, h, templateStamps, args);
+  templateStamps.resize(args.stampsx * args.stampsy, Stamp{});
+  scienceStamps.resize(args.stampsx * args.stampsy, Stamp{});
+
+#pragma omp parallel for collapse(2) default(none)                             \
+    shared(w, h, templateImg, templateStamps, scienceImg, scienceStamps, args, \
+               mask) num_threads(4)
+  for(int stampY = 0; stampY < args.stampsy; stampY++) {
+    for(int stampX = 0; stampX < args.stampsx; stampX++) {
+      size_t i = stampX + stampY * args.stampsx;
+      Stamp &templateStamp = templateStamps[i];
+      Stamp &scienceStamp = scienceStamps[i];
+
+      createStampsMp(stampX, stampY, w, h, templateStamp, args);
+      createStampsMp(stampX, stampY, w, h, scienceStamp, args);
+
+      identifySStampsMp(templateStamp, templateImg, scienceStamp, scienceImg,
+                        mask, args);
+    }
+  }
+  int maxStampsCount = args.stampsx * args.stampsy;
+
+  templateStamps.erase(
+      std::remove_if(templateStamps.begin(), templateStamps.end(),
+                     [](Stamp &s) { return s.subStamps.empty(); }),
+      templateStamps.end());
+  scienceStamps.erase(
+      std::remove_if(scienceStamps.begin(), scienceStamps.end(),
+                     [](Stamp &s) { return s.subStamps.empty(); }),
+      scienceStamps.end());
+
+  double filledTemplate =
+      static_cast<double>(templateStamps.size()) / maxStampsCount;
+  double filledScience =
+      static_cast<double>(scienceStamps.size()) / maxStampsCount;
+
   if(args.verbose) {
-    std::cout << "Stamps created for template image" << std::endl;
+    std::cout << "Non-Empty template stamps: " << templateStamps.size()
+              << std::endl;
+    std::cout << "Non-Empty science stamps: " << scienceStamps.size()
+              << std::endl;
   }
 
-  createStampsMp(w, h, sciStamps, args);
-  if(args.verbose) {
-    std::cout << "Stamps created for science image" << std::endl;
-  }
-
-  ImageMask mask{templateImg.axis};
-  identifySStampsMp(templateStamps, templateImg, sciStamps, scienceImg, mask,
-                    args);
+  // TODO: retry if not enough stamps have a substamp
 }
 
 void cmv(const std::pair<cl_int, cl_int> &axis,

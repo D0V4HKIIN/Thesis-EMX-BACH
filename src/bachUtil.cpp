@@ -1,5 +1,7 @@
 #include "bachUtil.h"
 
+#include <omp.h>
+
 #include <algorithm>
 #include <numeric>
 
@@ -347,35 +349,32 @@ void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
 #define M3 243000
 #define IA3 4561
 #define IC3 51349
-double ran1(int* idum) {
-  static long ix1, ix2, ix3;
-  static double r[98];
+double ran1(int* idum, long* ix1, long* ix2, long* ix3, double* r, int* iff) {
   double temp;
-  static int iff = 0;
   int j;
   /* void nrerror(char *error_text); */
 
-  if(*idum < 0 || iff == 0) {
-    iff = 1;
-    ix1 = (IC1 - (*idum)) % M1;
-    ix1 = (IA1 * ix1 + IC1) % M1;
-    ix2 = ix1 % M2;
-    ix1 = (IA1 * ix1 + IC1) % M1;
-    ix3 = ix1 % M3;
+  if(*idum < 0 || *iff == 0) {
+    *iff = 1;
+    *ix1 = (IC1 - (*idum)) % M1;
+    *ix1 = (IA1 * (*ix1) + IC1) % M1;
+    *ix2 = *ix1 % M2;
+    *ix1 = (IA1 * (*ix1) + IC1) % M1;
+    *ix3 = (*ix1) % M3;
     for(j = 1; j <= 97; j++) {
-      ix1 = (IA1 * ix1 + IC1) % M1;
-      ix2 = (IA2 * ix2 + IC2) % M2;
-      r[j] = (ix1 + ix2 * RM2) * RM1;
+      *ix1 = (IA1 * (*ix1) + IC1) % M1;
+      *ix2 = (IA2 * (*ix2) + IC2) % M2;
+      r[j] = ((*ix1) + (*ix2) * RM2) * RM1;
     }
     *idum = 1;
   }
-  ix1 = (IA1 * ix1 + IC1) % M1;
-  ix2 = (IA2 * ix2 + IC2) % M2;
-  ix3 = (IA3 * ix3 + IC3) % M3;
-  j = 1 + ((97 * ix3) / M3);
+  *ix1 = (IA1 * (*ix1) + IC1) % M1;
+  *ix2 = (IA2 * (*ix2) + IC2) % M2;
+  *ix3 = (IA3 * (*ix3) + IC3) % M3;
+  j = 1 + ((97 * (*ix3)) / M3);
   /* if (j > 97 || j < 1) nrerror("RAN1: This cannot happen."); */
   temp = r[j];
-  r[j] = (ix1 + ix2 * RM2) * RM1;
+  r[j] = (*ix1 + (*ix2) * RM2) * RM1;
   return temp;
 }
 #undef M1
@@ -390,131 +389,186 @@ double ran1(int* idum) {
 #undef IA3
 #undef IC3
 
-void calcStatsMp(std::vector<Stamp>& stamps, const Image& image,
-                 ImageMask& mask, const Arguments& args) {
-  // TODO
-  std::cout << "calc stats todo" << std::endl;
+// computes stamp.stats.skyEst and stamp.stats.fwhm
+void calcStatsMp(Stamp& stamp, const Image& image, ImageMask& mask,
+                 const Arguments& args) {
   constexpr int nSamples = 100;
 
-  // pragma omp here
-  for(size_t i = 0; i < stamps.size(); i++) {
-    Stamp& stamp = stamps[i];
+  // check that stamps are big enough
+  int numPix = stamp.size.first * stamp.size.second;
+  if(numPix < nSamples) {
+    std::cout << "Not enough pixels in a stamp" << std::endl;
+    exit(1);
+  }
 
-    // check that stamps are big enough
-    int numPix = stamp.size.first * stamp.size.second;
-    if(numPix < nSamples) {
-      std::cout << "Not enough pixels in a stamp" << std::endl;
-      exit(1);
+  // seed for random number generator (?)
+  int idum = -666;
+  long ix1, ix2, ix3;
+  double r[98];
+  int iff = 0;
+
+  // sample randomly
+  std::array<double, nSamples> samples{};
+  int samplesCount = 0;
+
+  // Stop after randomly having selected a pixel numPix times.
+  for(int iter = 0; samplesCount < nSamples && iter < numPix; iter++) {
+    int randX =
+        std::floor(ran1(&idum, &ix1, &ix2, &ix3, r, &iff) * stamp.size.first);
+    int randY =
+        std::floor(ran1(&idum, &ix1, &ix2, &ix3, r, &iff) * stamp.size.second);
+
+    // Random pixel in stamp in Image coords.
+    int xI = randX + stamp.coords.first;
+    int yI = randY + stamp.coords.second;
+    int indexI = xI + yI * image.axis.first;
+
+    if(mask.isMaskedAny(indexI) || std::abs(image[indexI]) <= 1e-10) {
+      continue;
     }
 
-    // seed for random number generator (?)
-    int idum = -666;
+    samples[samplesCount++] = image[indexI];
+  }
 
-    // sample randomly
-    std::array<double, nSamples> samples{};
-    int samplesCount = 0;
+  std::sort(samples.begin(), samples.end());
 
-    // Stop after randomly having selected a pixel numPix times.
-    for(int iter = 0; samplesCount < nSamples && iter < numPix; iter++) {
-      int randX = std::floor(ran1(&idum) * stamp.size.first);
-      int randY = std::floor(ran1(&idum) * stamp.size.second);
+  double upProc = 0.9;
+  double midProc = 0.5;
+  // Width of a histogram bin.
+  double binSize = (samples[(int)(upProc * samplesCount)] -
+                    samples[(int)(midProc * samplesCount)]) /
+                   (double)nSamples;
 
-      // Random pixel in stamp in Image coords.
-      cl_int xI = randX + stamp.coords.first;
-      cl_int yI = randY + stamp.coords.second;
+  // Value of lowest bin.
+  double lowerBinVal =
+      samples[(int)(midProc * samplesCount)] - (128.0 * binSize);
+
+  // Contains all good Pixels in the stamp, aka not masked.
+  std::vector<double> maskedStamp{};
+  for(int y = 0; y < stamp.size.second; y++) {
+    for(int x = 0; x < stamp.size.first; x++) {
+      // Pixel in stamp in Image coords.
+      int xI = x + stamp.coords.first;
+      int yI = y + stamp.coords.second;
       int indexI = xI + yI * image.axis.first;
 
-      if(mask.isMaskedAny(indexI) || std::abs(image[indexI]) <= 1e-10) {
+      if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
         continue;
       }
 
-      samples[samplesCount++] = image[indexI];
+      if(std::isnan(image[indexI])) {
+        // I believe this should never happen
+        std::cout << "non-masked NaN pixel in image" << std::endl;
+        mask.maskPix(xI, yI, ImageMasks::NAN_PIXEL | ImageMasks::BAD_INPUT);
+        continue;
+      }
+
+      maskedStamp.push_back(image[indexI]);
+    }
+  }
+
+  // sigma clip of maskedStamp to get mean and sd.
+  double mean, stdDev, invStdDev;
+  sigmaClipMp(maskedStamp, mean, stdDev, 3, args);
+  invStdDev = 1.0 / stdDev;
+
+  double lower;
+  double upper;
+  int attempts = 0;
+  std::vector<int> bins(256, 0);
+  while(true) {
+    if(attempts >= 5) {
+      std::cout << "Creation of histogram unsuccessful after 5 attempts"
+                << std::endl;
+      return;
     }
 
-    std::sort(samples.begin(), samples.end());
+    std::fill(bins.begin(), bins.end(), 0);
 
-    double upProc = 0.9;
-    double midProc = 0.5;
-    // Width of a histogram bin.
-    double binSize = (samples[(int)(upProc * samplesCount)] -
-                      samples[(int)(midProc * samplesCount)]) /
-                     (double)nSamples;
+    int okCount = 0;
 
-    // Value of lowest bin.
-    double lowerBinVal =
-        samples[(int)(midProc * samplesCount)] - (128.0 * binSize);
-
-    // Contains all good Pixels in the stamp, aka not masked.
-    std::vector<double> maskedStamp{};
     for(int y = 0; y < stamp.size.second; y++) {
       for(int x = 0; x < stamp.size.first; x++) {
         // Pixel in stamp in Image coords.
-        cl_int xI = x + stamp.coords.first;
-        cl_int yI = y + stamp.coords.second;
+        int xI = x + stamp.coords.first;
+        int yI = y + stamp.coords.second;
         int indexI = xI + yI * image.axis.first;
 
         if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
           continue;
         }
 
-        if(std::isnan(image[indexI])) {
-          mask.maskPix(xI, yI, ImageMasks::NAN_PIXEL | ImageMasks::BAD_INPUT);
+        if((std::abs(image[indexI] - mean) * invStdDev) > args.sigClipAlpha) {
           continue;
         }
+        int index = std::clamp(
+            (int)std::floor((image[indexI] - lowerBinVal) / binSize) + 1, 0,
+            255);
 
-        maskedStamp.push_back(image[indexI]);
+        bins[index]++;
+        okCount++;
       }
     }
 
-    // sigma clip of maskedStamp to get mean and sd.
-    double mean, stdDev, invStdDev;
-    sigmaClipMp(maskedStamp, mean, stdDev, 3, args);
-    invStdDev = 1.0 / stdDev;
-
-    int attempts = 5;
-    std::vector<int> bins(256, 0);
-    while(true) {
-      if(attempts >= 5) {
-        std::cout << "Creation of histogram unsuccessful after 5 attempts"
-                  << std::endl;
-        return;
-      }
-
-      std::fill(bins.begin(), bins.end(), 0);
-
-      int okCount = 0;
-
-      for(int y = 0; y < stamp.size.second; y++) {
-        for(int x = 0; x < stamp.size.first; x++) {
-          // Pixel in stamp in Image coords.
-          cl_int xI = x + stamp.coords.first;
-          cl_int yI = y + stamp.coords.second;
-          int indexI = xI + yI * image.axis.first;
-
-          if(mask.isMaskedAny(indexI) || image[indexI] <= 1e-10) {
-            continue;
-          }
-
-          if((std::abs(image[indexI] - mean) * invStdDev) > args.sigClipAlpha) {
-            continue;
-          }
-          int index = std::clamp(
-              (int)std::floor((image[indexI] - lowerBinVal) / binSize) + 1, 0,
-              255);
-
-          bins[index]++;
-          okCount++;
-        }
-      }
-
-      if(okCount == 0 || binSize == 0.0) {
-        std::cout << "No good pixels or variation in pixels" << std::endl;
-        return;
-      }
+    if(okCount == 0 || binSize == 0.0) {
+      std::cout << "No good pixels or variation in pixels" << std::endl;
+      return;
     }
 
-    // continue here!!
+    double sumBins = 0.0;
+    double maxDens = 0.0;
+    int lowerIndex = 1;
+    int upperIndex = 1;
+    int maxIndex = -1;
+    while(upperIndex < 255) {
+      while(sumBins < okCount / 10.0 && upperIndex < 255) {
+        sumBins += bins[upperIndex++];
+      }
+      if(sumBins / (upperIndex - lowerIndex) > maxDens) {
+        maxDens = sumBins / (upperIndex - lowerIndex);
+        maxIndex = lowerIndex;
+      }
+      sumBins -= bins[lowerIndex++];
+    }
+    if(maxIndex < 0 || maxIndex > 255) maxIndex = 0;
+
+    sumBins = 0.0;
+    double sumExpect = 0.0;
+    for(int i = maxIndex; sumBins < okCount / 10.0 && i < 255; i++) {
+      sumBins += bins[i];
+      sumExpect += i * bins[i];
+    }
+
+    double modeBin = sumExpect / sumBins + 0.5;
+    stamp.stats.skyEst = lowerBinVal + binSize * (modeBin - 1.0);
+
+    lower = okCount * 0.25;
+    upper = okCount * 0.75;
+    sumBins = 0.0;
+
+    int i = 0;
+    while(sumBins < lower) {
+      sumBins += bins[i++];
+    }
+    lower = i - (sumBins - lower) / bins[i - 1];
+    while(sumBins < upper) {
+      sumBins += bins[i++];
+    }
+    upper = i - (sumBins - upper) / bins[i - 1];
+
+    if(lower < 1.0 || upper > 255.0) {
+      lowerBinVal -= 128.0 * binSize;
+      binSize *= 2;
+    } else if(upper - lower < 40.0) {
+      binSize /= 3.0;
+      lowerBinVal = stamp.stats.skyEst - 128.0 * binSize;
+    } else {
+      break;
+    }
+
+    attempts++;
   }
+  stamp.stats.fwhm = binSize * (upper - lower) / args.iqRange;
 }
 
 int timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,

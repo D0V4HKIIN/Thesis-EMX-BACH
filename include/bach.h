@@ -70,7 +70,7 @@ void sssCl(const std::pair<cl_int, cl_int> &axis,
            Arguments &args, ClData &clData);
 void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
            std::vector<Stamp> &sciStamps, const Image &scienceImg,
-           Arguments &args);
+           ImageMask &mask, Arguments &args);
 void cmv(const std::pair<cl_int, cl_int> &axis,
          std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
          ClData &clData, const Arguments &args);

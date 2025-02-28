@@ -56,16 +56,19 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
                      const ClData& clData, const Arguments& args);
 
 /* SSS for OpenMP*/
-void createStampsMp(const int w, const int h, std::vector<Stamp>& stamps,
-                    Arguments& args);
-void identifySStampsMp(std::vector<Stamp>& templStamps, const Image& templImage,
-                       std::vector<Stamp>& scienceStamps,
-                       const Image& scienceImage, ImageMask& mask,
-                       const Arguments& args);
-void calcStatsMp(std::vector<Stamp>& stamps, const Image& image,
-                 ImageMask& mask, const Arguments& args);
-cl_int findSStamps(Stamp& stamp, const Image& image, const bool isTemplate,
-                   const Arguments& args);
+void createStampsMp(const int stampX, const int stampY, const int w,
+                    const int h, Stamp& stamp, const Arguments& args);
+void identifySStampsMp(Stamp& templStamp, const Image& templImage,
+                       Stamp& scienceStamp, const Image& scienceImage,
+                       ImageMask& mask, const Arguments& args);
+void calcStatsMp(Stamp& stamp, const Image& image, ImageMask& mask,
+                 const Arguments& args);
+int findSStampsMp(Stamp& stamp, const Image& image, ImageMask& mask,
+                  const bool isTemplate, const Arguments& args);
+double checkSStampMp(const SubStamp& sstamp, const Image& image,
+                     ImageMask& mask, const Stamp& stamp,
+                     const ImageMasks badMask, const ImageMasks skipMask,
+                     const Arguments& args);
 
 /* CMV */
 void initFillStamps(std::vector<Stamp>& stamps,

@@ -112,14 +112,28 @@ int main(int argc, const char* argv[]) {
   if(args.sssMode == "cl") {
     sssCl(templateImg.axis, templateStamps, sciStamps, args, clData);
   } else if(args.sssMode == "mp") {
-    sssMp(templateStamps, templateImg, sciStamps, scienceImg, args);
+    ImageMask mask{templateImg.axis};
+    sssMp(templateStamps, templateImg, sciStamps, scienceImg, mask, args);
   } else if(args.sssMode == "compare") {
     std::vector<Stamp> templateStampsCl{};
     std::vector<Stamp> sciStampsCl{};
+
     std::vector<Stamp> templateStampsMp{};
     std::vector<Stamp> sciStampsMp{};
+
+    // read mask before calling sssCl bc sssCl modifies the mask...
+    ImageMask mask{templateImg.axis};
+
+    clData.queue.enqueueReadBuffer(
+        clData.maskBuf, CL_TRUE, 0,
+        sizeof(u_int16_t) * templateImg.axis.first * templateImg.axis.second,
+        &mask.dataMask[0]);
+
     sssCl(templateImg.axis, templateStampsCl, sciStampsCl, args, clData);
-    sssMp(templateStampsMp, templateImg, sciStampsMp, scienceImg, args);
+    double start = omp_get_wtime();
+    sssMp(templateStampsMp, templateImg, sciStampsMp, scienceImg, mask, args);
+    double end = omp_get_wtime();
+    std::cout << end - start << " seconds for sssMp" << std::endl;
 
     std::cout << "sizes " << templateStampsCl.size()
               << " == " << templateStampsMp.size() << std::endl;
@@ -129,6 +143,23 @@ int main(int argc, const char* argv[]) {
         clData.tmpl.stampCoords, CL_TRUE, 0,
         sizeof(std::pair<int, int>) * clCoords.size(), &clCoords[0]);
 
+    std::vector<cl_double> clSkyEst(templateStampsCl.size());
+    clData.queue.enqueueReadBuffer(clData.tmpl.stats.skyEsts, CL_TRUE, 0,
+                                   sizeof(cl_double) * clSkyEst.size(),
+                                   &clSkyEst[0]);
+
+    std::vector<cl_double> clFwhm(templateStampsCl.size());
+    clData.queue.enqueueReadBuffer(clData.tmpl.stats.fwhms, CL_TRUE, 0,
+                                   sizeof(cl_double) * clFwhm.size(),
+                                   &clFwhm[0]);
+
+    std::vector<uint16_t> clMask(mask.dataMask.size());
+    clData.queue.enqueueReadBuffer(
+        clData.maskBuf, CL_TRUE, 0,
+        sizeof(u_int16_t) * templateImg.axis.first * templateImg.axis.second,
+        &clMask[0]);
+
+    std::cout << "stampcoords" << std::endl;
     for(size_t i = 0; i < clCoords.size(); i++) {
       if(clCoords[i] != templateStampsMp[i].coords) {
         std::cout << clCoords[i].first << "-" << clCoords[i].second << " and "
@@ -138,11 +169,60 @@ int main(int argc, const char* argv[]) {
       }
     }
 
-    // std::cout << "\nmp:" << std::endl;
+    std::cout << "skyest" << std::endl;
+    for(size_t i = 0; i < clSkyEst.size(); i++) {
+      if(clSkyEst[i] != templateStampsMp[i].stats.skyEst) {
+        std::cout << clSkyEst[i] << "==" << templateStampsMp[i].stats.skyEst
+                  << " are not the same\n";
+      }
+    }
 
-    // for(size_t i = 0; i < templateStampsMp.size(); i++) {
-    //   std::cout << templateStampsMp[i].coords.first << ",";
-    // }
+    std::cout << "fwhm" << std::endl;
+    for(size_t i = 0; i < clFwhm.size(); i++) {
+      if(clFwhm[i] != templateStampsMp[i].stats.fwhm) {
+        std::cout << clFwhm[i] << "==" << templateStampsMp[i].stats.fwhm
+                  << " are not the same\n";
+      }
+    }
+
+    std::cout << "mask" << std::endl;
+    for(size_t i = 0; i < clMask.size(); i++) {
+      if(clMask[i] != mask.dataMask[i]) {
+        std::cout << "mask differs" << clMask[i] << " == " << mask.dataMask[i]
+                  << std::endl;
+      }
+    }
+
+    std::cout << "substamps " << std::endl;
+    for(size_t i = 0; i < templateStampsCl.size(); i++) {
+      if(templateStampsCl[i].subStamps.size() !=
+         templateStampsMp[i].subStamps.size()) {
+        std::cout << "substamp sizes are not the same for index " << i
+                  << std::endl;
+      } else {
+        for(size_t j = 0; j < templateStampsCl[i].subStamps.size(); j++) {
+          if(templateStampsCl[i].subStamps[j].val !=
+             templateStampsMp[i].subStamps[j].val) {
+            std::cout << "substamp value not matching"
+                      << templateStampsCl[i].subStamps[j].val
+                      << " == " << templateStampsMp[i].subStamps[j].val
+                      << std::endl;
+          }
+          if(templateStampsCl[i].subStamps[j].imageCoords !=
+             templateStampsMp[i].subStamps[j].imageCoords) {
+            std::cout << "substamp coords not matching"
+                      << templateStampsCl[i].subStamps[j].imageCoords.first
+                      << ","
+                      << templateStampsCl[i].subStamps[j].imageCoords.second
+                      << " == "
+                      << templateStampsMp[i].subStamps[j].imageCoords.first
+                      << ","
+                      << templateStampsMp[i].subStamps[j].imageCoords.second
+                      << std::endl;
+          }
+        }
+      }
+    }
 
     exit(0);
   } else {
