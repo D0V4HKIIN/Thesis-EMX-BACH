@@ -46,7 +46,8 @@ apt install ocl-icd-opencl-dev # don't know
 apt install libomp-dev # openmp
 apt install libccfits-dev # fits images
 apt install nvidia-opencl-dev # to use nvidia grahics card with opencl
-apt install intel-opencl-icd # to use intel cpu with opencl
+apt install intel-opencl-icd # to use intel onboard graphics with opencl
+apt install pocl-opencl-icd # very slow. to use cpu as opencl device
 ```
 
 GCC is required to compile on Linux. First, clone the repository. Run `make`. Now, compilation should be done. If there are errors, check the Makefile and make sure you have the dependencies installed.

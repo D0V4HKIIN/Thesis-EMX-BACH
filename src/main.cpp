@@ -114,6 +114,8 @@ int main(int argc, const char* argv[]) {
   } else if(args.sssMode == "mp") {
     ImageMask mask{templateImg.axis};
     sssMp(templateStamps, templateImg, sciStamps, scienceImg, mask, args);
+
+    moveSssToGpu(templateStamps, sciStamps, mask, clData, args);
   } else if(args.sssMode == "compare") {
     std::vector<Stamp> templateStampsCl{};
     std::vector<Stamp> sciStampsCl{};
@@ -129,11 +131,19 @@ int main(int argc, const char* argv[]) {
         sizeof(u_int16_t) * templateImg.axis.first * templateImg.axis.second,
         &mask.dataMask[0]);
 
+    auto cl = std::chrono::steady_clock::now();
     sssCl(templateImg.axis, templateStampsCl, sciStampsCl, args, clData);
+
+    auto mp = std::chrono::steady_clock::now();
     double start = omp_get_wtime();
+    // omp_set_num_threads(1);
     sssMp(templateStampsMp, templateImg, sciStampsMp, scienceImg, mask, args);
+
+    auto end_chrono = std::chrono::steady_clock::now();
     double end = omp_get_wtime();
     std::cout << end - start << " seconds for sssMp" << std::endl;
+    std::cout << timeDiff(mp, cl) << "ms for sssCl" << std::endl;
+    std::cout << timeDiff(end_chrono, mp) << "ms for sssMp" << std::endl;
 
     std::cout << "sizes " << templateStampsCl.size()
               << " == " << templateStampsMp.size() << std::endl;

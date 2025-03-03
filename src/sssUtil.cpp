@@ -432,3 +432,18 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
 
   assert(stampsData.stampCount == stamps.size());
 }
+
+void moveSssToGpu(const std::vector<Stamp>& templateStamps,
+                  const std::vector<Stamp>& scienceStamps,
+                  const ImageMask& mask, const ClData& clData,
+                  const Arguments& args) {
+  auto maskWrite = clData.queue.enqueueWriteBuffer(
+      clData.maskBuf, CL_TRUE, 0, sizeof(u_int16_t) * mask.dataMask.size(),
+      &mask.dataMask[0]);
+
+  // clData.queue.enqueueWriteBuffer(
+  //     clData.tmpl.stampCoords, CL_TRUE, 0,
+  //     sizeof(std::pair<int, int>) * templateStamps.size(), )
+
+  // wait for writes
+}

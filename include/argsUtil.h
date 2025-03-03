@@ -12,7 +12,7 @@ struct Arguments {
   std::string inputPath = "res/";
   std::string outPath = "out/";
 
-  std::string sssMode = "cl";
+  std::string sssMode = "mp";
 
   int platform = 0;  // default platform and devices
   int device = 0;

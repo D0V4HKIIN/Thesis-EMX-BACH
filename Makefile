@@ -16,12 +16,12 @@ LOADLIBES  = -lOpenCL -lCCfits -lcfitsio -fopenmp
 BIN = main.o argsUtil.o bach.o bachUtil.o cdkscUtil.o clUtil.o cmvUtil.o fitsUtil.o sssUtil.o
 
 all: $(BIN)
-	$(CXX) $(FLAGS) -o BACH $(BIN) $(LOADLIBES)
+	$(CXX) $(FLAGS) -o EMXBACH $(BIN) $(LOADLIBES)
 	rm -f *.o
 
 debug: override FLAGS = $(CXXFLAGS) $(DEBUGFLAGS)
 debug:	$(BIN)
-	$(CXX) $(FLAGS) $(DEBUGFLAGS) -o BACH $(BIN) $(LOADLIBES)
+	$(CXX) $(FLAGS) $(DEBUGFLAGS) -o EMXBACH $(BIN) $(LOADLIBES)
 	rm -f *.o
 
 main.o: $(SRC_DIR)/main.cpp
@@ -53,4 +53,4 @@ sssUtil.o: $(SRC_DIR)/sssUtil.cpp
 
 .PHONY: clean
 clean:
-	rm -f *.o BACH
+	rm -f *.o EMXBACH

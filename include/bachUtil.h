@@ -69,6 +69,14 @@ double checkSStampMp(const SubStamp& sstamp, const Image& image,
                      ImageMask& mask, const Stamp& stamp,
                      const ImageMasks badMask, const ImageMasks skipMask,
                      const Arguments& args);
+void computeStamps(const int w, const int h, const Image& templateImg,
+                   std::vector<Stamp>& templateStamps, const Image& scienceImg,
+                   std::vector<Stamp>& scienceStamps, ImageMask& mask,
+                   const Arguments& args);
+void moveSssToGpu(const std::vector<Stamp>& templateStamps,
+                  const std::vector<Stamp>& scienceStamps,
+                  const ImageMask& mask, const ClData& clData,
+                  const Arguments& args);
 
 /* CMV */
 void initFillStamps(std::vector<Stamp>& stamps,

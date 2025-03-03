@@ -5,11 +5,11 @@
 #include "datatypeUtil.h"
 
 struct ClStampsData {
-  cl::Buffer stampCoords;  // (x, y) coordinates
-  cl::Buffer stampSizes;
+  cl::Buffer stampCoords;  // (x, y) coordinates // changed
+  cl::Buffer stampSizes;   // changed
   struct {
-    cl::Buffer skyEsts;
-    cl::Buffer fwhms;
+    cl::Buffer skyEsts;  // changed
+    cl::Buffer fwhms;    // changed
   } stats;
 
   cl::Buffer currentSubStamps;
@@ -19,7 +19,7 @@ struct ClStampsData {
   cl::Buffer w;
   cl::Buffer q;
   cl::Buffer b;
-  unsigned int stampCount;
+  unsigned int stampCount;  // changed (?)
 };
 
 struct ClData {
@@ -30,7 +30,7 @@ struct ClData {
 
   cl::Buffer tImgBuf;
   cl::Buffer sImgBuf;
-  cl::Buffer maskBuf;
+  cl::Buffer maskBuf;  // changed
   cl::Buffer convImg;
 
   struct {
@@ -59,8 +59,8 @@ struct ClData {
   int wRows;
   int wColumns;
 
-  ClStampsData tmpl;
-  ClStampsData sci;
+  ClStampsData tmpl;  // changed
+  ClStampsData sci;   // changed
 };
 
 void init(Image &templateImg, Image &scienceImg, ClData &clData,

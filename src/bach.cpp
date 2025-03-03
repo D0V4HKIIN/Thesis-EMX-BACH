@@ -192,25 +192,9 @@ void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
                 << args.stampsy << " stamps instead." << std::endl;
   }
 
-  templateStamps.resize(args.stampsx * args.stampsy, Stamp{});
-  scienceStamps.resize(args.stampsx * args.stampsy, Stamp{});
+  computeStamps(w, h, templateImg, templateStamps, scienceImg, scienceStamps,
+                mask, args);
 
-#pragma omp parallel for collapse(2) default(none)                             \
-    shared(w, h, templateImg, templateStamps, scienceImg, scienceStamps, args, \
-               mask) num_threads(4)
-  for(int stampY = 0; stampY < args.stampsy; stampY++) {
-    for(int stampX = 0; stampX < args.stampsx; stampX++) {
-      size_t i = stampX + stampY * args.stampsx;
-      Stamp &templateStamp = templateStamps[i];
-      Stamp &scienceStamp = scienceStamps[i];
-
-      createStampsMp(stampX, stampY, w, h, templateStamp, args);
-      createStampsMp(stampX, stampY, w, h, scienceStamp, args);
-
-      identifySStampsMp(templateStamp, templateImg, scienceStamp, scienceImg,
-                        mask, args);
-    }
-  }
   int maxStampsCount = args.stampsx * args.stampsy;
 
   templateStamps.erase(
@@ -235,6 +219,42 @@ void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
   }
 
   // TODO: retry if not enough stamps have a substamp
+  if(filledTemplate < 0.1 || filledScience < 0.1) {
+    if(args.verbose)
+      std::cout << "Not enough substamps found in images, "
+                << "trying again with lower thresholds..." << std::endl;
+    args.threshLow *= 0.5;
+
+    templateStamps.clear();
+    scienceStamps.clear();
+
+    computeStamps(w, h, templateImg, templateStamps, scienceImg, scienceStamps,
+                  mask, args);
+  }
+}
+
+void computeStamps(const int w, const int h, const Image &templateImg,
+                   std::vector<Stamp> &templateStamps, const Image &scienceImg,
+                   std::vector<Stamp> &scienceStamps, ImageMask &mask,
+                   const Arguments &args) {
+  templateStamps.resize(args.stampsx * args.stampsy, Stamp{});
+  scienceStamps.resize(args.stampsx * args.stampsy, Stamp{});
+#pragma omp parallel for collapse(2) default(none)                             \
+    shared(w, h, templateImg, templateStamps, scienceImg, scienceStamps, args, \
+               mask)
+  for(int stampY = 0; stampY < args.stampsy; stampY++) {
+    for(int stampX = 0; stampX < args.stampsx; stampX++) {
+      size_t i = stampX + stampY * args.stampsx;
+      Stamp &templateStamp = templateStamps[i];
+      Stamp &scienceStamp = scienceStamps[i];
+
+      createStampsMp(stampX, stampY, w, h, templateStamp, args);
+      createStampsMp(stampX, stampY, w, h, scienceStamp, args);
+
+      identifySStampsMp(templateStamp, templateImg, scienceStamp, scienceImg,
+                        mask, args);
+    }
+  }
 }
 
 void cmv(const std::pair<cl_int, cl_int> &axis,
