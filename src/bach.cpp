@@ -13,10 +13,6 @@
 
 void init(Image &templateImg, Image &scienceImg, ClData &clData,
           const Arguments &args) {
-  // Read input images
-  readImage(templateImg, args);
-  readImage(scienceImg, args);
-
   if(templateImg.axis != scienceImg.axis) {
     std::cout << "Template image and science image must be the same size!"
               << std::endl;
@@ -26,13 +22,6 @@ void init(Image &templateImg, Image &scienceImg, ClData &clData,
   int pixelCount = templateImg.axis.first * templateImg.axis.second;
 
   // Upload buffers
-  clData.tImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                              sizeof(cl_double) * pixelCount);
-  clData.sImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                              sizeof(cl_double) * pixelCount);
-  clData.maskBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                              sizeof(cl_ushort) * pixelCount);
-
   clData.queue.enqueueWriteBuffer(clData.tImgBuf, CL_TRUE, 0,
                                   sizeof(cl_double) * pixelCount, &templateImg);
   clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0,
@@ -67,52 +56,6 @@ void sssCl(const std::pair<cl_int, cl_int> &axis,
 
   templateStamps.reserve(args.stampsx * args.stampsy);
   sciStamps.reserve(args.stampsx * args.stampsy);
-
-  size_t subStampMaxCount{2 * args.maxKSStamps};
-
-  clData.tmpl.stampCoords =
-      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                 sizeof(cl_int2) * args.stampsx * args.stampsy);
-  clData.tmpl.stampSizes =
-      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                 sizeof(cl_int2) * args.stampsx * args.stampsy);
-  clData.tmpl.stats.skyEsts =
-      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                 sizeof(cl_double) * args.stampsx * args.stampsy);
-  clData.tmpl.stats.fwhms =
-      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                 sizeof(cl_double) * args.stampsx * args.stampsy);
-  clData.tmpl.subStampCoords = cl::Buffer(
-      clData.context, CL_MEM_READ_WRITE,
-      sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy);
-  clData.tmpl.subStampValues = cl::Buffer(
-      clData.context, CL_MEM_READ_WRITE,
-      sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy);
-  clData.tmpl.subStampCounts =
-      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                 sizeof(cl_int) * args.stampsx * args.stampsy);
-
-  clData.sci.stampCoords =
-      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                 sizeof(cl_int2) * args.stampsx * args.stampsy);
-  clData.sci.stampSizes =
-      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                 sizeof(cl_int2) * args.stampsx * args.stampsy);
-  clData.sci.stats.skyEsts =
-      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                 sizeof(cl_double) * args.stampsx * args.stampsy);
-  clData.sci.stats.fwhms =
-      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                 sizeof(cl_double) * args.stampsx * args.stampsy);
-  clData.sci.subStampCoords = cl::Buffer(
-      clData.context, CL_MEM_READ_WRITE,
-      sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy);
-  clData.sci.subStampValues = cl::Buffer(
-      clData.context, CL_MEM_READ_WRITE,
-      sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy);
-  clData.sci.subStampCounts =
-      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
-                 sizeof(cl_int) * args.stampsx * args.stampsy);
 
   createStamps(w, h, clData.tmpl, clData, args);
   createStamps(w, h, clData.sci, clData, args);
@@ -452,8 +395,6 @@ double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg,
                          sizeof(cl_ushort) * w * h);
   cl::Buffer kernBuf(clData.context, CL_MEM_READ_ONLY,
                      sizeof(cl_double) * convKernels.size());
-  clData.convImg =
-      cl::Buffer(clData.context, CL_MEM_WRITE_ONLY, sizeof(cl_double) * w * h);
 
   // Write necessary data for convolution
   clData.queue.enqueueWriteBuffer(kernBuf, CL_TRUE, 0,

@@ -12,10 +12,12 @@ struct ClStampsData {
     cl::Buffer fwhms;    // changed
   } stats;
 
-  cl::Buffer currentSubStamps;
-  cl::Buffer subStampCoords;  // (x, y) coordinates
-  cl::Buffer subStampValues;
-  cl::Buffer subStampCounts;
+  cl::Buffer currentSubStamps;  // filled with 0 in currentSubStamps, then used
+                                // in fillstamps (cmv)
+  cl::Buffer subStampCoords;    // (x, y) coordinates //changed // needed by
+                                // fillstamps (cmv)
+  cl::Buffer subStampValues;    // changed // never referenced later?
+  cl::Buffer subStampCounts;    // changed // needed by fillstamps (cmv)
   cl::Buffer w;
   cl::Buffer q;
   cl::Buffer b;

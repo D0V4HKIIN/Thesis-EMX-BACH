@@ -14,6 +14,7 @@
 #include "fitsUtil.h"
 
 int main(int argc, const char* argv[]) {
+  /* ===== INI ===== */
   auto p1 = std::chrono::steady_clock::now();
   double start = omp_get_wtime();
 
@@ -51,51 +52,84 @@ int main(int argc, const char* argv[]) {
     printVerboseClInfo(device);
   }
 
-  ClData clData{device,
-                context,
-                program,
-                queue,
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                0,
-                0,
-                0,
-                0,
-                0,
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                0,
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                cl::Buffer(),
-                0};
+  // Read input images
+  readImage(templateImg, args);
+  readImage(scienceImg, args);
+
+  int pixelCount = templateImg.axis.first * templateImg.axis.second;
+
+  size_t subStampMaxCount{2 * args.maxKSStamps};
+
+  ClData clData{
+      device,
+      context,
+      program,
+      queue,
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_double) * pixelCount),
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_double) * pixelCount),
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_ushort) * pixelCount),
+      cl::Buffer(clData.context, CL_MEM_WRITE_ONLY,
+                 sizeof(cl_double) * pixelCount),
+      cl::Buffer(),
+      cl::Buffer(),
+      cl::Buffer(),
+      cl::Buffer(),
+      cl::Buffer(),
+      cl::Buffer(),
+      cl::Buffer(),
+      cl::Buffer(),
+      0,
+      0,
+      0,
+      0,
+      0,
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_int2) * args.stampsx * args.stampsy),
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_int2) * args.stampsx * args.stampsy),
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_double) * args.stampsx * args.stampsy),
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_double) * args.stampsx * args.stampsy),
+      cl::Buffer(),
+      cl::Buffer(
+          clData.context, CL_MEM_READ_WRITE,
+          sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy),
+      cl::Buffer(
+          clData.context, CL_MEM_READ_WRITE,
+          sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy),
+      cl::Buffer(
+          clData.context, CL_MEM_READ_WRITE,
+          sizeof(cl_int) * args.stampsx * args.stampsy * subStampMaxCount),
+      cl::Buffer(),
+      cl::Buffer(),
+      cl::Buffer(),
+      0,
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_int2) * args.stampsx * args.stampsy),
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_int2) * args.stampsx * args.stampsy),
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_double) * args.stampsx * args.stampsy),
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_double) * args.stampsx * args.stampsy),
+      cl::Buffer(),
+      cl::Buffer(
+          clData.context, CL_MEM_READ_WRITE,
+          sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy),
+      cl::Buffer(
+          clData.context, CL_MEM_READ_WRITE,
+          sizeof(cl_double) * subStampMaxCount * args.stampsx * args.stampsy),
+      cl::Buffer(
+          clData.context, CL_MEM_READ_WRITE,
+          sizeof(cl_int) * args.stampsx * args.stampsy * subStampMaxCount),
+      cl::Buffer(),
+      cl::Buffer(),
+      cl::Buffer(),
+      0};
 
   init(templateImg, scienceImg, clData, args);
 
@@ -115,7 +149,11 @@ int main(int argc, const char* argv[]) {
     ImageMask mask{templateImg.axis};
     sssMp(templateStamps, templateImg, sciStamps, scienceImg, mask, args);
 
-    moveSssToGpu(templateStamps, sciStamps, mask, clData, args);
+    double copy_start = omp_get_wtime();
+    moveSssToGpu(templateStamps, sciStamps, mask, clData, templateImg.axis,
+                 args);
+    double copy_end = omp_get_wtime();
+    std::cout << "copy to gpu took " << copy_end - copy_start << std::endl;
   } else if(args.sssMode == "compare") {
     std::vector<Stamp> templateStampsCl{};
     std::vector<Stamp> sciStampsCl{};
@@ -128,7 +166,7 @@ int main(int argc, const char* argv[]) {
 
     clData.queue.enqueueReadBuffer(
         clData.maskBuf, CL_TRUE, 0,
-        sizeof(u_int16_t) * templateImg.axis.first * templateImg.axis.second,
+        sizeof(cl_ushort) * templateImg.axis.first * templateImg.axis.second,
         &mask.dataMask[0]);
 
     auto cl = std::chrono::steady_clock::now();
@@ -153,12 +191,12 @@ int main(int argc, const char* argv[]) {
         clData.tmpl.stampCoords, CL_TRUE, 0,
         sizeof(std::pair<int, int>) * clCoords.size(), &clCoords[0]);
 
-    std::vector<cl_double> clSkyEst(templateStampsCl.size());
+    std::vector<double> clSkyEst(templateStampsCl.size());
     clData.queue.enqueueReadBuffer(clData.tmpl.stats.skyEsts, CL_TRUE, 0,
                                    sizeof(cl_double) * clSkyEst.size(),
                                    &clSkyEst[0]);
 
-    std::vector<cl_double> clFwhm(templateStampsCl.size());
+    std::vector<double> clFwhm(templateStampsCl.size());
     clData.queue.enqueueReadBuffer(clData.tmpl.stats.fwhms, CL_TRUE, 0,
                                    sizeof(cl_double) * clFwhm.size(),
                                    &clFwhm[0]);
