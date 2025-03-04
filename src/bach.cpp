@@ -32,27 +32,10 @@ void init(Image &templateImg, Image &scienceImg, ClData &clData,
 
 void sssCl(const std::pair<cl_int, cl_int> &axis,
            std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
-           Arguments &args, ClData &clData) {
+           const Arguments &args, ClData &clData) {
   std::cout << "\nCreating stamps..." << std::endl;
 
   const auto [w, h] = axis;
-
-  args.fStampWidth =
-      std::min(int(axis.first / args.stampsx), int(axis.second / args.stampsy));
-  args.fStampWidth -= args.fKernelWidth;
-  args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
-
-  if(args.fStampWidth < args.fSStampWidth) {
-    args.fStampWidth = args.fSStampWidth + args.fKernelWidth;
-    args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
-
-    args.stampsx = int(axis.first / args.fStampWidth);
-    args.stampsy = int(axis.second / args.fStampWidth);
-
-    if(args.verbose)
-      std::cout << "Too many stamps requested, using " << args.stampsx << "x"
-                << args.stampsy << " stamps instead." << std::endl;
-  }
 
   templateStamps.reserve(args.stampsx * args.stampsy);
   sciStamps.reserve(args.stampsx * args.stampsy);
@@ -86,7 +69,8 @@ void sssCl(const std::pair<cl_int, cl_int> &axis,
     if(args.verbose)
       std::cout << "Not enough substamps found in images, "
                 << "trying again with lower thresholds..." << std::endl;
-    args.threshLow *= 0.5;
+    exit(-1);
+    // args.threshLow *= 0.5;
 
     templateStamps.clear();
     sciStamps.clear();
@@ -100,7 +84,7 @@ void sssCl(const std::pair<cl_int, cl_int> &axis,
 
     removeEmptyStamps(args, clData.tmpl, clData);
     removeEmptyStamps(args, clData.sci, clData);
-    args.threshLow /= 0.5;
+    // args.threshLow /= 0.5;
   }
 
   readFinalStamps(templateStamps, clData.tmpl, clData, args);
@@ -114,26 +98,10 @@ void sssCl(const std::pair<cl_int, cl_int> &axis,
 
 void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
            std::vector<Stamp> &scienceStamps, const Image &scienceImg,
-           ImageMask &mask, Arguments &args) {
+           ImageMask &mask, const Arguments &args) {
   std::cout << "\nCreating stamps..." << std::endl;
 
   const auto [w, h] = templateImg.axis;
-
-  args.fStampWidth = std::min(int(w / args.stampsx), int(h / args.stampsy));
-  args.fStampWidth -= args.fKernelWidth;
-  args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
-
-  if(args.fStampWidth < args.fSStampWidth) {
-    args.fStampWidth = args.fSStampWidth + args.fKernelWidth;
-    args.fStampWidth -= args.fStampWidth % 2 == 0 ? 1 : 0;
-
-    args.stampsx = int(w / args.fStampWidth);
-    args.stampsy = int(h / args.fStampWidth);
-
-    if(args.verbose)
-      std::cout << "Too many stamps requested, using " << args.stampsx << "x"
-                << args.stampsy << " stamps instead." << std::endl;
-  }
 
   computeStamps(w, h, templateImg, templateStamps, scienceImg, scienceStamps,
                 mask, args);
@@ -162,11 +130,13 @@ void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
   }
 
   // TODO: retry if not enough stamps have a substamp
+  // this is not finished!!
   if(filledTemplate < 0.1 || filledScience < 0.1) {
     if(args.verbose)
       std::cout << "Not enough substamps found in images, "
                 << "trying again with lower thresholds..." << std::endl;
-    args.threshLow *= 0.5;
+    exit(-1);
+    // args.threshLow *= 0.5;
 
     templateStamps.clear();
     scienceStamps.clear();

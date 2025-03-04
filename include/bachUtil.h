@@ -79,6 +79,11 @@ void moveSssToGpu(const std::vector<Stamp>& templateStamps,
                   const std::pair<int, int>& axis, const Arguments& args);
 void moveStamps(const std::vector<Stamp>& stamps, ClStampsData& stampsData,
                 ClData& clData, const Arguments& args);
+template <typename T>
+void uploadBuffer(const std::vector<T>& v, cl::Buffer& buffer,
+                  cl::CommandQueue& queue) {
+  queue.enqueueWriteBuffer(buffer, CL_TRUE, 0, sizeof(T) * v.size(), v.data());
+}
 
 /* CMV */
 void initFillStamps(std::vector<Stamp>& stamps,

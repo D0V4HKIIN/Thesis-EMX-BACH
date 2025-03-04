@@ -418,9 +418,9 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
   stamps.reserve(stampsData.stampCount);
 
   for(size_t i{0}; i < stampsData.stampCount; i++) {
-    auto& stamp{stamps.emplace_back(std::vector<SubStamp>{})};
+    Stamp& stamp{stamps.emplace_back(std::vector<SubStamp>{})};
 
-    auto& sstamps{stamp.subStamps};
+    std::vector<SubStamp>& sstamps{stamp.subStamps};
 
     for(int j{0}; j < subStampCounts[i]; j++) {
       size_t offset{i * maxSStamps + j};
@@ -442,17 +442,17 @@ void moveSssToGpu(const std::vector<Stamp>& templateStamps,
                                   sizeof(u_int16_t) * mask.dataMask.size(),
                                   &mask.dataMask[0]);
 
-  std::vector<uint16_t> clMask(mask.dataMask.size());
-  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
-                                 sizeof(u_int16_t) * axis.first * axis.second,
-                                 &clMask[0]);
-  std::cout << "mask" << std::endl;
-  for(size_t i = 0; i < clMask.size(); i++) {
-    if(clMask[i] != mask.dataMask[i]) {
-      std::cout << "mask differs" << clMask[i] << " == " << mask.dataMask[i]
-                << std::endl;
-    }
-  }
+  // std::vector<uint16_t> clMask(mask.dataMask.size());
+  // clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
+  //                                sizeof(u_int16_t) * axis.first *
+  //                                axis.second, &clMask[0]);
+  // std::cout << "mask" << std::endl;
+  // for(size_t i = 0; i < clMask.size(); i++) {
+  //   if(clMask[i] != mask.dataMask[i]) {
+  //     std::cout << "mask differs" << clMask[i] << " == " << mask.dataMask[i]
+  //               << std::endl;
+  //   }
+  // }
 
   clData.tmpl.stampCount = templateStamps.size();
   clData.sci.stampCount = scienceStamps.size();
@@ -465,14 +465,18 @@ void moveSssToGpu(const std::vector<Stamp>& templateStamps,
 
 void moveStamps(const std::vector<Stamp>& stamps, ClStampsData& stampsData,
                 ClData& clData, const Arguments& args) {
+  cl::size_type maxSStamps(2 * args.maxKSStamps);
+
   // stamp coords
+  std::vector<int> coords(stamps.size() * maxSStamps * 2);
   for(size_t i = 0; i < stamps.size(); i++) {
     clData.queue.enqueueWriteBuffer(
         stampsData.stampCoords, CL_TRUE, sizeof(std::pair<int, int>) * i,
-        sizeof(std::pair<int, int>), &(stamps[i].coords.first));
+        sizeof(std::pair<int, int>), &stamps[i].coords.first);
   }
 
   // stamp sizes
+  std::vector<int> sizes(stamps.size() * 2);
   for(size_t i = 0; i < stamps.size(); i++) {
     clData.queue.enqueueWriteBuffer(
         stampsData.stampSizes, CL_TRUE, sizeof(std::pair<int, int>) * i,
@@ -497,9 +501,11 @@ void moveStamps(const std::vector<Stamp>& stamps, ClStampsData& stampsData,
   int index = 0;
   for(size_t i = 0; i < stamps.size(); i++) {
     for(size_t j = 0; j < stamps[i].subStamps.size(); j++) {
+      size_t offset{i * maxSStamps + j};
+
       clData.queue.enqueueWriteBuffer(
           stampsData.subStampCoords, CL_TRUE,
-          sizeof(std::pair<int, int>) * index, sizeof(std::pair<int, int>),
+          sizeof(std::pair<int, int>) * offset, sizeof(std::pair<int, int>),
           &stamps[i].subStamps[j].imageCoords.first);
       index++;
     }
@@ -508,97 +514,97 @@ void moveStamps(const std::vector<Stamp>& stamps, ClStampsData& stampsData,
   size_t subStampMaxCount{2 * args.maxKSStamps};
 
   // substamp count
-  std::vector<int> sizes(stamps.size());
+  std::vector<int> counts(stamps.size());
   for(size_t i = 0; i < stamps.size(); i++) {
-    sizes[i] = stamps[i].subStamps.size();
+    counts[i] = stamps[i].subStamps.size();
   }
-
-  clData.queue.enqueueWriteBuffer(stampsData.subStampCounts, CL_TRUE, 0,
-                                  sizeof(int) * sizes.size(), &sizes[0]);
+  uploadBuffer(counts, stampsData.subStampCounts, clData.queue);
 
   // verify
 
-  std::vector<std::pair<int, int>> clCoords(stamps.size());
-  clData.queue.enqueueReadBuffer(stampsData.stampCoords, CL_TRUE, 0,
-                                 sizeof(std::pair<int, int>) * clCoords.size(),
-                                 &clCoords[0]);
+  // std::vector<std::pair<int, int>> clCoords(stamps.size());
+  // clData.queue.enqueueReadBuffer(stampsData.stampCoords, CL_TRUE, 0,
+  //                                sizeof(std::pair<int, int>) *
+  //                                clCoords.size(), &clCoords[0]);
 
-  std::vector<double> clSkyEst(stamps.size());
-  clData.queue.enqueueReadBuffer(stampsData.stats.skyEsts, CL_TRUE, 0,
-                                 sizeof(cl_double) * clSkyEst.size(),
-                                 &clSkyEst[0]);
+  // std::vector<double> clSkyEst(stamps.size());
+  // clData.queue.enqueueReadBuffer(stampsData.stats.skyEsts, CL_TRUE, 0,
+  //                                sizeof(cl_double) * clSkyEst.size(),
+  //                                &clSkyEst[0]);
 
-  std::vector<double> clFwhm(stamps.size());
-  clData.queue.enqueueReadBuffer(stampsData.stats.fwhms, CL_TRUE, 0,
-                                 sizeof(double) * stamps.size(), &clFwhm[0]);
+  // std::vector<double> clFwhm(stamps.size());
+  // clData.queue.enqueueReadBuffer(stampsData.stats.fwhms, CL_TRUE, 0,
+  //                                sizeof(double) * stamps.size(), &clFwhm[0]);
 
-  cl::size_type maxSStamps(2 * args.maxKSStamps);
+  // std::vector<std::pair<int, int>> subStampCoords(maxSStamps *
+  //                                                 stampsData.stampCount);
+  // std::vector<double> subStampValues(maxSStamps * stampsData.stampCount);
+  // std::vector<int> subStampCounts(maxSStamps * stampsData.stampCount);
 
-  std::vector<std::pair<int, int>> subStampCoords(maxSStamps *
-                                                  stampsData.stampCount);
-  std::vector<double> subStampValues(maxSStamps * stampsData.stampCount);
-  std::vector<int> subStampCounts(maxSStamps * stampsData.stampCount);
+  // static constexpr int nStampBuffers{3};
+  // std::vector<cl::Event> readEvents(nStampBuffers);
+  // clData.queue.enqueueReadBuffer(
+  //     stampsData.subStampCoords, CL_TRUE, 0,
+  //     sizeof(std::pair<int, int>) * maxSStamps * stampsData.stampCount,
+  //     &subStampCoords[0]);
+  // clData.queue.enqueueReadBuffer(
+  //     stampsData.subStampValues, CL_TRUE, 0,
+  //     sizeof(double) * maxSStamps * stampsData.stampCount,
+  //     &subStampValues[0]);
+  // clData.queue.enqueueReadBuffer(
+  //     stampsData.subStampCounts, CL_TRUE, 0,
+  //     sizeof(int) * maxSStamps * stampsData.stampCount, &subStampCounts[0]);
 
-  static constexpr int nStampBuffers{3};
-  std::vector<cl::Event> readEvents(nStampBuffers);
-  clData.queue.enqueueReadBuffer(
-      stampsData.subStampCoords, CL_TRUE, 0,
-      sizeof(std::pair<int, int>) * maxSStamps * stampsData.stampCount,
-      &subStampCoords[0]);
-  clData.queue.enqueueReadBuffer(
-      stampsData.subStampValues, CL_TRUE, 0,
-      sizeof(double) * maxSStamps * stampsData.stampCount, &subStampValues[0]);
-  clData.queue.enqueueReadBuffer(
-      stampsData.subStampCounts, CL_TRUE, 0,
-      sizeof(int) * maxSStamps * stampsData.stampCount, &subStampCounts[0]);
+  // std::cout << "stampcoords" << std::endl;
+  // for(size_t i = 0; i < clCoords.size(); i++) {
+  //   if(clCoords[i] != stamps[i].coords) {
+  //     std::cout << clCoords[i].first << "-" << clCoords[i].second << " and "
+  //               << stamps[i].coords.first << "-" << stamps[i].coords.second
+  //               << " are not the same!!!!!!!!!!!" << i << "\n";
+  //   }
+  // }
 
-  std::cout << "stampcoords" << std::endl;
-  for(size_t i = 0; i < clCoords.size(); i++) {
-    if(clCoords[i] != stamps[i].coords) {
-      std::cout << clCoords[i].first << "-" << clCoords[i].second << " and "
-                << stamps[i].coords.first << "-" << stamps[i].coords.second
-                << " are not the same!!!!!!!!!!!" << i << "\n";
-    }
-  }
+  // std::cout << "skyest" << std::endl;
+  // for(size_t i = 0; i < clSkyEst.size(); i++) {
+  //   if(clSkyEst[i] != stamps[i].stats.skyEst) {
+  //     std::cout << clSkyEst[i] << "==" << stamps[i].stats.skyEst
+  //               << " are not the same " << i << "\n";
+  //   }
+  // }
 
-  std::cout << "skyest" << std::endl;
-  for(size_t i = 0; i < clSkyEst.size(); i++) {
-    if(clSkyEst[i] != stamps[i].stats.skyEst) {
-      std::cout << clSkyEst[i] << "==" << stamps[i].stats.skyEst
-                << " are not the same " << i << "\n";
-    }
-  }
+  // std::cout << "fwhm" << std::endl;
+  // for(size_t i = 0; i < clFwhm.size(); i++) {
+  //   if(clFwhm[i] != stamps[i].stats.fwhm) {
+  //     std::cout << clFwhm[i] << "==" << stamps[i].stats.fwhm
+  //               << " are not the same " << i << "\n";
+  //   }
+  // }
 
-  std::cout << "fwhm" << std::endl;
-  for(size_t i = 0; i < clFwhm.size(); i++) {
-    if(clFwhm[i] != stamps[i].stats.fwhm) {
-      std::cout << clFwhm[i] << "==" << stamps[i].stats.fwhm
-                << " are not the same " << i << "\n";
-    }
-  }
-
-  index = 0;
-  std::cout << "substamps " << std::endl;
-  for(size_t i = 0; i < stamps.size(); i++) {
-    if(subStampCounts[i] != stamps[i].subStamps.size()) {
-      std::cout << subStampCounts[i] << " == " << stamps[i].subStamps.size()
-                << " substamp sizes are not the same for index " << i
-                << std::endl;
-    } else {
-      for(size_t j = 0; j < stamps[i].subStamps.size(); j++) {
-        // if(subStampValues[index] != stamps[i].subStamps[j].val) {
-        //   std::cout << "substamp value not matching" << subStampValues[index]
-        //             << " == " << stamps[i].subStamps[j].val << std::endl;
-        // }
-        if(subStampCoords[index] != stamps[i].subStamps[j].imageCoords) {
-          std::cout << "substamp coords not matching"
-                    << subStampCoords[index].first << ","
-                    << subStampCoords[index].second
-                    << " == " << stamps[i].subStamps[j].imageCoords.first << ","
-                    << stamps[i].subStamps[j].imageCoords.second << std::endl;
-        }
-        index++;
-      }
-    }
-  }
+  // index = 0;
+  // std::cout << "substamps " << std::endl;
+  // for(size_t i = 0; i < stamps.size(); i++) {
+  //   if(subStampCounts[i] != stamps[i].subStamps.size()) {
+  //     std::cout << subStampCounts[i] << " == " << stamps[i].subStamps.size()
+  //               << " substamp sizes are not the same for index " << i
+  //               << std::endl;
+  //   } else {
+  //     for(size_t j = 0; j < stamps[i].subStamps.size(); j++) {
+  //       // if(subStampValues[index] != stamps[i].subStamps[j].val) {
+  //       //   std::cout << "substamp value not matching" <<
+  //       subStampValues[index]
+  //       //             << " == " << stamps[i].subStamps[j].val << std::endl;
+  //       // }
+  //       if(subStampCoords[index] != stamps[i].subStamps[j].imageCoords) {
+  //         std::cout << "substamp coords not matching"
+  //                   << subStampCoords[index].first << ","
+  //                   << subStampCoords[index].second
+  //                   << " == " << stamps[i].subStamps[j].imageCoords.first <<
+  //                   ","
+  //                   << stamps[i].subStamps[j].imageCoords.second <<
+  //                   std::endl;
+  //       }
+  //       index++;
+  //     }
+  //   }
+  // }
 }
