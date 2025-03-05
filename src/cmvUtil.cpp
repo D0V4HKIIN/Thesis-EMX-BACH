@@ -44,12 +44,6 @@ void fillStamps(std::vector<Stamp>& stamps,
    */
 
   // Convolve stamps on Y
-  std::vector<int> currentSubStamps(stampCount);
-  clData.queue.enqueueReadBuffer(clData.tmpl.currentSubStamps, CL_TRUE, 0,
-                                 sizeof(cl_int) * currentSubStamps.size(),
-                                 &currentSubStamps[0]);
-  std::copy(currentSubStamps.begin(), currentSubStamps.end(),
-            std::ostream_iterator<int>(std::cout));
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl_int, cl_int, cl_int, cl_int, cl_int>
       yConvFunc(clData.program, "convStampY");

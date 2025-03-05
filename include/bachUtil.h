@@ -50,7 +50,7 @@ cl_int findSStamps(const std::pair<cl_int, cl_int>& axis, const bool isTemplate,
 void removeEmptyStamps(const Arguments& args, ClStampsData& stampsData,
                        const ClData& clData);
 void identifySStamps(const std::pair<cl_int, cl_int>& axis,
-                     const Arguments& args, ClData& clData);
+                     const Arguments& args, const ClData& clData);
 void resetSStampSkipMask(const int w, const int h, const ClData& clData);
 void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
                      const ClData& clData, const Arguments& args);
@@ -83,6 +83,15 @@ template <typename T>
 void uploadBuffer(const std::vector<T>& v, cl::Buffer& buffer,
                   cl::CommandQueue& queue) {
   queue.enqueueWriteBuffer(buffer, CL_TRUE, 0, sizeof(T) * v.size(), v.data());
+}
+template <typename T>
+void printBuffer(const cl::Buffer& buffer, size_t size,
+                 cl::CommandQueue& queue) {
+  std::vector<T> v(size);
+  queue.enqueueReadBuffer(buffer, CL_TRUE, 0, sizeof(T) * size, v.data());
+
+  std::copy(v.begin(), v.end(), std::ostream_iterator<T>(std::cout, ","));
+  std::cout << std::endl;
 }
 
 /* CMV */

@@ -80,7 +80,7 @@ std::string toString(const ClData &c, std::pair<int, int> axis,
       << toString(stampCoords) << "\nsubcoords\n"
       << toString(subCoords) << "\nsubvalues\n"
       << toString(subValues) << "\nsubcounts\n"
-      << toString(subCounts) << "\ncurrectsubstamps\n"
+      << toString(subCounts) << "\ncurrentsubstamps\n"
       << "\nstampCount\n"
       << c.tmpl.stampCount << std::endl;
 
@@ -168,7 +168,8 @@ int main(int argc, const char *argv[]) {
                  sizeof(cl_double) * args.stampsx * args.stampsy),
       cl::Buffer(clData.context, CL_MEM_READ_WRITE,
                  sizeof(cl_double) * args.stampsx * args.stampsy),
-      cl::Buffer(),
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_double) * args.stampsx * args.stampsy),
       cl::Buffer(
           clData.context, CL_MEM_READ_WRITE,
           sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy),
@@ -190,7 +191,8 @@ int main(int argc, const char *argv[]) {
                  sizeof(cl_double) * args.stampsx * args.stampsy),
       cl::Buffer(clData.context, CL_MEM_READ_WRITE,
                  sizeof(cl_double) * args.stampsx * args.stampsy),
-      cl::Buffer(),
+      cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                 sizeof(cl_double) * args.stampsx * args.stampsy),
       cl::Buffer(
           clData.context, CL_MEM_READ_WRITE,
           sizeof(cl_int2) * subStampMaxCount * args.stampsx * args.stampsy),
@@ -242,14 +244,14 @@ int main(int argc, const char *argv[]) {
     // moveSssToGpu(templateStamps, sciStamps, ImageMask{templateImg.axis},
     // clData,
     //              templateImg.axis, args);
-    std::vector<int> currentSubStamps(templateStamps.size());
-    clData.queue.enqueueReadBuffer(clData.tmpl.currentSubStamps, CL_TRUE, 0,
-                                   sizeof(cl_int) * templateStamps.size(),
-                                   &currentSubStamps[0]);
-    std::copy(currentSubStamps.begin(), currentSubStamps.end(),
-              std::ostream_iterator<int>(std::cout));
+    // std::vector<int> currentSubStamps(templateStamps.size());
+    // clData.queue.enqueueReadBuffer(clData.tmpl.currentSubStamps, CL_TRUE, 0,
+    //                                sizeof(cl_int) * templateStamps.size(),
+    //                                &currentSubStamps[0]);
+    // std::copy(currentSubStamps.begin(), currentSubStamps.end(),
+    //           std::ostream_iterator<int>(std::cout));
 
-    std::cout << toString(clData, templateImg.axis, args) << std::endl;
+    // std::cout << toString(clData, templateImg.axis, args) << std::endl;
   } else if(args.sssMode == "mp") {
     // read mask that ini created
     ImageMask mask{templateImg.axis};
@@ -267,14 +269,14 @@ int main(int argc, const char *argv[]) {
     double copy_end = omp_get_wtime();
     std::cout << "copy to gpu: " << copy_end - copy_start << std::endl;
 
-    std::vector<int> currentSubStamps(templateStamps.size());
-    clData.queue.enqueueReadBuffer(clData.tmpl.currentSubStamps, CL_TRUE, 0,
-                                   sizeof(cl_int) * templateStamps.size(),
-                                   &currentSubStamps[0]);
-    std::copy(currentSubStamps.begin(), currentSubStamps.end(),
-              std::ostream_iterator<int>(std::cout));
+    // std::vector<int> currentSubStamps(templateStamps.size());
+    // clData.queue.enqueueReadBuffer(clData.tmpl.currentSubStamps, CL_TRUE, 0,
+    //                                sizeof(cl_int) * templateStamps.size(),
+    //                                &currentSubStamps[0]);
+    // std::copy(currentSubStamps.begin(), currentSubStamps.end(),
+    //           std::ostream_iterator<int>(std::cout));
 
-    std::cout << toString(clData, templateImg.axis, args) << std::endl;
+    // std::cout << toString(clData, templateImg.axis, args) << std::endl;
 
   } else if(args.sssMode == "compare") {
     std::vector<Stamp> templateStampsCl{};

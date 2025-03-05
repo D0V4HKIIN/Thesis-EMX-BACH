@@ -7,7 +7,7 @@
 #include "mathUtil.h"
 
 void identifySStamps(const std::pair<cl_int, cl_int>& axis,
-                     const Arguments& args, ClData& clData) {
+                     const Arguments& args, const ClData& clData) {
   std::cout << "Identifying sub-stamps..." << std::endl;
 
   if(args.verbose) std::cout << "calcStats (template)" << std::endl;
