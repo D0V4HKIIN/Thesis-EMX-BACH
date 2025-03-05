@@ -5,23 +5,21 @@
 #include "datatypeUtil.h"
 
 struct ClStampsData {
-  cl::Buffer stampCoords;  // (x, y) coordinates // changed
-  cl::Buffer stampSizes;   // changed
+  cl::Buffer stampCoords;  // (x, y) coordinates
+  cl::Buffer stampSizes;
   struct {
-    cl::Buffer skyEsts;  // changed
-    cl::Buffer fwhms;    // changed
+    cl::Buffer skyEsts;
+    cl::Buffer fwhms;
   } stats;
 
-  cl::Buffer currentSubStamps;  // filled with 0 in removeEmptyStamps, then used
-                                // in fillstamps (cmv)
-  cl::Buffer subStampCoords;    // (x, y) coordinates //changed // needed by
-                                // fillstamps (cmv)
-  cl::Buffer subStampValues;    // changed // never referenced later?
-  cl::Buffer subStampCounts;    // changed // needed by fillstamps (cmv)
+  cl::Buffer currentSubStamps;
+  cl::Buffer subStampCoords;  // (x, y) coordinates
+  cl::Buffer subStampValues;  // only used in sss
+  cl::Buffer subStampCounts;
   cl::Buffer w;
   cl::Buffer q;
   cl::Buffer b;
-  unsigned int stampCount;  // changed (?)
+  unsigned int stampCount;
 };
 
 struct ClData {
@@ -32,7 +30,7 @@ struct ClData {
 
   cl::Buffer tImgBuf;
   cl::Buffer sImgBuf;
-  cl::Buffer maskBuf;  // changed
+  cl::Buffer maskBuf;
   cl::Buffer convImg;
 
   struct {
@@ -61,8 +59,8 @@ struct ClData {
   int wRows;
   int wColumns;
 
-  ClStampsData tmpl;  // changed
-  ClStampsData sci;   // changed
+  ClStampsData tmpl;
+  ClStampsData sci;
 };
 
 void init(Image &templateImg, Image &scienceImg, ClData &clData,

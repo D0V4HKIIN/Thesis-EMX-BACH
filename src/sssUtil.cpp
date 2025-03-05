@@ -436,30 +436,16 @@ void readFinalStamps(std::vector<Stamp>& stamps, const ClStampsData& stampsData,
 void moveSssToGpu(const std::vector<Stamp>& templateStamps,
                   const std::vector<Stamp>& scienceStamps,
                   const ImageMask& mask, ClData& clData,
-                  const std::pair<int, int>& axis, const Arguments& args) {
+                  const Arguments& args) {
   // mask buf
   clData.queue.enqueueWriteBuffer(clData.maskBuf, CL_TRUE, 0,
                                   sizeof(u_int16_t) * mask.dataMask.size(),
                                   &mask.dataMask[0]);
 
-  // std::vector<uint16_t> clMask(mask.dataMask.size());
-  // clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
-  //                                sizeof(u_int16_t) * axis.first *
-  //                                axis.second, &clMask[0]);
-  // std::cout << "mask" << std::endl;
-  // for(size_t i = 0; i < clMask.size(); i++) {
-  //   if(clMask[i] != mask.dataMask[i]) {
-  //     std::cout << "mask differs" << clMask[i] << " == " << mask.dataMask[i]
-  //               << std::endl;
-  //   }
-  // }
-
   clData.tmpl.stampCount = templateStamps.size();
   clData.sci.stampCount = scienceStamps.size();
 
-  std::cout << "copying template data" << std::endl;
   moveStamps(templateStamps, clData.tmpl, clData, args);
-  std::cout << "copying science data" << std::endl;
   moveStamps(scienceStamps, clData.sci, clData, args);
 }
 
@@ -510,8 +496,6 @@ void moveStamps(const std::vector<Stamp>& stamps, ClStampsData& stampsData,
       index++;
     }
   }
-
-  size_t subStampMaxCount{2 * args.maxKSStamps};
 
   // substamp count
   std::vector<int> counts(stamps.size());

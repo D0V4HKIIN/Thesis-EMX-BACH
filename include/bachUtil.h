@@ -75,10 +75,10 @@ void computeStamps(const int w, const int h, const Image& templateImg,
                    const Arguments& args);
 void moveSssToGpu(const std::vector<Stamp>& templateStamps,
                   const std::vector<Stamp>& scienceStamps,
-                  const ImageMask& mask, ClData& clData,
-                  const std::pair<int, int>& axis, const Arguments& args);
+                  const ImageMask& mask, ClData& clData, const Arguments& args);
 void moveStamps(const std::vector<Stamp>& stamps, ClStampsData& stampsData,
                 ClData& clData, const Arguments& args);
+
 template <typename T>
 void uploadBuffer(const std::vector<T>& v, cl::Buffer& buffer,
                   cl::CommandQueue& queue) {

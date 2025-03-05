@@ -13,80 +13,6 @@
 #include "datatypeUtil.h"
 #include "fitsUtil.h"
 
-std::ostream &operator<<(std::ostream &os, const std::pair<int, int> &p) {
-  os << p.first << ":" << p.second;
-  return os;
-}
-
-template <typename T>
-std::string toString(const std::vector<T> &v) {
-  std::ostringstream oss;
-  for(size_t i = 0; i < v.size(); i++) {
-    oss << v[i] << ",";
-  }
-
-  return oss.str();
-}
-
-std::string toString(const ClData &c, std::pair<int, int> axis,
-                     const Arguments &args) {
-  std::vector<std::pair<int, int>> stampSizes(c.tmpl.stampCount);
-  c.queue.enqueueReadBuffer(c.tmpl.stampSizes, CL_TRUE, 0,
-                            sizeof(std::pair<int, int>) * stampSizes.size(),
-                            &stampSizes[0]);
-
-  std::vector<std::pair<int, int>> stampCoords(c.tmpl.stampCount);
-  c.queue.enqueueReadBuffer(c.tmpl.stampCoords, CL_TRUE, 0,
-                            sizeof(std::pair<int, int>) * stampCoords.size(),
-                            &stampCoords[0]);
-
-  std::vector<double> skyEst(c.tmpl.stampCount);
-  c.queue.enqueueReadBuffer(c.tmpl.stats.skyEsts, CL_TRUE, 0,
-                            sizeof(cl_double) * skyEst.size(), &skyEst[0]);
-
-  std::vector<double> fwhm(c.tmpl.stampCount);
-  c.queue.enqueueReadBuffer(c.tmpl.stats.fwhms, CL_TRUE, 0,
-                            sizeof(cl_double) * fwhm.size(), &fwhm[0]);
-
-  std::vector<uint16_t> mask(axis.first * axis.second);
-  c.queue.enqueueReadBuffer(c.maskBuf, CL_TRUE, 0,
-                            sizeof(u_int16_t) * axis.first * axis.second,
-                            &mask[0]);
-
-  cl::size_type maxSStamps(2 * args.maxKSStamps);
-
-  std::vector<std::pair<int, int>> subCoords(maxSStamps * c.tmpl.stampCount);
-  std::vector<double> subValues(maxSStamps * c.tmpl.stampCount);
-  std::vector<int> subCounts(maxSStamps * c.tmpl.stampCount);
-
-  static constexpr int nStampBuffers{3};
-  std::vector<cl::Event> readEvents(nStampBuffers);
-  c.queue.enqueueReadBuffer(
-      c.tmpl.subStampCoords, CL_TRUE, 0,
-      sizeof(std::pair<int, int>) * maxSStamps * c.tmpl.stampCount,
-      &subCoords[0]);
-  c.queue.enqueueReadBuffer(c.tmpl.subStampValues, CL_TRUE, 0,
-                            sizeof(double) * maxSStamps * c.tmpl.stampCount,
-                            &subValues[0]);
-  c.queue.enqueueReadBuffer(c.tmpl.subStampCounts, CL_TRUE, 0,
-                            sizeof(int) * maxSStamps * c.tmpl.stampCount,
-                            &subCounts[0]);
-
-  std::ostringstream oss;
-  oss << "\nskyEst\n"
-      << toString(skyEst) << "\nfwhm\n"
-      << toString(fwhm) << "\nstampSizes\n"
-      << toString(stampSizes) << "\nstampCoords\n"
-      << toString(stampCoords) << "\nsubcoords\n"
-      << toString(subCoords) << "\nsubvalues\n"
-      << toString(subValues) << "\nsubcounts\n"
-      << toString(subCounts) << "\ncurrentsubstamps\n"
-      << "\nstampCount\n"
-      << c.tmpl.stampCount << std::endl;
-
-  return oss.str();
-}
-
 int main(int argc, const char *argv[]) {
   /* ===== INI ===== */
   auto p1 = std::chrono::steady_clock::now();
@@ -103,8 +29,6 @@ int main(int argc, const char *argv[]) {
     return 1;
   }
 
-  // such a lie!!! it's just creating the struct. The images are read in init()
-  std::cout << "\nReading in images..." << std::endl;
   Image templateImg{args.templateName};
   Image scienceImg{args.scienceName};
   templateImg.path = scienceImg.path = args.inputPath + "/";
@@ -127,6 +51,7 @@ int main(int argc, const char *argv[]) {
   }
 
   // Read input images
+  std::cout << "\nReading in images..." << std::endl;
   readImage(templateImg, args);
   readImage(scienceImg, args);
 
@@ -241,17 +166,6 @@ int main(int argc, const char *argv[]) {
   if(args.sssMode == "cl") {
     sssCl(templateImg.axis, templateStamps, sciStamps, args, clData);
 
-    // moveSssToGpu(templateStamps, sciStamps, ImageMask{templateImg.axis},
-    // clData,
-    //              templateImg.axis, args);
-    // std::vector<int> currentSubStamps(templateStamps.size());
-    // clData.queue.enqueueReadBuffer(clData.tmpl.currentSubStamps, CL_TRUE, 0,
-    //                                sizeof(cl_int) * templateStamps.size(),
-    //                                &currentSubStamps[0]);
-    // std::copy(currentSubStamps.begin(), currentSubStamps.end(),
-    //           std::ostream_iterator<int>(std::cout));
-
-    // std::cout << toString(clData, templateImg.axis, args) << std::endl;
   } else if(args.sssMode == "mp") {
     // read mask that ini created
     ImageMask mask{templateImg.axis};
@@ -264,28 +178,22 @@ int main(int argc, const char *argv[]) {
     sssMp(templateStamps, templateImg, sciStamps, scienceImg, mask, args);
 
     double copy_start = omp_get_wtime();
-    moveSssToGpu(templateStamps, sciStamps, mask, clData, templateImg.axis,
-                 args);
+    moveSssToGpu(templateStamps, sciStamps, mask, clData, args);
     double copy_end = omp_get_wtime();
-    std::cout << "copy to gpu: " << copy_end - copy_start << std::endl;
-
-    // std::vector<int> currentSubStamps(templateStamps.size());
-    // clData.queue.enqueueReadBuffer(clData.tmpl.currentSubStamps, CL_TRUE, 0,
-    //                                sizeof(cl_int) * templateStamps.size(),
-    //                                &currentSubStamps[0]);
-    // std::copy(currentSubStamps.begin(), currentSubStamps.end(),
-    //           std::ostream_iterator<int>(std::cout));
-
-    // std::cout << toString(clData, templateImg.axis, args) << std::endl;
+    if(args.verboseTime) {
+      std::cout << "copy to gpu: " << copy_end - copy_start << " seconds"
+                << std::endl;
+    }
 
   } else if(args.sssMode == "compare") {
+    // used for debug
     std::vector<Stamp> templateStampsCl{};
     std::vector<Stamp> sciStampsCl{};
 
     std::vector<Stamp> templateStampsMp{};
     std::vector<Stamp> sciStampsMp{};
 
-    // read mask before calling sssCl bc sssCl modifies the mask...
+    // read mask before calling sssCl bc sssCl modifies the mask
     ImageMask mask{templateImg.axis};
 
     clData.queue.enqueueReadBuffer(
@@ -342,7 +250,6 @@ int main(int argc, const char *argv[]) {
     }
 
     clData.tmpl.stampCount = args.stampsx * args.stampsy;
-    std::cout << toString(clData, templateImg.axis, args) << std::endl;
 
     std::cout << "skyest" << std::endl;
     for(size_t i = 0; i < templateStampsMp.size(); i++) {

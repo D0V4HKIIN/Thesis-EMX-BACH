@@ -129,10 +129,6 @@ struct SubStamp {
 struct StampStats {
   double skyEst{};  // Mode of stamp
   double fwhm{};    // Middle part value diff (full width half max)
-  // not used?
-  // double norm{};
-  // double diff{};
-  // double chi2{};
 };
 
 struct Stamp {
