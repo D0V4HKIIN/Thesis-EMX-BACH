@@ -10,15 +10,20 @@ void identifySStamps(const std::pair<cl_int, cl_int>& axis,
                      const Arguments& args, const ClData& clData) {
   std::cout << "Identifying sub-stamps..." << std::endl;
 
+  double p1 = omp_get_wtime();
   if(args.verbose) std::cout << "calcStats (template)" << std::endl;
   calcStats(axis, args, clData.tImgBuf, clData.tmpl, clData);
   if(args.verbose) std::cout << "calcStats (science)" << std::endl;
   calcStats(axis, args, clData.sImgBuf, clData.sci, clData);
+  double p2 = omp_get_wtime();
+  std::cout << p2 - p1 << "calc stats" << std::endl;
 
   if(args.verbose) std::cout << "findSStamps (template)" << std::endl;
   findSStamps(axis, true, args, clData.tImgBuf, clData.tmpl, clData);
   if(args.verbose) std::cout << "findSStamps (science)" << std::endl;
   findSStamps(axis, false, args, clData.sImgBuf, clData.sci, clData);
+  double p3 = omp_get_wtime();
+  std::cout << p3 - p2 << "find sub stamps" << std::endl;
 }
 
 void identifySStampsMp(Stamp& templStamp, const Image& templImage,
@@ -66,6 +71,7 @@ void createStampsMp(const int stampX, const int stampY, const int w,
 cl_int findSStamps(const std::pair<cl_int, cl_int>& axis, const bool isTemplate,
                    const Arguments& args, const cl::Buffer& imgBuf,
                    const ClStampsData& stampsData, const ClData& clData) {
+  double start = omp_get_wtime();
   auto [imgW, imgH] = axis;
 
   cl::size_type nStamps{static_cast<cl::size_type>(args.stampsx) *
@@ -97,6 +103,8 @@ cl_int findSStamps(const std::pair<cl_int, cl_int>& axis, const bool isTemplate,
                     cl_ushort, cl_ushort, cl_ushort, cl::LocalSpaceArg,
                     cl::LocalSpaceArg>
       findSStampsFunc{clData.program, "findSubStamps"};
+  double p1 = omp_get_wtime();
+  std::cout << p1 - start << " findsstamps ini" << std::endl;
 
   cl::Event findSStampsEvent{findSStampsFunc(
       eargsFindSStamps, imgBuf, clData.maskBuf, stampsData.stampCoords,
@@ -110,6 +118,9 @@ cl_int findSStamps(const std::pair<cl_int, cl_int>& axis, const bool isTemplate,
       cl::Local(sizeof(cl_double) * maxSStamps * localSize))};
 
   findSStampsEvent.wait();
+
+  double p2 = omp_get_wtime();
+  std::cout << p2 - p1 << " findsstamps kernel" << std::endl;
 
   if(args.verbose) {
     std::vector<cl_int> sstampCounts(nStamps);
@@ -126,6 +137,8 @@ cl_int findSStamps(const std::pair<cl_int, cl_int>& axis, const bool isTemplate,
       }
     }
   }
+  double end = omp_get_wtime();
+  std::cout << end - p2 << " readback" << std::endl;
   return 0;
 }
 

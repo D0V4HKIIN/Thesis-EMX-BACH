@@ -1,5 +1,7 @@
 #include "bach.h"
 
+#include <omp.h>
+
 #include <CL/opencl.hpp>
 #include <iostream>
 #include <iterator>
@@ -40,21 +42,29 @@ void sssCl(const std::pair<cl_int, cl_int> &axis,
   templateStamps.reserve(args.stampsx * args.stampsy);
   sciStamps.reserve(args.stampsx * args.stampsy);
 
+  double start = omp_get_wtime();
   createStamps(w, h, clData.tmpl, clData, args);
   createStamps(w, h, clData.sci, clData, args);
   if(args.verbose) {
     std::cout << "Stamps created for template image" << std::endl;
     std::cout << "Stamps created for science image" << std::endl;
   }
+  double p1 = omp_get_wtime();
+
+  std::cout << p1 - start << " create stamps" << std::endl;
 
   /* == Check Template Stamps  == */
 
   identifySStamps(axis, args, clData);
+  double p2 = omp_get_wtime();
+  std::cout << p2 - p1 << " identify sub stamps" << std::endl;
 
   int oldCount = args.stampsx * args.stampsy;
   removeEmptyStamps(args, clData.tmpl, clData);
   removeEmptyStamps(args, clData.sci, clData);
 
+  double p3 = omp_get_wtime();
+  std::cout << p3 - p2 << " remove emtpy stamps" << std::endl;
   double filledTempl{static_cast<double>(clData.tmpl.stampCount) / oldCount};
   double filledScience{static_cast<double>(clData.sci.stampCount) / oldCount};
 
@@ -66,9 +76,8 @@ void sssCl(const std::pair<cl_int, cl_int> &axis,
   }
 
   if(filledTempl < 0.1 || filledScience < 0.1) {
-    if(args.verbose)
-      std::cout << "Not enough substamps found in images, "
-                << "trying again with lower thresholds..." << std::endl;
+    std::cout << "Not enough substamps found in images, "
+              << "trying again with lower thresholds..." << std::endl;
     exit(-1);
     // args.threshLow *= 0.5;
 
@@ -132,9 +141,8 @@ void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
   // TODO: retry if not enough stamps have a substamp
   // this is not finished!!
   if(filledTemplate < 0.1 || filledScience < 0.1) {
-    if(args.verbose)
-      std::cout << "Not enough substamps found in images, "
-                << "trying again with lower thresholds..." << std::endl;
+    std::cout << "Not enough substamps found in images, "
+              << "trying again with lower thresholds..." << std::endl;
     exit(-1);
     // args.threshLow *= 0.5;
 

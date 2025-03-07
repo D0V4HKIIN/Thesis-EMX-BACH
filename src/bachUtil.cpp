@@ -191,6 +191,8 @@ void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
+
+  double start = omp_get_wtime();
   auto&& [imgW, imgH] = axis;
 
   cl::size_type nStamps{
@@ -272,18 +274,29 @@ void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
                     cl_double>
       histogramFunc(clData.program, "createHistogram");
 
+  double p1 = omp_get_wtime();
+  std::cout << start - p1 << " calcstats init" << std::endl;
   cl::Event sampleEvent = sampleStampFunc(
       eargsSample, imgBuf, clData.maskBuf, stampsData.stampCoords,
       stampsData.stampSizes, samples, sampleCounts, imgW, nSamples);
   sampleEvent.wait();
 
+  double p2 = omp_get_wtime();
+  std::cout << p1 - p2 << " sampling" << std::endl;
+
   cl::Event resetEvent =
       resetGoodPixelCountsFunc(eargsResetGoodPixelCounts, goodPixelCounts);
   resetEvent.wait();
 
+  double p3 = omp_get_wtime();
+  std::cout << p2 - p3 << " reset" << std::endl;
+
   cl::Event padEvent = padFunc(eargsPadSamples, samples, paddedSamples,
                                nSamples, paddedNSamples);
   padEvent.wait();
+
+  double p4 = omp_get_wtime();
+  std::cout << p3 - p4 << " padding" << std::endl;
 
   cl::Event sortEvent;
   for(cl_int k = 2; k <= paddedNSamples;
@@ -298,10 +311,16 @@ void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
     }
   }
 
+  double p5 = omp_get_wtime();
+  std::cout << p4 - p5 << " sorting" << std::endl;
+
   cl::Event maskEvent =
       maskFunc(eargsMask, imgBuf, clData.maskBuf, stampsData.stampCoords,
                goodPixels, goodPixelCounts, args.fStampWidth, imgW, imgH);
   maskEvent.wait();
+
+  double p6 = omp_get_wtime();
+  std::cout << p5 - p6 << " masking" << std::endl;
 
   std::vector<cl_int> cpuGoodPixelCounts(nStamps);
   std::vector<cl_double> cpuMeans(nStamps);
@@ -311,7 +330,10 @@ void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
                                  sizeof(cl_int) * cpuGoodPixelCounts.size(),
                                  &cpuGoodPixelCounts[0]);
 
-  for(size_t stampIdx{0}; stampIdx < nStamps; stampIdx++) {
+  // #pragma omp parallel for default(none)                              \
+//     shared(nStamps, cpuGoodPixelCounts, nPix, goodPixels, cpuMeans, \
+//                cpuInvStdDevs, clData, args)
+  for(size_t stampIdx = 0; stampIdx < nStamps; stampIdx++) {
     int goodPixelCount{cpuGoodPixelCounts[stampIdx]};
 
     // sigma clip of maskedStamp to get mean and sd.
@@ -329,6 +351,9 @@ void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
   clData.queue.enqueueWriteBuffer(
       invStdDevs, CL_TRUE, 0, sizeof(cl_double) * nStamps, &cpuInvStdDevs[0]);
 
+  double p7 = omp_get_wtime();
+  std::cout << p6 - p7 << " sigmaclipping" << std::endl;
+
   cl::Event histogramEvent = histogramFunc(
       eargsHistogram, imgBuf, clData.maskBuf, stampsData.stampCoords,
       stampsData.stampSizes, means, invStdDevs, paddedSamples, sampleCounts,
@@ -336,6 +361,8 @@ void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
       nStamps, nSamples, paddedNSamples, args.iqRange, args.sigClipAlpha);
 
   histogramEvent.wait();
+  double end = omp_get_wtime();
+  std::cout << p7 - end << " histogram" << std::endl;
 }
 
 #define M1 259200
