@@ -321,6 +321,7 @@ def main(args):
             generate = True
         elif arg == "--cl":
             sssMode = "cl"
+            print("using sssMode cl")
         else:
             print(f"{color_print.RED}Unrecognized flag: {arg}")
             print()
