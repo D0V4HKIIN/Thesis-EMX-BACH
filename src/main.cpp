@@ -180,10 +180,6 @@ int main(int argc, const char *argv[]) {
     double copy_start = omp_get_wtime();
     moveSssToGpu(templateStamps, sciStamps, mask, clData, args);
     double copy_end = omp_get_wtime();
-    if(args.verboseTime) {
-      std::cout << "copy to gpu: " << copy_end - copy_start << " seconds"
-                << std::endl;
-    }
 
   } else if(args.sssMode == "compare") {
     // used for debug
