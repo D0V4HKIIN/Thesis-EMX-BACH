@@ -13,16 +13,37 @@ FLAGS = $(CXXFLAGS) $(RELEASEFLAGS)
 
 LOADLIBES  = -lOpenCL -lCCfits -lcfitsio -fopenmp
 
+PROFILERLIBES = -Wl,--no-as-needed,-lprofiler,--as-needed
+
 BIN = main.o argsUtil.o bach.o bachUtil.o cdkscUtil.o clUtil.o cmvUtil.o fitsUtil.o sssUtil.o
 
 all: $(BIN)
 	$(CXX) $(FLAGS) -o EMXBACH $(BIN) $(LOADLIBES)
 	rm -f *.o
 
+# requires google perftools (libgoogle-perftools-dev in ubuntu packages)
+# https://gperftools.github.io/gperftools/cpuprofile.html
+profile: override LOADLIBES += $(PROFILERLIBES)
+profile: $(BIN)
+	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -o EMXBACH $(BIN) $(LOADLIBES)
+	rm -f *.o
+
+debugprofile: override LOADLIBES += $(PROFILERLIBES)
+debugprofile: override FLAGS = $(CXXFLAGS) $(DEBUGFLAGS)
+debugprofile: $(BIN)
+	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -o EMXBACH $(BIN) $(LOADLIBES)
+	rm -f *.o
+
 debug: override FLAGS = $(CXXFLAGS) $(DEBUGFLAGS)
 debug:	$(BIN)
 	$(CXX) $(FLAGS) $(DEBUGFLAGS) -o EMXBACH $(BIN) $(LOADLIBES)
 	rm -f *.o
+
+SHELL := /bin/bash
+test:
+	cp EMXBACH bin/emxbach/emxbach
+	source ./tools/venv/bin/activate &&\
+	python ./tools/run_test.py
 
 main.o: $(SRC_DIR)/main.cpp
 	$(CXX) $(FLAGS) $(LOADLIBES) -c $(SRC_DIR)/main.cpp
