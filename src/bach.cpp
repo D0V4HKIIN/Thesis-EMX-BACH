@@ -334,25 +334,32 @@ double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg,
 
   // Convolution kernels generated beforehand since we only need on per
   // kernelsize.
-  std::vector<cl_double> convKernels{};
+  size_t kernelSize = args.fKernelWidth * args.fKernelWidth;
   int xSteps = std::ceil(imgSize.first / double(args.fKernelWidth));
   int ySteps = std::ceil(imgSize.second / double(args.fKernelWidth));
+  std::vector<cl_double> convKernels(kernelSize * xSteps * ySteps);
+
+#pragma omp parallel for default(none)                                   \
+    shared(args, xSteps, ySteps, imgSize, convolutionKernel, kernelSize, \
+               convKernels)
   for(int yStep = 0; yStep < ySteps; yStep++) {
     for(int xStep = 0; xStep < xSteps; xStep++) {
-      makeKernel(
-          convolutionKernel, imgSize,
-          xStep * args.fKernelWidth + args.hKernelWidth + args.hKernelWidth,
-          yStep * args.fKernelWidth + args.hKernelWidth + args.hKernelWidth,
-          args);
-      convKernels.insert(convKernels.end(),
-                         convolutionKernel.currKernel.begin(),
-                         convolutionKernel.currKernel.end());
+      std::vector<double> currKernel(args.fKernelWidth * args.fKernelWidth);
+      makeKernel(convolutionKernel, currKernel, imgSize,
+                 xStep * args.fKernelWidth + 2 * args.hKernelWidth,
+                 yStep * args.fKernelWidth + 2 * args.hKernelWidth, args);
+
+      size_t index = (xStep + yStep * xSteps) * kernelSize;
+      // false sharing could occur here but i think it is quite rare
+      std::copy(currKernel.begin(), currKernel.end(),
+                convKernels.begin() + index);
     }
   }
 
+  std::vector<double> currKernel(args.fKernelWidth * args.fKernelWidth);
   // Used to normalize the result since the kernel sum is not always 1.
-  double kernSum = makeKernel(convolutionKernel, imgSize, imgSize.first / 2,
-                              imgSize.second / 2, args);
+  double kernSum = makeKernel(convolutionKernel, currKernel, imgSize,
+                              imgSize.first / 2, imgSize.second / 2, args);
   double invKernSum = 1.0 / kernSum;
 
   if(args.verbose) {
@@ -360,54 +367,10 @@ double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg,
               << imgSize.second / 2 << "): " << kernSum << std::endl;
   }
 
-  // Declare all the buffers which will be need in opencl operations.
-  cl::Buffer convMaskBuf(clData.context, CL_MEM_READ_ONLY,
-                         sizeof(cl_ushort) * w * h);
-  cl::Buffer kernBuf(clData.context, CL_MEM_READ_ONLY,
-                     sizeof(cl_double) * convKernels.size());
+  convCl(w, h, convKernels, xSteps, scaleConv, invKernSum, convImg, args,
+         clData);
 
-  // Write necessary data for convolution
-  clData.queue.enqueueWriteBuffer(kernBuf, CL_TRUE, 0,
-                                  sizeof(cl_double) * convKernels.size(),
-                                  convKernels.data());
-
-  // Create convolution mask
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double>
-      createMaskFunc(clData.program, "createConvMask");
-  cl::EnqueueArgs createMaskEargs(clData.queue, cl::NDRange(w, h));
-  cl::Event createMaskEvent =
-      createMaskFunc(createMaskEargs, clData.tImgBuf, convMaskBuf, w,
-                     args.threshHigh, args.threshLow);
-
-  createMaskEvent.wait();
-
-  // Convolve
-  cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl::Buffer, cl::Buffer,
-                    cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int,
-                    cl_int, cl_double>
-      convFunc(clData.program, "conv");
-  cl::EnqueueArgs eargs(clData.queue, cl::NDRange(w * h));
-  cl::Event convEvent = convFunc(
-      eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, clData.convImg,
-      convMaskBuf, clData.maskBuf, clData.kernel.solution, w, h,
-      args.backgroundOrder, (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1,
-      scaleConv ? invKernSum : 1.0);
-  convEvent.wait();
-
-  // Transfer convoluted image back to CPU
-  clData.queue.enqueueReadBuffer(clData.convImg, CL_TRUE, 0,
-                                 sizeof(cl_double) * w * h, &convImg);
-
-  // Mask after convolve
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double>
-      maskAfterFunc(clData.program, "maskAfterConv");
-  cl::EnqueueArgs maskAfterEargs(clData.queue, cl::NDRange(w, h));
-  cl::Event maskAfterEvent =
-      maskAfterFunc(maskAfterEargs, clData.sImgBuf, clData.maskBuf, w,
-                    args.threshHigh, args.threshLow);
-
-  maskAfterEvent.wait();
-
+  std::cout << "a" << std::endl;
   return kernSum;
 }
 

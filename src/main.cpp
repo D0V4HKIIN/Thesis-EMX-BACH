@@ -177,9 +177,7 @@ int main(int argc, const char *argv[]) {
 
     sssMp(templateStamps, templateImg, sciStamps, scienceImg, mask, args);
 
-    double copy_start = omp_get_wtime();
     moveSssToGpu(templateStamps, sciStamps, mask, clData, args);
-    double copy_end = omp_get_wtime();
 
   } else if(args.sssMode == "compare") {
     // used for debug

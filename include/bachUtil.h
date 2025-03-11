@@ -38,8 +38,12 @@ void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
 double makeKernel(const cl::Buffer& kernel, const cl::Buffer& kernSolution,
                   const std::pair<cl_int, cl_int>& imgSize, const int x,
                   const int y, const Arguments& args, const ClData& clData);
-double makeKernel(Kernel& kern, const std::pair<cl_int, cl_int>& imgSize,
-                  const int x, const int y, const Arguments& args);
+double makeKernel(const Kernel& kern, std::vector<double>& currKernel,
+                  const std::pair<cl_int, cl_int>& imgSize, const int x,
+                  const int y, const Arguments& args);
+void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
+            const int xSteps, const bool scaleConv, const double invKernSum,
+            Image& convImg, const Arguments& args, ClData& clData);
 
 /* SSS for OpenCl*/
 void createStamps(const int w, const int h, ClStampsData& stampsData,

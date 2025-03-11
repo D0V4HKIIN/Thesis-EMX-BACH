@@ -791,8 +791,9 @@ double makeKernel(const cl::Buffer& kernel, const cl::Buffer& kernSolution,
   return sumKernel;
 }
 
-double makeKernel(Kernel& kern, const std::pair<cl_int, cl_int>& imgSize,
-                  const int x, const int y, const Arguments& args) {
+double makeKernel(const Kernel& kern, std::vector<double>& currKernel,
+                  const std::pair<cl_int, cl_int>& imgSize, const int x,
+                  const int y, const Arguments& args) {
   /*
    * Calculates the kernel for a certain pixel, need finished kernelSol.
    */
@@ -817,17 +818,77 @@ double makeKernel(Kernel& kern, const std::pair<cl_int, cl_int>& imgSize,
   }
   kernCoeffs[0] = kern.solution[1];
 
-  for(int i = 0; i < args.fKernelWidth * args.fKernelWidth; i++) {
-    kern.currKernel[i] = 0.0;
-  }
-
   double sumKernel = 0.0;
   for(int i = 0; i < args.fKernelWidth * args.fKernelWidth; i++) {
     for(int psf = 0; psf < args.nPSF; psf++) {
-      kern.currKernel[i] += kernCoeffs[psf] * kern.kernVec[psf][i];
+      currKernel[i] += kernCoeffs[psf] * kern.kernVec[psf][i];
     }
-    sumKernel += kern.currKernel[i];
+    sumKernel += currKernel[i];
   }
 
   return sumKernel;
 }
+
+void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
+            const int xSteps, const bool scaleConv, const double invKernSum,
+            Image& convImg, const Arguments& args, ClData& clData) {
+  double start = omp_get_wtime();
+  // Declare all the buffers which will be need in opencl operations.
+  cl::Buffer convMaskBuf(clData.context, CL_MEM_READ_ONLY,
+                         sizeof(cl_ushort) * w * h);
+  cl::Buffer kernBuf(clData.context, CL_MEM_READ_ONLY,
+                     sizeof(cl_double) * convKernels.size());
+
+  // Write necessary data for convolution
+  clData.queue.enqueueWriteBuffer(kernBuf, CL_TRUE, 0,
+                                  sizeof(cl_double) * convKernels.size(),
+                                  convKernels.data());
+
+  // Create convolution mask
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double>
+      createMaskFunc(clData.program, "createConvMask");
+  cl::EnqueueArgs createMaskEargs(clData.queue, cl::NDRange(w, h));
+  cl::Event createMaskEvent =
+      createMaskFunc(createMaskEargs, clData.tImgBuf, convMaskBuf, w,
+                     args.threshHigh, args.threshLow);
+
+  createMaskEvent.wait();
+
+  double p1 = omp_get_wtime();
+  // Convolve
+  cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int,
+                    cl_int, cl_double>
+      convFunc(clData.program, "conv");
+  cl::EnqueueArgs eargs(clData.queue, cl::NDRange(w * h));
+  cl::Event convEvent = convFunc(
+      eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, clData.convImg,
+      convMaskBuf, clData.maskBuf, clData.kernel.solution, w, h,
+      args.backgroundOrder, (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1,
+      scaleConv ? invKernSum : 1.0);
+  convEvent.wait();
+
+  double p2 = omp_get_wtime();
+  // Transfer convoluted image back to CPU
+  clData.queue.enqueueReadBuffer(clData.convImg, CL_TRUE, 0,
+                                 sizeof(cl_double) * w * h, &convImg);
+
+  // Mask after convolve
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double>
+      maskAfterFunc(clData.program, "maskAfterConv");
+  cl::EnqueueArgs maskAfterEargs(clData.queue, cl::NDRange(w, h));
+  cl::Event maskAfterEvent =
+      maskAfterFunc(maskAfterEargs, clData.sImgBuf, clData.maskBuf, w,
+                    args.threshHigh, args.threshLow);
+
+  maskAfterEvent.wait();
+
+  double end = omp_get_wtime();
+  std::cout << p1 - start << "s createconvmask" << std::endl;
+  std::cout << p2 - p1 << "s conv" << std::endl;
+  std::cout << end - p2 << "s maskafterconf" << std::endl;
+}
+
+void convMp(const int w, const int h, const std::vector<cl_double> convKernels,
+            const int xSteps, const bool scaleConv, const double invKernSum,
+            Image& convImg, const Arguments& args, ClData& clData) {}

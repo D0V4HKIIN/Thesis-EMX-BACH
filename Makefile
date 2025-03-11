@@ -19,31 +19,29 @@ BIN = main.o argsUtil.o bach.o bachUtil.o cdkscUtil.o clUtil.o cmvUtil.o fitsUti
 
 all: $(BIN)
 	$(CXX) $(FLAGS) -o EMXBACH $(BIN) $(LOADLIBES)
-	rm -f *.o
+	cp EMXBACH bin/emxbach/emxbach
+	# rm -f *.o
 
 # requires google perftools (libgoogle-perftools-dev in ubuntu packages)
 # https://gperftools.github.io/gperftools/cpuprofile.html
 profile: override LOADLIBES += $(PROFILERLIBES)
-profile: $(BIN)
-	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -o EMXBACH $(BIN) $(LOADLIBES)
-	rm -f *.o
+profile: all
 
 debugprofile: override LOADLIBES += $(PROFILERLIBES)
 debugprofile: override FLAGS = $(CXXFLAGS) $(DEBUGFLAGS)
-debugprofile: $(BIN)
-	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -o EMXBACH $(BIN) $(LOADLIBES)
-	rm -f *.o
+debugprofile: all
 
 debug: override FLAGS = $(CXXFLAGS) $(DEBUGFLAGS)
-debug:	$(BIN)
-	$(CXX) $(FLAGS) $(DEBUGFLAGS) -o EMXBACH $(BIN) $(LOADLIBES)
-	rm -f *.o
+debug: all
 
 SHELL := /bin/bash
 test:
 	cp EMXBACH bin/emxbach/emxbach
 	source ./tools/venv/bin/activate &&\
 	python ./tools/run_test.py
+
+run_profiler: profile
+	CPUPROFILE=emxbach.prof CPUPROFILE_FREQUENCY=1000 ./EMXBACH -t ptf_m82_t_2k.fits -s ptf_m82_s_2k.fits -vt -sss mp && pprof --http=:9999 --focus conv ./EMXBACH emxbach.prof
 
 main.o: $(SRC_DIR)/main.cpp
 	$(CXX) $(FLAGS) $(LOADLIBES) -c $(SRC_DIR)/main.cpp

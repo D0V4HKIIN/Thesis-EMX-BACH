@@ -1,6 +1,7 @@
 #pragma once
 
 #include <CL/opencl.h>
+#include <omp.h>
 
 #include <cmath>
 #include <concepts>
@@ -28,18 +29,13 @@ struct Kernel {
    * can use openCL convolution )
    */
 
-  std::vector<double> currKernel{};
+  // std::vector<double> currKernel{};
   std::vector<std::vector<double>> filterX{};
   std::vector<std::vector<double>> filterY{};
   std::vector<kernelStats> stats{};
   std::vector<double> solution{};
 
-  Kernel(const Arguments& args)
-      : currKernel(args.fKernelWidth * args.fKernelWidth, 0.0),
-        filterX{},
-        filterY{},
-        stats{},
-        solution{} {
+  Kernel(const Arguments& args) : filterX{}, filterY{}, stats{}, solution{} {
     resetKernVec(args);
   }
 
@@ -47,6 +43,8 @@ struct Kernel {
     /* Fill Kerenel Vector
      * TODO: Make parallel, should be very possible. You can interprate stats as
      * a Vec3 in a kernel.
+     * NOTE: i don't think this is needed as this takes less than a
+     * millisecond
      */
     if(args.verbose) std::cout << "Creating kernel vectors..." << std::endl;
     int i = 0;

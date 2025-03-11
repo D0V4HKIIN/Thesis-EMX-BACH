@@ -1,6 +1,7 @@
 *.exe
 *.dll
 *.pdb
+*.o
 
 .vs
 .vscode
@@ -15,3 +16,5 @@ __pycache__
 EMXBACH
 out/
 venv/
+
+emxbach.prof
