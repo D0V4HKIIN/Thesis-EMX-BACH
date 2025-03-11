@@ -98,7 +98,7 @@ def run_test(test_index, verbose, build_config, external_path):
 
     print(f"{color_print.CYAN}Running test {id}...")
 
-    exe_path = BIN_PATH / "xbach"
+    exe_path = BIN_PATH / "xbach" / "xbach"
 
     exe_args = [str(exe_path)]
     exe_args += ["-ip", str(res_path)]
