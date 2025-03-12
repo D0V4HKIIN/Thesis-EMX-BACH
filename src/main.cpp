@@ -354,8 +354,8 @@ int main(int argc, const char *argv[]) {
   auto p11 = std::chrono::steady_clock::now();
 
   Image convImg{args.outName, templateImg.axis, args.outPath};
-  double kernSum = conv(templateImg.axis, convImg, convolutionKernel,
-                        convTemplate, clData, args);
+  double kernSum = conv(templateImg.axis, templateImg, convImg,
+                        convolutionKernel, convTemplate, clData, args);
 
   auto p12 = std::chrono::steady_clock::now();
   if(args.verboseTime) {

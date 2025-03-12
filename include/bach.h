@@ -81,9 +81,9 @@ void ksc(std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
          const Image &sImg, const cl::Buffer &tImgBuf,
          const cl::Buffer &sImgBuf, ClData &clData,
          const ClStampsData &stampData, const Arguments &args);
-double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg,
-            Kernel &convolutionKernel, bool convTemplate, ClData &clData,
-            const Arguments &args);
+double conv(const std::pair<cl_int, cl_int> &imgSize, Image &templateImage,
+            Image &convImg, Kernel &convolutionKernel, bool convTemplate,
+            ClData &clData, const Arguments &args);
 void sub(const std::pair<cl_int, cl_int> &imgSize, Image &diffImg,
          bool convTemplate, double kernSum, const ClData &clData,
          const Arguments &args);

@@ -167,7 +167,8 @@ struct Image {
   const cl_double* operator&() const { return &data[0]; }
   cl_double* operator&() { return &data[0]; }
 
-  double operator[](size_t index) const { return float(data[index]); }
+  const cl_double& operator[](size_t index) const { return data[index]; }
+  cl_double& operator[](size_t index) { return data[index]; }
 
   std::string getFile() const { return path + name; }
 
@@ -222,6 +223,9 @@ class ImageMask {
   ImageMask(const std::pair<int, int>& axis)
       : axis{axis}, dataMask(axis.first * axis.second, ImageMasks::NONE) {}
 
+  ImageMask(const int w, const int h)
+      : axis{w, h}, dataMask(w * h, ImageMasks::NONE) {}
+
   bool isMaskedAny(int index) const { return dataMask[index] != NONE; }
 
   bool isMasked(int index, ImageMasks mask) const {
@@ -232,6 +236,9 @@ class ImageMask {
     int index = x + (y * axis.first);
     dataMask[index] |= mask;
   }
+
+  const uint16_t& operator[](size_t index) const { return dataMask[index]; }
+  uint16_t& operator[](size_t index) { return dataMask[index]; }
 
  private:
   std::pair<int, int> axis;

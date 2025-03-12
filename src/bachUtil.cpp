@@ -889,6 +889,139 @@ void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
   std::cout << end - p2 << "s maskafterconf" << std::endl;
 }
 
+double getBackground(const int x, const int y, const std::vector<double> sol,
+                     const int width, const int height, const int bgOrder,
+                     const int nBgComp) {
+  double xf = (x - 0.5 * width) / (0.5 * width);
+  double yf = (y - 0.5 * height) / (0.5 * height);
+
+  double bg = 0.0;
+  int k = nBgComp + 1;
+
+  double ax = 1.0;
+
+  for(int i = 0; i <= bgOrder; i++) {
+    double ay = 1.0;
+
+    for(int j = 0; j <= bgOrder - i; j++) {
+      bg += sol[k++] * ax * ay;
+
+      ay *= yf;
+    }
+
+    ax *= xf;
+  }
+
+  return bg;
+}
+
 void convMp(const int w, const int h, const std::vector<cl_double> convKernels,
             const int xSteps, const bool scaleConv, const double invKernSum,
-            Image& convImg, const Arguments& args, ClData& clData) {}
+            Image& convImg, const Image& templateImage,
+            const std::vector<double> kernSolution, ImageMask& mask,
+            const Arguments& args) {
+  double start = omp_get_wtime();
+
+  // create conv mask
+  ImageMask convMask(w, h);
+
+#pragma omp parallel for default(none) \
+    shared(w, h, convMask, templateImage, args)
+  for(int y = 0; y < h; y++) {
+    for(int x = 0; x < w; x++) {
+      int id = x + y * w;
+      double t = templateImage[id];
+
+      if(t == 0) {
+        convMask.maskPix(x, y, ImageMasks::BAD_INPUT | ImageMasks::BAD_PIX_VAL);
+      }
+
+      if(t >= args.threshHigh) {
+        convMask.maskPix(x, y, ImageMasks::BAD_INPUT | ImageMasks::SAT_PIXEL);
+      }
+
+      if(t <= args.threshLow) {
+        convMask.maskPix(x, y, ImageMasks::BAD_INPUT | ImageMasks::LOW_PIXEL);
+      }
+    }
+  }
+
+  //   std::copy(convMask.dataMask.begin(), convMask.dataMask.end(),
+  //             std::ostream_iterator<uint16_t>(std::cout, "\n"));
+
+  double p1 = omp_get_wtime();
+
+  std::cout << p1 - start << "s for conv mask" << std::endl;
+
+  // convolution
+  int halfConvWidth = args.fKernelWidth / 2;
+  int nBgComp = (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1;
+  bool invKernMult = scaleConv ? invKernSum : 1.0;
+  // #pragma omp parallel for num_threads(1)
+  for(int y = 0; y < h; y++) {
+    for(int x = 0; x < w; x++) {
+      double acc = 0.0;
+      int id = x + y * w;
+      if(x >= halfConvWidth && x < w - halfConvWidth && y >= halfConvWidth &&
+         y < h - halfConvWidth) {
+        // convolve
+        int xS = (x - halfConvWidth) / args.fKernelWidth;
+        int yS = (y - halfConvWidth) / args.fKernelWidth;
+
+        int convOffset =
+            (xS + yS * xSteps) * args.fKernelWidth * args.fKernelWidth;
+
+        int maskAcc = 0;
+        double aks = 0.0;
+        double uks = 0.0;
+
+        for(int j = y - halfConvWidth; j <= y + halfConvWidth; j++) {
+          int jk = y - j + halfConvWidth;
+          for(int i = x - halfConvWidth; i <= x + halfConvWidth; i++) {
+            int ik = x - i + halfConvWidth;
+            int convIndex = ik + jk * args.fKernelWidth;
+            convIndex += convOffset;
+            int imgIndex = i + w * j;
+
+            double kk = convKernels[convIndex];
+            acc += kk * templateImage[imgIndex];
+            maskAcc |= convMask[imgIndex];
+            aks += fabs(kk);
+
+            if((convMask[imgIndex] & ImageMasks::BAD_INPUT) == 0) {
+              uks += fabs(kk);
+            }
+          }
+        }
+
+        acc += getBackground(x, y, kernSolution, w, h, args.backgroundOrder,
+                             nBgComp);
+        acc *= invKernMult;
+
+        convImg[id] = acc;
+
+        ushort newMask = convMask[id];
+
+        if((convMask[id] & ImageMasks::BAD_INPUT) != 0) {
+          newMask |= ImageMasks::BAD_OUTPUT;
+        }
+
+        if(maskAcc != 0) {
+          if((uks / aks) < 0.99f) {
+            newMask |= ImageMasks::BAD_OUTPUT | ImageMasks::BAD_CONV;
+          } else {
+            newMask |= ImageMasks::OK_CONV;
+          }
+        }
+
+        mask[id] = newMask;
+      } else {
+        // default value
+        convImg[id] = 1e-30;
+      }
+    }
+  }
+
+  double p2 = omp_get_wtime();
+  std::cout << p2 - p1 << "s for convolution" << std::endl;
+}

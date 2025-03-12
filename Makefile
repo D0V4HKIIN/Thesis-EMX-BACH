@@ -35,7 +35,7 @@ debug: override FLAGS = $(CXXFLAGS) $(DEBUGFLAGS)
 debug: all
 
 SHELL := /bin/bash
-test:
+test: all
 	cp EMXBACH bin/emxbach/emxbach
 	source ./tools/venv/bin/activate &&\
 	python ./tools/run_test.py
