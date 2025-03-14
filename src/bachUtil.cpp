@@ -832,7 +832,6 @@ double makeKernel(const Kernel& kern, std::vector<double>& currKernel,
 void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
             const int xSteps, const bool scaleConv, const double invKernSum,
             Image& convImg, const Arguments& args, ClData& clData) {
-  double start = omp_get_wtime();
   // Declare all the buffers which will be need in opencl operations.
   cl::Buffer convMaskBuf(clData.context, CL_MEM_READ_ONLY,
                          sizeof(cl_ushort) * w * h);
@@ -854,7 +853,6 @@ void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
 
   createMaskEvent.wait();
 
-  double p1 = omp_get_wtime();
   int nBgComp = (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1;
   // Convolve
   cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl::Buffer, cl::Buffer,
@@ -868,7 +866,6 @@ void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
       args.backgroundOrder, nBgComp, scaleConv ? invKernSum : 1.0);
   convEvent.wait();
 
-  double p2 = omp_get_wtime();
   // Transfer convoluted image back to CPU
   clData.queue.enqueueReadBuffer(clData.convImg, CL_TRUE, 0,
                                  sizeof(cl_double) * w * h, &convImg);
@@ -882,11 +879,6 @@ void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
                     args.threshHigh, args.threshLow);
 
   maskAfterEvent.wait();
-
-  double end = omp_get_wtime();
-  std::cout << p1 - start << "s createconvmask" << std::endl;
-  std::cout << p2 - p1 << "s conv" << std::endl;
-  std::cout << end - p2 << "s maskafterconf" << std::endl;
 }
 
 double getBackground(const int x, const int y, const std::vector<double>& sol,
@@ -920,8 +912,6 @@ void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
             Image& convImg, const Image& templateImage,
             const Image& scienceImage, const std::vector<double>& kernSolution,
             const Arguments& args, ClData& clData) {
-  double start = omp_get_wtime();
-
   // create conv mask
   ImageMask convMask(w, h);
 
@@ -945,10 +935,6 @@ void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
       }
     }
   }
-
-  double p1 = omp_get_wtime();
-
-  std::cout << p1 - start << "s for conv mask" << std::endl;
 
   ImageMask mask{w, h};
   clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
@@ -1030,9 +1016,6 @@ void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
   clData.queue.enqueueWriteBuffer(clData.convImg, CL_TRUE, 0,
                                   sizeof(cl_double) * w * h, &convImg.data[0]);
 
-  double p2 = omp_get_wtime();
-  std::cout << p2 - p1 << "s for convolution" << std::endl;
-
 // mask after conv
 #pragma omp parallel for collapse(2) default(none) \
     shared(w, h, mask, scienceImage, args)
@@ -1064,19 +1047,15 @@ void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
 
   clData.queue.enqueueWriteBuffer(clData.maskBuf, CL_TRUE, 0,
                                   sizeof(cl_ushort) * w * h, &mask.dataMask[0]);
-
-  double end = omp_get_wtime();
-  std::cout << end - p2 << "s for mask after conv" << std::endl;
 }
 
 // doesn't split masking bc they are already very fast
 void convSplit(const int w, const int h,
                const std::vector<cl_double>& convKernels, const int xSteps,
                const bool scaleConv, const double invKernSum, Image& convImg,
-               const Image& templateImage, const Image& scienceImage,
+               const Image& templateImage,
                const std::vector<double>& kernSolution, const Arguments& args,
                ClData& clData) {
-  double start = omp_get_wtime();
   // Declare all the buffers which will be need in opencl operations.
   cl::Buffer convMaskBuf(clData.context, CL_MEM_READ_ONLY,
                          sizeof(uint16_t) * w * h);
@@ -1107,7 +1086,7 @@ void convSplit(const int w, const int h,
   int gpuH = h - cpuH;
 
   if(args.verbose) {
-    std::cout << "lines convolved on cpu:" << cpuH << " on gpu: " << gpuH
+    std::cout << "lines to be convolved on cpu:" << cpuH << " on gpu: " << gpuH
               << " total lines: " << h << std::endl
               << "width: " << w << std::endl;
   }
@@ -1223,18 +1202,13 @@ void convSplit(const int w, const int h,
                                  sizeof(cl_double) * gpuH * w,
                                  &convImg.data[0]);
 
-  // printBuffer<uint16_t>(clData.maskBuf, w * h, clData.queue, "\n");
-  for(size_t i = 0; i < mask.dataMask.size(); i++) {
-    std::cout << mask.dataMask[i] << "\n";
-  }
-  // printBuffer<cl_double>(clData.convImg, w * h, clData.queue, "\n");
-  // for(size_t i = 0; i < convImg.data.size(); i++) {
-  //   std::cout << convImg.data[i] << "\n";
-  // }
-
   // Mask after convolve
   double p2 = omp_get_wtime();
 
+  if(args.verboseTime) {
+    std::cout << p2 - p1 << "s for convolution, ignoring the masking"
+              << std::endl;
+  }
   // Mask after convolve
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double>
       maskAfterFunc(clData.program, "maskAfterConv");
@@ -1244,9 +1218,4 @@ void convSplit(const int w, const int h,
                     args.threshHigh, args.threshLow);
 
   maskAfterEvent.wait();
-
-  double end = omp_get_wtime();
-  std::cout << p1 - start << "s createconvmask" << std::endl;
-  std::cout << p2 - p1 << "s conv" << std::endl;
-  std::cout << end - p2 << "s maskafterconf" << std::endl;
 }

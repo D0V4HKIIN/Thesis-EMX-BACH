@@ -52,7 +52,7 @@ void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
 void convSplit(const int w, const int h,
                const std::vector<cl_double>& convKernels, const int xSteps,
                const bool scaleConv, const double invKernSum, Image& convImg,
-               const Image& templateImage, const Image& scienceImage,
+               const Image& templateImage,
                const std::vector<double>& kernSolution, const Arguments& args,
                ClData& clData);
 

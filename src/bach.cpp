@@ -370,11 +370,10 @@ double conv(const std::pair<cl_int, cl_int> &imgSize,
 
   // convCl(w, h, convKernels, xSteps, scaleConv, invKernSum, convImg, args,
   //  clData);
-  convMp(w, h, convKernels, xSteps, scaleConv, invKernSum, convImg,
-         templateImage, scienceImage, convolutionKernel.solution, args, clData);
-  // convSplit(w, h, convKernels, xSteps, scaleConv, invKernSum, convImg,
-  // templateImage, scienceImage, convolutionKernel.solution, args,
-  // clData);
+  // convMp(w, h, convKernels, xSteps, scaleConv, invKernSum, convImg,
+  //  templateImage, scienceImage, convolutionKernel.solution, args, clData);
+  convSplit(w, h, convKernels, xSteps, scaleConv, invKernSum, convImg,
+            templateImage, convolutionKernel.solution, args, clData);
 
   return kernSum;
 }
