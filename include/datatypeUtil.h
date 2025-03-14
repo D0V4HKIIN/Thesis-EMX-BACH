@@ -168,7 +168,6 @@ struct Image {
   cl_double* operator&() { return &data[0]; }
 
   const cl_double& operator[](size_t index) const { return data[index]; }
-  cl_double& operator[](size_t index) { return data[index]; }
 
   std::string getFile() const { return path + name; }
 
@@ -237,8 +236,8 @@ class ImageMask {
     dataMask[index] |= mask;
   }
 
-  const uint16_t& operator[](size_t index) const { return dataMask[index]; }
-  uint16_t& operator[](size_t index) { return dataMask[index]; }
+  // const uint16_t& operator[](size_t index) const { return dataMask[index]; }
+  // uint16_t& operator[](size_t index) { return dataMask[index]; }
 
  private:
   std::pair<int, int> axis;

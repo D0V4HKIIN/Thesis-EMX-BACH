@@ -51,6 +51,13 @@ void getArguments(const int argc, const char* argv[], Arguments& args) {
     }
   }
 
+  if(cmdOptionExists(argv, argv + argc, "-cpuPart")) {
+    args.cpuPart = atof(getCmdOption(argv, argv + argc, "-cpuPart"));
+    if(args.cpuPart < 0 || args.cpuPart > 1) {
+      throw std::invalid_argument("cpuPart should be between 0. and 1.");
+    }
+  }
+
   if(cmdOptionExists(argv, argv + argc, "-v")) {
     args.verbose = true;
   }

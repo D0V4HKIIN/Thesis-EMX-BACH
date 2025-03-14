@@ -44,11 +44,17 @@ double makeKernel(const Kernel& kern, std::vector<double>& currKernel,
 void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
             const int xSteps, const bool scaleConv, const double invKernSum,
             Image& convImg, const Arguments& args, ClData& clData);
-void convMp(const int w, const int h, const std::vector<cl_double> convKernels,
+void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
             const int xSteps, const bool scaleConv, const double invKernSum,
             Image& convImg, const Image& templateImage,
-            const std::vector<double> kernSolution, ImageMask& mask,
-            const Arguments& args);
+            const Image& scienceImage, const std::vector<double>& kernSolution,
+            const Arguments& args, ClData& clData);
+void convSplit(const int w, const int h,
+               const std::vector<cl_double>& convKernels, const int xSteps,
+               const bool scaleConv, const double invKernSum, Image& convImg,
+               const Image& templateImage, const Image& scienceImage,
+               const std::vector<double>& kernSolution, const Arguments& args,
+               ClData& clData);
 
 /* SSS for OpenCl*/
 void createStamps(const int w, const int h, ClStampsData& stampsData,
@@ -95,7 +101,7 @@ void uploadBuffer(const std::vector<T>& v, cl::Buffer& buffer,
 }
 template <typename T>
 void printBuffer(const cl::Buffer& buffer, size_t size, cl::CommandQueue& queue,
-                 const std::string& separator = ',') {
+                 const std::string& separator = "\n") {
   std::vector<T> v(size);
   queue.enqueueReadBuffer(buffer, CL_TRUE, 0, sizeof(T) * size, v.data());
 

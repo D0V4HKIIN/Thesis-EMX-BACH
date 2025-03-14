@@ -323,7 +323,8 @@ void ksc(std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
             stampData, args);
 }
 
-double conv(const std::pair<cl_int, cl_int> &imgSize, Image &templateImage,
+double conv(const std::pair<cl_int, cl_int> &imgSize,
+            const Image &templateImage, const Image &scienceImage,
             Image &convImg, Kernel &convolutionKernel, bool convTemplate,
             ClData &clData, const Arguments &args) {
   std::cout << "\nConvolving..." << std::endl;
@@ -367,17 +368,13 @@ double conv(const std::pair<cl_int, cl_int> &imgSize, Image &templateImage,
               << imgSize.second / 2 << "): " << kernSum << std::endl;
   }
 
-  // read mask
-  ImageMask mask{imgSize};
-
-  clData.queue.enqueueReadBuffer(
-      clData.maskBuf, CL_TRUE, 0,
-      sizeof(cl_ushort) * imgSize.first * imgSize.second, &mask.dataMask[0]);
-
   // convCl(w, h, convKernels, xSteps, scaleConv, invKernSum, convImg, args,
   //  clData);
   convMp(w, h, convKernels, xSteps, scaleConv, invKernSum, convImg,
-         templateImage, convolutionKernel.solution, mask, args);
+         templateImage, scienceImage, convolutionKernel.solution, args, clData);
+  // convSplit(w, h, convKernels, xSteps, scaleConv, invKernSum, convImg,
+  // templateImage, scienceImage, convolutionKernel.solution, args,
+  // clData);
 
   return kernSum;
 }

@@ -17,6 +17,9 @@ struct Arguments {
   int platform = 0;  // default platform and devices
   int device = 0;
 
+  // ratio of convolution that is done on the cpu vs gpu
+  double cpuPart = 0.3;
+
   int stampsx = 10;
   int stampsy = 10;
 

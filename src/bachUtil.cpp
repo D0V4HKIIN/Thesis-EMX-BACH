@@ -855,6 +855,7 @@ void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
   createMaskEvent.wait();
 
   double p1 = omp_get_wtime();
+  int nBgComp = (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1;
   // Convolve
   cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int,
@@ -864,8 +865,7 @@ void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
   cl::Event convEvent = convFunc(
       eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, clData.convImg,
       convMaskBuf, clData.maskBuf, clData.kernel.solution, w, h,
-      args.backgroundOrder, (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1,
-      scaleConv ? invKernSum : 1.0);
+      args.backgroundOrder, nBgComp, scaleConv ? invKernSum : 1.0);
   convEvent.wait();
 
   double p2 = omp_get_wtime();
@@ -889,7 +889,7 @@ void convCl(const int w, const int h, const std::vector<cl_double> convKernels,
   std::cout << end - p2 << "s maskafterconf" << std::endl;
 }
 
-double getBackground(const int x, const int y, const std::vector<double> sol,
+double getBackground(const int x, const int y, const std::vector<double>& sol,
                      const int width, const int height, const int bgOrder,
                      const int nBgComp) {
   double xf = (x - 0.5 * width) / (0.5 * width);
@@ -915,17 +915,17 @@ double getBackground(const int x, const int y, const std::vector<double> sol,
   return bg;
 }
 
-void convMp(const int w, const int h, const std::vector<cl_double> convKernels,
+void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
             const int xSteps, const bool scaleConv, const double invKernSum,
             Image& convImg, const Image& templateImage,
-            const std::vector<double> kernSolution, ImageMask& mask,
-            const Arguments& args) {
+            const Image& scienceImage, const std::vector<double>& kernSolution,
+            const Arguments& args, ClData& clData) {
   double start = omp_get_wtime();
 
   // create conv mask
   ImageMask convMask(w, h);
 
-#pragma omp parallel for default(none) \
+#pragma omp parallel for collapse(2) default(none) \
     shared(w, h, convMask, templateImage, args)
   for(int y = 0; y < h; y++) {
     for(int x = 0; x < w; x++) {
@@ -946,22 +946,27 @@ void convMp(const int w, const int h, const std::vector<cl_double> convKernels,
     }
   }
 
-  //   std::copy(convMask.dataMask.begin(), convMask.dataMask.end(),
-  //             std::ostream_iterator<uint16_t>(std::cout, "\n"));
-
   double p1 = omp_get_wtime();
 
   std::cout << p1 - start << "s for conv mask" << std::endl;
 
+  ImageMask mask{w, h};
+  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
+                                 sizeof(uint16_t) * w * h, &mask.dataMask[0]);
+
   // convolution
   int halfConvWidth = args.fKernelWidth / 2;
   int nBgComp = (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1;
-  bool invKernMult = scaleConv ? invKernSum : 1.0;
-  // #pragma omp parallel for num_threads(1)
+  double invKernMult = scaleConv ? invKernSum : 1.0;
+
+#pragma omp parallel for collapse(2) default(none)                         \
+    shared(w, h, halfConvWidth, convImg, kernSolution, mask, args, xSteps, \
+               convKernels, templateImage, convMask, nBgComp, invKernMult)
   for(int y = 0; y < h; y++) {
     for(int x = 0; x < w; x++) {
       double acc = 0.0;
       int id = x + y * w;
+
       if(x >= halfConvWidth && x < w - halfConvWidth && y >= halfConvWidth &&
          y < h - halfConvWidth) {
         // convolve
@@ -985,10 +990,10 @@ void convMp(const int w, const int h, const std::vector<cl_double> convKernels,
 
             double kk = convKernels[convIndex];
             acc += kk * templateImage[imgIndex];
-            maskAcc |= convMask[imgIndex];
+            maskAcc |= convMask.dataMask[imgIndex];
             aks += fabs(kk);
 
-            if((convMask[imgIndex] & ImageMasks::BAD_INPUT) == 0) {
+            if((convMask.dataMask[imgIndex] & ImageMasks::BAD_INPUT) == 0) {
               uks += fabs(kk);
             }
           }
@@ -998,11 +1003,11 @@ void convMp(const int w, const int h, const std::vector<cl_double> convKernels,
                              nBgComp);
         acc *= invKernMult;
 
-        convImg[id] = acc;
+        convImg.data[id] = acc;
 
-        ushort newMask = convMask[id];
+        ushort newMask = convMask.dataMask[id];
 
-        if((convMask[id] & ImageMasks::BAD_INPUT) != 0) {
+        if((convMask.dataMask[id] & ImageMasks::BAD_INPUT) != 0) {
           newMask |= ImageMasks::BAD_OUTPUT;
         }
 
@@ -1014,14 +1019,234 @@ void convMp(const int w, const int h, const std::vector<cl_double> convKernels,
           }
         }
 
-        mask[id] = newMask;
+        mask.dataMask[id] = newMask;
       } else {
         // default value
-        convImg[id] = 1e-30;
+        convImg.data[id] = 1e-30;
       }
     }
   }
 
+  clData.queue.enqueueWriteBuffer(clData.convImg, CL_TRUE, 0,
+                                  sizeof(cl_double) * w * h, &convImg.data[0]);
+
   double p2 = omp_get_wtime();
   std::cout << p2 - p1 << "s for convolution" << std::endl;
+
+// mask after conv
+#pragma omp parallel for collapse(2) default(none) \
+    shared(w, h, mask, scienceImage, args)
+  for(int y = 0; y < h; y++) {
+    for(int x = 0; x < w; x++) {
+      int id = x + y * w;
+
+      double t = scienceImage[id];
+
+      if(t == 0) {
+        mask.maskPix(x, y,
+                     ImageMasks::BAD_OUTPUT | ImageMasks::BAD_INPUT |
+                         ImageMasks::BAD_PIX_VAL);
+      }
+
+      if(t >= args.threshHigh) {
+        mask.maskPix(x, y,
+                     ImageMasks::BAD_OUTPUT | ImageMasks::BAD_INPUT |
+                         ImageMasks::SAT_PIXEL);
+      }
+
+      if(t <= args.threshLow) {
+        mask.maskPix(x, y,
+                     ImageMasks::BAD_OUTPUT | ImageMasks::BAD_INPUT |
+                         ImageMasks::LOW_PIXEL);
+      }
+    }
+  }
+
+  clData.queue.enqueueWriteBuffer(clData.maskBuf, CL_TRUE, 0,
+                                  sizeof(cl_ushort) * w * h, &mask.dataMask[0]);
+
+  double end = omp_get_wtime();
+  std::cout << end - p2 << "s for mask after conv" << std::endl;
+}
+
+// doesn't split masking bc they are already very fast
+void convSplit(const int w, const int h,
+               const std::vector<cl_double>& convKernels, const int xSteps,
+               const bool scaleConv, const double invKernSum, Image& convImg,
+               const Image& templateImage, const Image& scienceImage,
+               const std::vector<double>& kernSolution, const Arguments& args,
+               ClData& clData) {
+  double start = omp_get_wtime();
+  // Declare all the buffers which will be need in opencl operations.
+  cl::Buffer convMaskBuf(clData.context, CL_MEM_READ_ONLY,
+                         sizeof(uint16_t) * w * h);
+  cl::Buffer kernBuf(clData.context, CL_MEM_READ_ONLY,
+                     sizeof(cl_double) * convKernels.size());
+
+  // Write necessary data for convolution
+  clData.queue.enqueueWriteBuffer(kernBuf, CL_TRUE, 0,
+                                  sizeof(cl_double) * convKernels.size(),
+                                  convKernels.data());
+
+  // Create convolution mask
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double>
+      createMaskFunc(clData.program, "createConvMask");
+  cl::EnqueueArgs createMaskEargs(clData.queue, cl::NDRange(w, h));
+  cl::Event createMaskEvent =
+      createMaskFunc(createMaskEargs, clData.tImgBuf, convMaskBuf, w,
+                     args.threshHigh, args.threshLow);
+
+  createMaskEvent.wait();
+
+  // Convolve
+  double p1 = omp_get_wtime();
+
+  // gpu convolves the first gpuH lines of the image while the cpu convolves the
+  // last cpuH lines
+  int cpuH = h * args.cpuPart;
+  int gpuH = h - cpuH;
+
+  if(args.verbose) {
+    std::cout << "lines convolved on cpu:" << cpuH << " on gpu: " << gpuH
+              << " total lines: " << h << std::endl
+              << "width: " << w << std::endl;
+  }
+
+  // read convMask
+  ImageMask convMask(w, h);
+  clData.queue.enqueueReadBuffer(convMaskBuf, CL_TRUE, 0,
+                                 sizeof(cl_ushort) * w * h,
+                                 &convMask.dataMask[0]);
+
+  ImageMask mask{w, h};
+  clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
+                                 sizeof(cl_ushort) * w * h, &mask.dataMask[0]);
+
+  // gpu convolution
+  int nBgComp = (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1;
+  cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int,
+                    cl_int, cl_double>
+      convFunc(clData.program, "conv");
+  cl::EnqueueArgs eargs(clData.queue, cl::NDRange(w * gpuH));
+  cl::Event convEvent = convFunc(
+      eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, clData.convImg,
+      convMaskBuf, clData.maskBuf, clData.kernel.solution, w, h,
+      args.backgroundOrder, nBgComp, scaleConv ? invKernSum : 1.0);
+
+  int halfConvWidth = args.fKernelWidth / 2;
+  double invKernMult = scaleConv ? invKernSum : 1.0;
+
+  // cpu convolution
+#pragma omp parallel for collapse(2) default(none)                             \
+    shared(w, h, cpuH, gpuH, halfConvWidth, convImg, kernSolution, mask, args, \
+               xSteps, convKernels, templateImage, convMask, nBgComp,          \
+               invKernMult)
+  for(int offy = 0; offy < cpuH; offy++) {
+    for(int x = 0; x < w; x++) {
+      int y = offy + gpuH;
+      double acc = 0.0;
+      int id = x + y * w;
+
+      if(x >= halfConvWidth && x < w - halfConvWidth && y >= halfConvWidth &&
+         y < h - halfConvWidth) {
+        // convolve
+        int xS = (x - halfConvWidth) / args.fKernelWidth;
+        int yS = (y - halfConvWidth) / args.fKernelWidth;
+
+        int convOffset =
+            (xS + yS * xSteps) * args.fKernelWidth * args.fKernelWidth;
+
+        int maskAcc = 0;
+        double aks = 0.0;
+        double uks = 0.0;
+
+        for(int j = y - halfConvWidth; j <= y + halfConvWidth; j++) {
+          int jk = y - j + halfConvWidth;
+          for(int i = x - halfConvWidth; i <= x + halfConvWidth; i++) {
+            int ik = x - i + halfConvWidth;
+            int convIndex = ik + jk * args.fKernelWidth;
+            convIndex += convOffset;
+            int imgIndex = i + w * j;
+
+            double kk = convKernels[convIndex];
+            acc += kk * templateImage[imgIndex];
+            maskAcc |= convMask.dataMask[imgIndex];
+            aks += fabs(kk);
+
+            if((convMask.dataMask[imgIndex] & ImageMasks::BAD_INPUT) == 0) {
+              uks += fabs(kk);
+            }
+          }
+        }
+
+        acc += getBackground(x, y, kernSolution, w, h, args.backgroundOrder,
+                             nBgComp);
+        acc *= invKernMult;
+
+        convImg.data[id] = acc;
+
+        uint16_t newMask = convMask.dataMask[id];
+
+        if((convMask.dataMask[id] & ImageMasks::BAD_INPUT) != 0) {
+          newMask |= ImageMasks::BAD_OUTPUT;
+        }
+
+        if(maskAcc != 0) {
+          if((uks / aks) < 0.99f) {
+            newMask |= ImageMasks::BAD_OUTPUT | ImageMasks::BAD_CONV;
+          } else {
+            newMask |= ImageMasks::OK_CONV;
+          }
+        }
+
+        mask.dataMask[id] = newMask;
+      } else {
+        // default value
+        convImg.data[id] = 1e-30;
+      }
+    }
+  }
+
+  convEvent.wait();
+
+  // put mask together on gpu
+  clData.queue.enqueueWriteBuffer(
+      clData.maskBuf, CL_TRUE, sizeof(cl_ushort) * gpuH * w,
+      sizeof(cl_ushort) * cpuH * w, &mask.dataMask[gpuH * w]);
+  // make the convoluted image full on GPU, needed for subtraction
+  clData.queue.enqueueWriteBuffer(
+      clData.convImg, CL_TRUE, sizeof(cl_double) * gpuH * w,
+      sizeof(cl_double) * cpuH * w, &convImg.data[gpuH * w]);
+  // Transfer convoluted image back to CPU, needed for saving to file
+  clData.queue.enqueueReadBuffer(clData.convImg, CL_TRUE, 0,
+                                 sizeof(cl_double) * gpuH * w,
+                                 &convImg.data[0]);
+
+  // printBuffer<uint16_t>(clData.maskBuf, w * h, clData.queue, "\n");
+  for(size_t i = 0; i < mask.dataMask.size(); i++) {
+    std::cout << mask.dataMask[i] << "\n";
+  }
+  // printBuffer<cl_double>(clData.convImg, w * h, clData.queue, "\n");
+  // for(size_t i = 0; i < convImg.data.size(); i++) {
+  //   std::cout << convImg.data[i] << "\n";
+  // }
+
+  // Mask after convolve
+  double p2 = omp_get_wtime();
+
+  // Mask after convolve
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double>
+      maskAfterFunc(clData.program, "maskAfterConv");
+  cl::EnqueueArgs maskAfterEargs(clData.queue, cl::NDRange(w, h));
+  cl::Event maskAfterEvent =
+      maskAfterFunc(maskAfterEargs, clData.sImgBuf, clData.maskBuf, w,
+                    args.threshHigh, args.threshLow);
+
+  maskAfterEvent.wait();
+
+  double end = omp_get_wtime();
+  std::cout << p1 - start << "s createconvmask" << std::endl;
+  std::cout << p2 - p1 << "s conv" << std::endl;
+  std::cout << end - p2 << "s maskafterconf" << std::endl;
 }

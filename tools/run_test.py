@@ -106,7 +106,7 @@ def diff_fits(h_path, b_path):
     return max_error_abs, mean_error_abs, max_error_rel, mean_error_rel, wrong_nans, abs_coords
 
 
-def run_test(test_index, verbose, build_config, sssMode, external_path):
+def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, external_path):
     (id, _, external, science_name, template_name, conv_name,
      sub_name, max_abs_error, max_rel_error) = TEST_TABLE[test_index]
     res_path = external_path if external else RES_PATH
@@ -126,6 +126,9 @@ def run_test(test_index, verbose, build_config, sssMode, external_path):
         exe_args += ["-sss", "mp"]
     else:
         exe_args += ["-sss", "cl"]
+
+    if cpuPart:
+        exe_args += ["-cpuPart", cpuPartValue]
 
     start_time = time.time()
 
@@ -194,7 +197,7 @@ def print_help():
     print(f"{color_print.YELLOW}--generate: Generates the conv and sub files in the test folder")
 
 
-def run_tests(verbose, tests, build_config, sssMode, external_path):
+def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, external_path):
     print(f"{color_print.CYAN}Running X-BACH ({build_config}) from \"{BIN_PATH.resolve()}\"")
 
     print()
@@ -224,7 +227,7 @@ def run_tests(verbose, tests, build_config, sssMode, external_path):
     for i in tests:
         test_id = TEST_TABLE[i][0]
         test_success = run_test(
-            i, verbose, build_config, sssMode, external_path)
+            i, verbose, build_config, sssMode, cpuPart, cpuPartValue, external_path)
 
         if test_success:
             print(f"{color_print.GREEN}Test {test_id} succeeded!")
@@ -299,6 +302,8 @@ def main(args):
     tests = []
 
     sssMode = "mp"
+    cpuPart = False
+    cpuPartValue = 0.0
 
     for arg in args:
         if arg == "-h":
@@ -322,11 +327,16 @@ def main(args):
         elif arg == "--cl":
             sssMode = "cl"
             print("using sssMode cl")
-        else:
-            print(f"{color_print.RED}Unrecognized flag: {arg}")
-            print()
-            print_help()
-            return False
+        elif arg == "--cpuPart":
+            cpuPart = True
+        # else:
+        #     print(f"{color_print.RED}Unrecognized flag: {arg}")
+        #     print()
+        #     print_help()
+        #     return False
+
+    if cpuPart:
+        cpuPartValue = args[args.index("--cpuPart") + 1]
 
     if len(tests) == 0:
         tests = [i for i in range(len(TEST_TABLE))]
@@ -361,7 +371,7 @@ def main(args):
             run("hotpants", template_name, science_name,
                 conv_name, sub_name, RES_PATH, TEST_PATH)
 
-    success = run_tests(verbose, tests, build_config, sssMode, external_path)
+    success = run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, external_path)
 
     color_print.destroy()
 
