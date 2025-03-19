@@ -10,6 +10,7 @@ cl::Platform getDefaultPlatform(const Arguments &args);
 
 cl::Device getDefaultDevice(const cl::Platform &platform,
                             const Arguments &args);
+std::vector<cl::Device> getAcceleratorDevices(const Arguments &args);
 
 void printVerboseClInfo(const cl::Device &device);
 
@@ -18,7 +19,7 @@ std::string getKernelFunc(const std::string &fileName,
 
 template <typename... Args>
 cl::Program loadBuildPrograms(const cl::Context &context,
-                              const cl::Device &defaultDevice,
+                              const cl::Device &device,
                               const std::filesystem::path &rootPath,
                               Args... names) {
   cl::Program::Sources sources;
@@ -29,11 +30,10 @@ cl::Program loadBuildPrograms(const cl::Context &context,
   }
 
   cl::Program program(context, sources);
-  if(program.build(defaultDevice, "-cl-fp32-correctly-rounded-divide-sqrt") !=
+  if(program.build(device, "-cl-fp32-correctly-rounded-divide-sqrt") !=
      CL_SUCCESS) {
     std::cout << " Error building: "
-              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(defaultDevice)
-              << "\n";
+              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << "\n";
     std::exit(1);
   }
 

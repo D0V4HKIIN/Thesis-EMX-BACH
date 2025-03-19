@@ -51,8 +51,8 @@ void getArguments(const int argc, const char* argv[], Arguments& args) {
     }
   }
 
-  if(cmdOptionExists(argv, argv + argc, "-cpuPart")) {
-    args.cpuPart = atof(getCmdOption(argv, argv + argc, "-cpuPart"));
+  if(cmdOptionExists(argv, argv + argc, "--cpuPart")) {
+    args.cpuPart = atof(getCmdOption(argv, argv + argc, "--cpuPart"));
     if(args.cpuPart < 0 || args.cpuPart > 1) {
       throw std::invalid_argument("cpuPart should be between 0. and 1.");
     }
@@ -72,6 +72,25 @@ void getArguments(const int argc, const char* argv[], Arguments& args) {
 
   if(cmdOptionExists(argv, argv + argc, "-d")) {
     args.device = atoi(getCmdOption(argv, argv + argc, "-d"));
+  }
+
+  if(cmdOptionExists(argv, argv + argc, "--accelerators")) {
+    std::stringstream ss(getCmdOption(argv, argv + argc, "--accelerators"));
+    std::string pair;
+    // ex. "1:2:0.1,3:4:0.2,5:6:0.3"
+    while(std::getline(ss, pair, ',')) {
+      int platform;
+      int device;
+      char colon;
+      double split;
+
+      std::stringstream pss(pair);
+      pss >> platform >> colon >> device >> colon >> split;
+
+      args.accelerators.emplace_back(std::make_tuple(platform, device, split));
+      std::cout << "parsed " << platform << ":" << device << ":" << split
+                << std::endl;
+    }
   }
 
   if(cmdOptionExists(argv, argv + argc, "-t")) {

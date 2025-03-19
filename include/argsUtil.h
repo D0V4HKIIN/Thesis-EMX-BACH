@@ -7,7 +7,7 @@
 struct Arguments {
   std::string templateName;
   std::string scienceName;
-  std::string outName = "diff.fits";
+  std::string outName = "conv.fits";
 
   std::string inputPath = "res/";
   std::string outPath = "out/";
@@ -16,6 +16,9 @@ struct Arguments {
 
   int platform = 0;  // default platform and devices
   int device = 0;
+
+  std::vector<std::tuple<int, int, double>>
+      accelerators{};  // platform, device, workSplit
 
   // ratio of convolution that is done on the cpu vs gpu
   double cpuPart = 0.2;

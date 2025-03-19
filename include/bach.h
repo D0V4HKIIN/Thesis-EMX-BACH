@@ -22,11 +22,22 @@ struct ClStampsData {
   unsigned int stampCount;
 };
 
+struct AcceleratorData {
+  cl::Context context;
+  cl::Device device;
+  cl::Program program;
+  cl::CommandQueue queue;
+
+  double workSplit;
+};
+
 struct ClData {
   cl::Device &device;
   cl::Context &context;
   cl::Program &program;
   cl::CommandQueue &queue;
+
+  std::vector<AcceleratorData> &accelerators;
 
   cl::Buffer tImgBuf;
   cl::Buffer sImgBuf;

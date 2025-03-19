@@ -38,16 +38,47 @@ int main(int argc, const char *argv[]) {
               << ", science image name: " << args.scienceName << std::endl;
 
   std::cout << "\nSetting up openCL..." << std::endl;
+
   cl::Platform platform = getDefaultPlatform(args);
   cl::Device device = getDefaultDevice(platform, args);
   cl::Context context(device);
   cl::Program program = loadBuildPrograms(
       context, device, std::filesystem::path(argv[0]).parent_path(), "bach.cl",
       "ini.cl", "sss.cl", "cmv.cl", "cd.cl", "ksc.cl", "conv.cl", "sub.cl");
+  // std::cout << program.getInfo<CL_PROGRAM_KERNEL_NAMES>() << std::endl;
   cl::CommandQueue queue(context, device);
 
+  // init accelerators
+  std::vector<cl::Device> acceleratorDevices = getAcceleratorDevices(args);
+
+  std::vector<AcceleratorData> accelerators{};
+
+  for(size_t i = 0; i < acceleratorDevices.size(); i++) {
+    cl::Device accDevice = acceleratorDevices[i];
+    cl::Context accContext(accDevice);
+    // only needs conv and cd (i think)
+    cl::Program accProgram = loadBuildPrograms(
+        accContext, accDevice, std::filesystem::path(argv[0]).parent_path(),
+        "bach.cl", "ini.cl", "sss.cl", "cmv.cl", "cd.cl", "ksc.cl", "conv.cl",
+        "sub.cl");
+    // std::cout << program.getInfo<CL_PROGRAM_KERNEL_NAMES>() << std::endl;
+    cl::CommandQueue accQueue(accContext, accDevice);
+    accelerators.push_back(AcceleratorData{accContext, accDevice, accProgram,
+                                           accQueue,
+                                           std::get<2>(args.accelerators[i])});
+  }
+
   if(args.verbose) {
+    std::cout << "main device:" << std::endl;
     printVerboseClInfo(device);
+
+    std::cout << "accelerators:" << std::endl;
+    for(size_t i = 0; i < accelerators.size(); i++) {
+      std::cout << "accelerator " << i << ":" << std::endl;
+      printVerboseClInfo(accelerators[i].device);
+      std::cout << accelerators[i].program.getInfo<CL_PROGRAM_KERNEL_NAMES>()
+                << std::endl;
+    }
   }
 
   // Read input images
@@ -64,6 +95,7 @@ int main(int argc, const char *argv[]) {
       context,
       program,
       queue,
+      accelerators,
       cl::Buffer(clData.context, CL_MEM_READ_WRITE,
                  sizeof(cl_double) * pixelCount),
       cl::Buffer(clData.context, CL_MEM_READ_WRITE,

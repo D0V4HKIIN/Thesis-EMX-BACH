@@ -29,10 +29,10 @@ void readImage(Image& input, const Arguments& args) {
   img.readAllKeys();
   img.read(input.data);
 
-  if(args.verbose) {
-    std::cout << img << std::endl;
-    std::cout << pIn->extension().size() << std::endl;
-  }
+  // if(args.verbose) {
+    // std::cout << img << std::endl;
+    // std::cout << pIn->extension().size() << std::endl;
+  // }
 
   delete pIn;
 }
@@ -56,6 +56,7 @@ void writeImage(const Image& img, const Arguments& args) {
   pFits->pHDU().write(fpixel, img.data.size(), img.data);
 
   if(args.verbose) {
+    std::cout << "saving file to " << img.getOutFile() << std::endl;
     std::cout << pFits->pHDU() << std::endl;
     std::cout << pFits->extension().size() << std::endl;
   }

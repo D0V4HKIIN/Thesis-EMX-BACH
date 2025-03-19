@@ -42,11 +42,44 @@ cl::Device getDefaultDevice(const cl::Platform &platform,
     }
   }
 
-  cl::Device defaultDevice = allDevices[0];
+  cl::Device defaultDevice = allDevices[args.device];
   std::cout << "Using device: " << defaultDevice.getInfo<CL_DEVICE_NAME>()
             << "\n";
 
   return defaultDevice;
+}
+
+std::vector<cl::Device> getAcceleratorDevices(const Arguments &args) {
+  std::vector<cl::Device> accelerators;
+
+  std::vector<cl::Platform> allPlatforms;
+  cl::Platform::get(&allPlatforms);
+  if(allPlatforms.size() == 0) {
+    std::cout << " No platforms found. Check OpenCL installation!\n";
+    std::exit(1);
+  }
+
+  for(size_t i = 0; i < args.accelerators.size(); i++) {
+    int platformIndex = std::get<0>(args.accelerators[i]);
+    int deviceIndex = std::get<1>(args.accelerators[i]);
+    cl::Platform platform = allPlatforms[platformIndex];
+
+    std::vector<cl::Device> allDevices;
+    platform.getDevices(CL_DEVICE_TYPE_ALL, &allDevices);
+
+    if(allDevices.size() == 0) {
+      std::cout << " No devices found for "
+                << platform.getInfo<CL_PLATFORM_NAME>()
+                << " .Check OpenCL installation !\n ";
+      std::exit(1);
+    }
+
+    accelerators.emplace_back(allDevices[deviceIndex]);
+    std::cout << "Using accelerator "
+              << allDevices[deviceIndex].getInfo<CL_DEVICE_NAME>() << std::endl;
+  }
+
+  return accelerators;
 }
 
 void printVerboseClInfo(const cl::Device &device) {

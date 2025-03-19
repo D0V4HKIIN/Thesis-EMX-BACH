@@ -38,7 +38,7 @@ SHELL := /bin/bash
 test: all
 	cp EMXBACH bin/emxbach/emxbach
 	source ./tools/venv/bin/activate &&\
-	python ./tools/run_test.py
+		python ./tools/run_test.py --accelerators 1:0:0.1
 
 run_profiler: profile
 	CPUPROFILE=emxbach.prof CPUPROFILE_FREQUENCY=1000 ./EMXBACH -t ptf_m82_t_2k.fits -s ptf_m82_s_2k.fits -vt -sss mp && pprof --http=:9999 --focus conv ./EMXBACH emxbach.prof

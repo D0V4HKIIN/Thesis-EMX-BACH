@@ -6,6 +6,7 @@
 #include <numeric>
 
 #include "mathUtil.h"
+#include <cassert>
 
 void maskInput(const std::pair<cl_int, cl_int>& axis, const ClData& clData,
                const Arguments& args) {
@@ -1049,7 +1050,8 @@ void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
                                   sizeof(cl_ushort) * w * h, &mask.dataMask[0]);
 }
 
-// doesn't split masking bc they are already very fast
+// doesn't split masking bc they are already very fast (sorry for this
+// monstrosity)
 void convSplit(const int w, const int h,
                const std::vector<cl_double>& convKernels, const int xSteps,
                const bool scaleConv, const double invKernSum, Image& convImg,
@@ -1083,13 +1085,27 @@ void convSplit(const int w, const int h,
   // gpu convolves the first gpuH lines of the image while the cpu convolves the
   // last cpuH lines
   int cpuH = h * args.cpuPart;
-  int gpuH = h - cpuH;
+  int accSum = 0;
+  std::vector<int> accH{};
+  for(size_t i = 0; i < clData.accelerators.size(); i++) {
+    int lines = clData.accelerators[i].workSplit * h;
+    accH.emplace_back(lines);
+    accSum += lines;
+  }
+
+  int gpuH = h - cpuH - accSum;
 
   if(args.verbose) {
     std::cout << "lines to be convolved on cpu:" << cpuH << " on gpu: " << gpuH
               << " total lines: " << h << std::endl
               << "width: " << w << std::endl;
+    for(size_t i = 0; i < accH.size(); i++) {
+      std::cout << "accelerator " << i << " will conv " << accH[i] << " lines"
+                << std::endl;
+    }
   }
+
+  assert(gpuH + cpuH + accSum == h);
 
   // read convMask
   ImageMask convMask(w, h);
@@ -1101,29 +1117,111 @@ void convSplit(const int w, const int h,
   clData.queue.enqueueReadBuffer(clData.maskBuf, CL_TRUE, 0,
                                  sizeof(cl_ushort) * w * h, &mask.dataMask[0]);
 
-  // gpu convolution
+  // main gpu convolution
+  double bmain = omp_get_wtime();
+  if(args.verbose) {
+    std::cout << "starting convolution on main gpu" << std::endl;
+  }
+
   int nBgComp = (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1;
-  cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl::Buffer, cl::Buffer,
+  cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl_int, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int,
                     cl_int, cl_double>
       convFunc(clData.program, "conv");
   cl::EnqueueArgs eargs(clData.queue, cl::NDRange(w * gpuH));
   cl::Event convEvent = convFunc(
-      eargs, kernBuf, args.fKernelWidth, xSteps, clData.tImgBuf, clData.convImg,
-      convMaskBuf, clData.maskBuf, clData.kernel.solution, w, h,
+      eargs, kernBuf, args.fKernelWidth, xSteps, 0, clData.tImgBuf,
+      clData.convImg, convMaskBuf, clData.maskBuf, clData.kernel.solution, w, h,
       args.backgroundOrder, nBgComp, scaleConv ? invKernSum : 1.0);
+  double pmain = omp_get_wtime();
+  std::cout << pmain - bmain << "s for starting main" << std::endl;
 
-  int halfConvWidth = args.fKernelWidth / 2;
-  double invKernMult = scaleConv ? invKernSum : 1.0;
+  // accelerator convolution
+  double bacc = omp_get_wtime();
+  if(args.verbose) {
+    std::cout << "starting convolution on " << clData.accelerators.size()
+              << " accelerators" << std::endl;
+  }
+
+  const int nComp2 = triNum(args.kernelOrder + 1);
+  const int nBGComp = triNum(args.backgroundOrder + 1);
+  const int nKernSolComp = args.nPSF * nComp2 + nBGComp + 1;
+
+  std::vector<cl::Event> acceleratorEvents{};
+  // conv, mask
+  std::vector<std::pair<cl::Buffer, cl::Buffer>> outBuffers{};
+  // in lines
+  int offset = gpuH;
+  for(size_t i = 0; i < clData.accelerators.size(); i++) {
+    // create and write buffers to accelerator
+    cl::Buffer accConvMaskBuf(clData.accelerators[i].context, CL_MEM_READ_WRITE,
+                              sizeof(uint16_t) * w * h);
+    clData.accelerators[i].queue.enqueueWriteBuffer(accConvMaskBuf, CL_TRUE, 0,
+                                                    sizeof(uint16_t) * w * h,
+                                                    &convMask.dataMask[0]);
+
+    cl::Buffer maskBuf(clData.accelerators[i].context, CL_MEM_READ_WRITE,
+                       sizeof(uint16_t) * w * h);
+    clData.accelerators[i].queue.enqueueWriteBuffer(
+        maskBuf, CL_TRUE, 0, sizeof(uint16_t) * w * h, &mask.dataMask[0]);
+
+    cl::Buffer tImgBuf(clData.accelerators[i].context, CL_MEM_READ_WRITE,
+                       sizeof(cl_double) * w * h);
+    clData.accelerators[i].queue.enqueueWriteBuffer(
+        tImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h, &templateImage.data[0]);
+
+    cl::Buffer kernelSolutionBuf(clData.accelerators[i].context,
+                                 CL_MEM_READ_WRITE,
+                                 sizeof(cl_double) * nKernSolComp);
+    clData.accelerators[i].queue.enqueueWriteBuffer(
+        kernelSolutionBuf, CL_TRUE, 0, sizeof(cl_double) * nKernSolComp,
+        &kernSolution[0]);
+
+    cl::Buffer accKernBuf(clData.accelerators[i].context, CL_MEM_READ_WRITE,
+                          sizeof(cl_double) * convKernels.size());
+    clData.accelerators[i].queue.enqueueWriteBuffer(
+        accKernBuf, CL_TRUE, 0, sizeof(cl_double) * convKernels.size(),
+        convKernels.data());
+
+    cl::Buffer accConvImg(clData.accelerators[i].context, CL_MEM_READ_WRITE,
+                          sizeof(cl_double) * w * h);
+
+    outBuffers.push_back(std::make_pair(accConvImg, maskBuf));
+
+    // start kernel
+    cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl_int, cl::Buffer,
+                      cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_int,
+                      cl_int, cl_int, cl_int, cl_double>
+        accConvFunc(clData.accelerators[i].program, "conv");
+    cl::EnqueueArgs acceargs(clData.accelerators[i].queue,
+                             cl::NDRange(w * accH[i]));
+    cl::Event accEvent = accConvFunc(
+        acceargs, accKernBuf, args.fKernelWidth, xSteps, offset, tImgBuf,
+        accConvImg, accConvMaskBuf, maskBuf, kernelSolutionBuf, w, h,
+        args.backgroundOrder, nBgComp, scaleConv ? invKernSum : 1.0);
+    acceleratorEvents.push_back(accEvent);
+
+
+    offset += accH[i];
+  }
+  double pacc = omp_get_wtime();
+  std::cout << pacc - bacc << "s for starting acc" << std::endl;
 
   // cpu convolution
-#pragma omp parallel for collapse(2) default(none)                             \
-    shared(w, h, cpuH, gpuH, halfConvWidth, convImg, kernSolution, mask, args, \
-               xSteps, convKernels, templateImage, convMask, nBgComp,          \
+  if(args.verbose) {
+    std::cout << "starting convolution on cpu" << std::endl;
+  }
+  int halfConvWidth = args.fKernelWidth / 2;
+  double invKernMult = scaleConv ? invKernSum : 1.0;
+  int cpuStartH = gpuH + accSum;
+
+#pragma omp parallel for collapse(2) default(none)                            \
+    shared(w, h, cpuH, cpuStartH, halfConvWidth, convImg, kernSolution, mask, \
+               args, xSteps, convKernels, templateImage, convMask, nBgComp,   \
                invKernMult)
   for(int offy = 0; offy < cpuH; offy++) {
     for(int x = 0; x < w; x++) {
-      int y = offy + gpuH;
+      int y = offy + cpuStartH;
       double acc = 0.0;
       int id = x + y * w;
 
@@ -1187,20 +1285,49 @@ void convSplit(const int w, const int h,
     }
   }
 
+  double bwait = omp_get_wtime();
   convEvent.wait();
+  cl::Event::waitForEvents(acceleratorEvents);
+  double pwait = omp_get_wtime();
+  std::cout << "waited for " << pwait - bwait << std::endl;
+
+  // Transfer convoluted image back to CPU, needed for saving to file and copy
+  // to main gpu
+  std::cout << "reading, offset " << 0 << " size " << gpuH << std::endl;
+  clData.queue.enqueueReadBuffer(clData.convImg, CL_TRUE, 0,
+                                 sizeof(cl_double) * gpuH * w,
+                                 &convImg.data[0]);
+
+  // in lines
+  offset = gpuH;
+  for(size_t i = 0; i < outBuffers.size(); i++) {
+    cl::Buffer conv = outBuffers[i].first;
+    cl::Buffer maskBuf = outBuffers[i].second;
+
+    std::cout << "reading, offset " << offset << " size " << accH[i] << std::endl;
+
+    clData.accelerators[i].queue.enqueueReadBuffer(
+        conv, CL_TRUE, sizeof(cl_double) * offset * w,
+        sizeof(cl_double) * accH[i] * w, &convImg.data[offset * w]);
+
+    clData.accelerators[i].queue.enqueueReadBuffer(
+        maskBuf, CL_TRUE, sizeof(uint16_t) * offset * w,
+        sizeof(uint16_t) * accH[i] * w, &mask.dataMask[offset * w]);
+
+    offset += accH[i];
+  }
+
+  // #lines computed by both cpu and acc
+  int accCpuH = cpuH + accSum;
 
   // put mask together on gpu
   clData.queue.enqueueWriteBuffer(
       clData.maskBuf, CL_TRUE, sizeof(cl_ushort) * gpuH * w,
-      sizeof(cl_ushort) * cpuH * w, &mask.dataMask[gpuH * w]);
+      sizeof(cl_ushort) * accCpuH * w, &mask.dataMask[gpuH * w]);
   // make the convoluted image full on GPU, needed for subtraction
   clData.queue.enqueueWriteBuffer(
       clData.convImg, CL_TRUE, sizeof(cl_double) * gpuH * w,
-      sizeof(cl_double) * cpuH * w, &convImg.data[gpuH * w]);
-  // Transfer convoluted image back to CPU, needed for saving to file
-  clData.queue.enqueueReadBuffer(clData.convImg, CL_TRUE, 0,
-                                 sizeof(cl_double) * gpuH * w,
-                                 &convImg.data[0]);
+      sizeof(cl_double) * accCpuH * w, &convImg.data[gpuH * w]);
 
   // Mask after convolve
   double p2 = omp_get_wtime();

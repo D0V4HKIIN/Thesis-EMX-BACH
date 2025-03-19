@@ -106,7 +106,7 @@ def diff_fits(h_path, b_path):
     return max_error_abs, mean_error_abs, max_error_rel, mean_error_rel, wrong_nans, abs_coords
 
 
-def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, external_path):
+def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, external_path):
     (id, _, external, science_name, template_name, conv_name,
      sub_name, max_abs_error, max_rel_error) = TEST_TABLE[test_index]
     res_path = external_path if external else RES_PATH
@@ -128,7 +128,10 @@ def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, 
         exe_args += ["-sss", "cl"]
 
     if cpuPart:
-        exe_args += ["-cpuPart", cpuPartValue]
+        exe_args += ["--cpuPart", cpuPartValue]
+
+    if accelerators:
+        exe_args += ["--accelerators", acceleratorsValue]
 
     start_time = time.time()
 
@@ -142,7 +145,7 @@ def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, 
 
     print(f"Test took {test_time:.2f} seconds")
 
-    conv_out_path = OUTPUT_PATH / f"test{id}_diff.fits"
+    conv_out_path = OUTPUT_PATH / f"test{id}_conv.fits"
     sub_out_path = OUTPUT_PATH / f"test{id}_sub.fits"
 
     if not conv_out_path.exists() or not sub_out_path.exists():
@@ -197,7 +200,7 @@ def print_help():
     print(f"{color_print.YELLOW}--generate: Generates the conv and sub files in the test folder")
 
 
-def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, external_path):
+def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, external_path):
     print(f"{color_print.CYAN}Running X-BACH ({build_config}) from \"{BIN_PATH.resolve()}\"")
 
     print()
@@ -227,7 +230,7 @@ def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, exte
     for i in tests:
         test_id = TEST_TABLE[i][0]
         test_success = run_test(
-            i, verbose, build_config, sssMode, cpuPart, cpuPartValue, external_path)
+            i, verbose, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, external_path)
 
         if test_success:
             print(f"{color_print.GREEN}Test {test_id} succeeded!")
@@ -304,6 +307,8 @@ def main(args):
     sssMode = "mp"
     cpuPart = False
     cpuPartValue = 0.0
+    accelerators = False
+    acceleratorsValue = ""
 
     for arg in args:
         if arg == "-h":
@@ -329,6 +334,9 @@ def main(args):
             print("using sssMode cl")
         elif arg == "--cpuPart":
             cpuPart = True
+        elif arg == "--accelerators":
+            accelerators = True
+
         # else:
         #     print(f"{color_print.RED}Unrecognized flag: {arg}")
         #     print()
@@ -337,6 +345,10 @@ def main(args):
 
     if cpuPart:
         cpuPartValue = args[args.index("--cpuPart") + 1]
+    
+    if accelerators:
+        acceleratorsValue = args[args.index("--accelerators") + 1]
+
 
     if len(tests) == 0:
         tests = [i for i in range(len(TEST_TABLE))]
@@ -371,7 +383,7 @@ def main(args):
             run("hotpants", template_name, science_name,
                 conv_name, sub_name, RES_PATH, TEST_PATH)
 
-    success = run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, external_path)
+    success = run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, external_path)
 
     color_print.destroy()
 

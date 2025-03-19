@@ -28,11 +28,11 @@ void kernel createConvMask(global const double *img, global ushort *mask,
   mask[id] = m;
 }
 
-void kernel conv(global const double *convKern, const int convWidth, const int xSteps,
+void kernel conv(global const double *convKern, const int convWidth, const int xSteps, const int offset,
                  global const double *image, global double *outimg,
                  global const ushort *convMask, global ushort *outMask, global const double *kernSolution,
                  const int w, const int h, const int bgOrder, const int nBgComp, const double invKernMult) {
-  const int id = get_global_id(0);
+  const int id = get_global_id(0) + offset * w;
   double acc = 0.0;
   const int x = id % w;
   const int y = id / w;
