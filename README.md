@@ -1,4 +1,4 @@
-# X-BACH
+# EMX-BACH
 EMX-BACH (Even More Extended Basic Accelerated C++ HOTPANTS) is an astronomical image subtraction software created by Jonas Bonnaudet, as part of a master's thesis conducted at MindRoad Öst AB. It is based on [X-BACH](https://github.com/MindRoadAB/Thesis-X-BACH) by Gustav Arneving and Hugo Wilhelmsson which itself is based on [BACH](https://github.com/MindRoadAB/Thesis-BACH), an earlier master's thesis by [Annie Wång](https://github.com/th3tard1sparadox) and [Victor Lells](https://github.com/vollells).
 
 EMX-BACH is a parallelization of the popular image subtraction tool [HOTPANTS](https://github.com/acbecker/hotpants), rewritten in C++, and using OpenCL and OpenMP for task acceleration. It operates on two FITS images, one called science and one called template, generates a difference image by subtraction. The purpose of EMX-BACH was to explore the parallelization potential of non-trivial parallelizable tasks in the HOTPANTS algorithm and check how it would perform.
