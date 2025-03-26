@@ -1,2 +1,2 @@
-res/SkyMaker/ filter=lfs diff=lfs merge=lfs -text
-res/SkyMaker/* filter=lfs diff=lfs merge=lfs -text
+res/skyMaker/* filter=lfs diff=lfs merge=lfs -text
+res/skyMaker/ filter=lfs diff=lfs merge=lfs -text
