@@ -135,14 +135,19 @@ void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
     if(args.verbose)
       std::cout << "Not enough substamps found in images, "
                 << "trying again with lower thresholds..." << std::endl;
-    exit(-1);
-    // args.threshLow *= 0.5;
+    Arguments newArgs = args;
+    newArgs.threshLow *= 0.5;
+
+#pragma omp parallel for default(none) shared(mask)
+    for(size_t i = 0; i < mask.dataMask.size(); i++) {
+      mask.dataMask[i] &= ~(ImageMasks::SKIP_S | ImageMasks::SKIP_T);
+    }
 
     templateStamps.clear();
     scienceStamps.clear();
 
     computeStamps(w, h, templateImg, templateStamps, scienceImg, scienceStamps,
-                  mask, args);
+                  mask, newArgs);
   }
 }
 
