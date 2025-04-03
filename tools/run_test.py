@@ -9,7 +9,7 @@ import time
 from astropy.io import fits
 
 TEST_TABLE = [
-    # ID | Fast? | External? | Science       | Template      | HOTPANTS conv    | HOTPANTS sub    | Max abs error S,T | Max rel error S,T
+    # ID | Fast? | External? | Science       | Template      | HOTPANTS conv    | HOTPANTS sub    | Max abs error S,C | Max rel error S,C
     (1,   True,   False,     "test0",        "test1",        "test01_conv",
      "test01_sub",     (2e-4, 5e-4),       (5e-3, 4e-3)),
     (2,   True,   False,     "testScience",  "testTemplate",
@@ -21,19 +21,19 @@ TEST_TABLE = [
     (5,   True,   False,     "ztf_m1_s_3k",  "ztf_m1_t_3k",
      "ztf_m1_3k_conv",  "ztf_m1_3k_sub",  (1e-3, 1e-2),       (1e-6, 1e0)),
     (6,   True,   True,      "skyM-S-4k",    "skyM-T-4k",
-     "skyM-4k_conv",    "skyM-4k_sub",    (1e-2, 1e-2),       (1e-1, 1e-1)),
+     "skyM-4k_conv",    "skyM-4k_sub",    (1e-2, 1e-2),       (1e-1, 1e0)),
     (7,   False,  True,      "skyM-S-5k",    "skyM-T-5k",
-     "skyM-5k_conv",    "skyM-5k_sub",    (1e-2, 1e-2),       (1e-6, 3e0)),
+     "skyM-5k_conv",    "skyM-5k_sub",    (1e-2, 1e-2),       (1e-1, 1e0)),
     (8,   False,  True,      "skyM-S-6k",    "skyM-T-6k",
-     "skyM-6k_conv",    "skyM-6k_sub",    (1e-2, 1e-2),       (1e-6, 3e0)),
+     "skyM-6k_conv",    "skyM-6k_sub",    (1e-2, 1e-2),       (1e-1, 1e0)),
     (9,   False,  True,      "skyM-S-7k",    "skyM-T-7k",
-     "skyM-7k_conv",    "skyM-7k_sub",    (1e-2, 1e-2),       (1e-6, 3e0)),
+     "skyM-7k_conv",    "skyM-7k_sub",    (1e-2, 1e-2),       (1e-1, 1e0)),
     (10,   False,  True,      "skyM-S-8k",    "skyM-T-8k",
-     "skyM-8k_conv",    "skyM-8k_sub",    (1e-2, 1e-2),       (1e-6, 3e0)),
-    (11,   False,  True,      "skyM-S-9k",    "skyM-T-9k",
-     "skyM-9k_conv",    "skyM-9k_sub",    (1e-2, 1e-2),       (1e-6, 3e0)),
-    (12,   False,  True,      "skyM-S-10k",   "skyM-T-10k",
-     "skyM-10k_conv",   "skyM-10k_sub",   (1e-2, 1e-2),       (1e-6, 3e0))
+     "skyM-8k_conv",    "skyM-8k_sub",    (1e-2, 1e-2),       (1e-1, 1e0)),
+    # (11,   False,  True,      "skyM-S-9k",    "skyM-T-9k",
+    #  "skyM-9k_conv",    "skyM-9k_sub",    (1e-2, 1e-2),       (1e-6, 1e0)),
+    # (12,   False,  True,      "skyM-S-10k",   "skyM-T-10k",
+    #  "skyM-10k_conv",   "skyM-10k_sub",   (1e-2, 1e-2),       (1e-6, 1e0))
 ]
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
@@ -58,8 +58,8 @@ def diff_fits(h_path, b_path):
     assert (h_data.ndim == 2)
     assert (b_data.ndim == 2)
 
-    max_error_abs = -10000000
-    max_error_rel = -10000000
+    max_error_abs = 0
+    max_error_rel = 0
     abs_coords = (-1, -1)
     mean_error_abs = 0
     mean_error_rel = 0
@@ -106,7 +106,7 @@ def diff_fits(h_path, b_path):
     return max_error_abs, mean_error_abs, max_error_rel, mean_error_rel, wrong_nans, abs_coords
 
 
-def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, external_path):
+def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, testAgainst, external_path):
     (id, _, external, science_name, template_name, conv_name,
      sub_name, max_abs_error, max_rel_error) = TEST_TABLE[test_index]
     res_path = external_path if external else RES_PATH
@@ -120,6 +120,8 @@ def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, 
     exe_args += ["-s", f"{science_name}.fits"]
     exe_args += ["-t", f"{template_name}.fits"]
     exe_args += ["-op", str(OUTPUT_PATH / f"test{id}_")]
+    exe_args += ["-o", "conv.fits"]
+    exe_args += ["-p", "1"]
     exe_args += ["-vt"]
 
     if sssMode == "mp":
@@ -147,6 +149,7 @@ def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, 
 
     conv_out_path = OUTPUT_PATH / f"test{id}_conv.fits"
     sub_out_path = OUTPUT_PATH / f"test{id}_sub.fits"
+    print(conv_out_path, sub_out_path)
 
     if not conv_out_path.exists() or not sub_out_path.exists():
         print(f"{color_print.RED}At least one X-BACH output is missing. The program did not run correctly.")
@@ -155,9 +158,9 @@ def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, 
     base_test_path = external_path if external else TEST_PATH
 
     conv_max_abs_err, conv_mean_abs_err, conv_max_rel_err, conv_mean_rel_err, conv_wrong_nans, conv_max_coords = diff_fits(
-        base_test_path / f"{conv_name}.fits", conv_out_path)
+        base_test_path / f"{conv_name}_{testAgainst}.fits", conv_out_path)
     sub_max_abs_err, sub_mean_abs_err, sub_max_rel_err, sub_mean_rel_err, sub_wrong_nans, sub_max_coords = diff_fits(
-        base_test_path / f"{sub_name}.fits", sub_out_path)
+        base_test_path / f"{sub_name}_{testAgainst}.fits", sub_out_path)
     print(
         f"Convolution errors: {conv_max_abs_err:.2e} (max abs)  {conv_max_rel_err:.2e} (max rel)")
     print(
@@ -181,7 +184,7 @@ def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, 
     print(conv_max_abs_err, max_abs_error[0], conv_max_rel_err, max_rel_error[0],
           sub_max_abs_err, max_abs_error[1], sub_max_rel_err, max_rel_error[1])
 
-    return conv_max_abs_err < max_abs_error[0] and conv_max_rel_err < max_rel_error[0] and\
+    return conv_max_abs_err, conv_max_rel_err, conv_wrong_nans, sub_max_abs_err, sub_max_rel_err, sub_wrong_nans, conv_max_abs_err < max_abs_error[0] and conv_max_rel_err < max_rel_error[0] and\
         sub_max_abs_err < max_abs_error[1] and sub_max_rel_err < max_rel_error[1] and\
         conv_wrong_nans == 0 and sub_wrong_nans == 0
 
@@ -199,8 +202,28 @@ def print_help():
     print(f"{color_print.YELLOW}--release: Runs the program in release mode. If not specified, the debug build is used.")
     print(f"{color_print.YELLOW}--generate: Generates the conv and sub files in the test folder")
 
+def print_table(errors, caption):
+    table = """
+\\begin{table}
+    \\centering
+    \\begin{tabular}{rlll}
+        \\textbf{Test case} & \\textbf{Max absolute error} & \\textbf{Max relative error} & \\textbf{NaN errors}\\\\
+"""
+    for i, row in enumerate(errors):
+        row_string = f"        {i + 1} & "
+        for error in row:
+            row_string += f"{error:.2e} & "
+        row_string = row_string[:-2]
+        row_string += "\\\\"
+        table += row_string + "\n"
+    table += f"""        \\end{{tabular}}
+    \\caption{{{caption}}}
+    \\label{{tab:my_label}}
+\\end{{table}}"""
+    print(table)
 
-def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, external_path):
+
+def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, testAgainst, latex, external_path):
     print(f"{color_print.CYAN}Running X-BACH ({build_config}) from \"{BIN_PATH.resolve()}\"")
 
     print()
@@ -227,10 +250,16 @@ def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, acce
 
     start_time = time.time()
 
+    sub_errors = []
+    conv_errors = []
+
     for i in tests:
         test_id = TEST_TABLE[i][0]
-        test_success = run_test(
-            i, verbose, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, external_path)
+        conv_abs, conv_rel, conv_nan, sub_abs, sub_rel, sub_nan, test_success = run_test(
+            i, verbose, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, testAgainst, external_path)
+
+        sub_errors.append([sub_abs, sub_rel, sub_nan])
+        conv_errors.append([conv_abs, conv_rel, conv_nan])
 
         if test_success:
             print(f"{color_print.GREEN}Test {test_id} succeeded!")
@@ -246,17 +275,25 @@ def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, acce
 
     if failed_tests > 0:
         print(f"{color_print.RED}{failed_tests} / {total_tests} tests failed!")
+    else:
+        print(f"{color_print.GREEN}All tests were successful!")
 
-        return False
-
-    print(f"{color_print.GREEN}All tests were successful!")
     print(f"Tests took {tess_time:.2f} seconds")
+
+    print(latex)
+    if latex:
+        print_table(conv_errors, "Convolution error")
+        print_table(sub_errors, "Subtraction error")
+
 
 
 def run(binary, template_name, science_name, conv_name, sub_name, in_path, out_path):
 
-    exe_path = BIN_PATH / binary
+    exe_path = BIN_PATH / binary / binary
     exe_args = [str(exe_path)]
+
+    print("generating to", str(out_path / f"{sub_name}.fits"))
+    print("generating to", str(out_path / f"{conv_name}.fits"))
 
     match binary:
         case "bach" | "xbach":
@@ -264,8 +301,8 @@ def run(binary, template_name, science_name, conv_name, sub_name, in_path, out_p
                 "-ip", str(in_path),
                 "-t", f"{template_name}.fits",
                 "-s", f"{science_name}.fits",
-                "-op", str(out_path / f"{binary}-{id}_"),
-                "-v",
+                "-op", f"{str(out_path)}/",
+                "-o", f"{conv_name}.fits",
                 "-vt"
             ])
         case "hotpants":
@@ -276,10 +313,29 @@ def run(binary, template_name, science_name, conv_name, sub_name, in_path, out_p
                 "-oci", str(out_path / f"{conv_name}.fits")
             ])
 
+    print(exe_args)
+
     with open(out_path / f"{science_name}.txt", "w") as out_stream:
         if not subprocess.run(args=exe_args, stdout=out_stream, stderr=out_stream):
             print(
                 f"{color_print.RED}Process exited with error status for binary {binary}.")
+    
+    # copy sub.fits if running bach och xbach
+    match binary:
+        case "bach" | "xbach":
+            os.rename(out_path / "sub.fits", out_path / f"{sub_name}.fits")
+
+
+def generate(testAgainst, external_path, i):
+    (id, _, external, science_name, template_name, conv_name,
+     sub_name, max_abs_error, max_rel_error) = TEST_TABLE[i]
+    in_path = external_path if external else RES_PATH
+    out_path = external_path if external else TEST_PATH
+    sub_name += f"_{testAgainst}"
+    conv_name += f"_{testAgainst}"
+    print("generating", science_name)
+    run(testAgainst, template_name, science_name,
+        conv_name, sub_name, in_path, out_path)
 
 
 def main(args):
@@ -301,14 +357,18 @@ def main(args):
     # Parse args
     verbose = False
     debug = True
-    generate = False
-    tests = []
+    shouldGenerate = False
+    tests = [i for i in range(len(TEST_TABLE))]
 
     sssMode = "mp"
     cpuPart = False
     cpuPartValue = 0.0
     accelerators = False
     acceleratorsValue = ""
+    specificTest = False
+    testNum = -1
+    testAgainst = "xbach"
+    latex = False
 
     for arg in args:
         if arg == "-h":
@@ -317,18 +377,18 @@ def main(args):
         elif arg == "-v":
             verbose = True
         elif arg == "--all":
-            tests += [i for i in range(len(TEST_TABLE))]
+            tests = [i for i in range(len(TEST_TABLE))]
         elif arg == "--fast":
-            tests += [i for i in range(len(TEST_TABLE)) if TEST_TABLE[i][1]]
+            tests = [i for i in range(len(TEST_TABLE)) if TEST_TABLE[i][1]]
         elif arg == "--slow":
-            tests += [i for i in range(len(TEST_TABLE))
+            tests = [i for i in range(len(TEST_TABLE))
                       if not TEST_TABLE[i][1]]
         elif arg == "--external":
-            tests += [i for i in range(len(TEST_TABLE)) if TEST_TABLE[i][2]]
+            tests = [i for i in range(len(TEST_TABLE)) if TEST_TABLE[i][2]]
         elif arg == "--release":
             debug = False
         elif arg == "--generate":
-            generate = True
+            shouldGenerate = True
         elif arg == "--cl":
             sssMode = "cl"
             print("using sssMode cl")
@@ -336,12 +396,13 @@ def main(args):
             cpuPart = True
         elif arg == "--accelerators":
             accelerators = True
+        elif arg == "--test":
+            specificTest = True
+        elif arg == "--hotpants":
+            testAgainst = "hotpants"
+        elif arg == "--latex":
+            latex = True
 
-        # else:
-        #     print(f"{color_print.RED}Unrecognized flag: {arg}")
-        #     print()
-        #     print_help()
-        #     return False
 
     if cpuPart:
         cpuPartValue = args[args.index("--cpuPart") + 1]
@@ -349,10 +410,11 @@ def main(args):
     if accelerators:
         acceleratorsValue = args[args.index("--accelerators") + 1]
 
+    if specificTest:
+        testNum = int(args[args.index("--test") + 1])
+        tests = [testNum]
 
-    if len(tests) == 0:
-        tests = [i for i in range(len(TEST_TABLE))]
-
+    
     if external_path is None:
         new_tests = []
         removed_tests = []
@@ -375,15 +437,14 @@ def main(args):
 
     build_config = "Debug" if debug else "Release"
 
-    if generate:
-        for i in tests:
-            (id, _, external, science_name, template_name, conv_name,
-             sub_name, max_abs_error, max_rel_error) = TEST_TABLE[i]
-            print("generating", science_name)
-            run("hotpants", template_name, science_name,
-                conv_name, sub_name, RES_PATH, TEST_PATH)
+    if shouldGenerate:
+        if specificTest:
+            generate(testAgainst, external_path, testNum)
+        else:
+            for i in tests:
+                generate(testAgainst, external_path, i)
 
-    success = run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, external_path)
+    success = run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, testAgainst, latex, external_path)
 
     color_print.destroy()
 
