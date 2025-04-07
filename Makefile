@@ -4,7 +4,7 @@ CXX    = g++
 SRC_DIR = src
 INCLUDE_DIR = include
 
-CXXFLAGS = -std=c++20 -pedantic -Wall -Wextra -fcommon -O3 -I$(INCLUDE_DIR)
+CXXFLAGS = -std=c++20 -pedantic -Wall -Wextra -O3 -I$(INCLUDE_DIR)
 LOADLIBES  = -lOpenCL -lCCfits -lcfitsio
 
 BIN = main.o argsUtil.o bach.o bachUtil.o cdkscUtil.o clUtil.o cmvUtil.o fitsUtil.o sssUtil.o
@@ -13,7 +13,7 @@ all: $(BIN)
 	$(CXX) $(CXXFLAGS) -o XBACH $(BIN) $(LOADLIBES)
 	rm -f *.o
 
-debug: override CXXFLAGS = -std=c++20 -pedantic -Wall -Wextra -fcommon -g3
+debug: override CXXFLAGS = -std=c++20 -pedantic -Wall -Wextra -g3
 debug:	$(BIN)
 	$(CXX) $(CXXFLAGS) -o XBACH $(BIN) $(LOADLIBES)
 
