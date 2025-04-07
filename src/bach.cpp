@@ -337,6 +337,7 @@ double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg,
   std::vector<cl_double> convKernels{};
   int xSteps = std::ceil(imgSize.first / double(args.fKernelWidth));
   int ySteps = std::ceil(imgSize.second / double(args.fKernelWidth));
+  auto start = std::chrono::steady_clock::now();
   for(int yStep = 0; yStep < ySteps; yStep++) {
     for(int xStep = 0; xStep < xSteps; xStep++) {
       makeKernel(
@@ -354,6 +355,12 @@ double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg,
   double kernSum = makeKernel(convolutionKernel, imgSize, imgSize.first / 2,
                               imgSize.second / 2, args);
   double invKernSum = 1.0 / kernSum;
+  auto end = std::chrono::steady_clock::now();
+
+  if(args.verboseTime) {
+    std::cout << "Kernel creation took " << timeDiff(end, start) << " ms"
+              << std::endl;
+  }
 
   if(args.verbose) {
     std::cout << "Sum of kernel at (" << imgSize.first / 2 << ","
@@ -383,6 +390,8 @@ double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg,
 
   createMaskEvent.wait();
 
+  auto p1 = std::chrono::steady_clock::now();
+
   // Convolve
   cl::KernelFunctor<cl::Buffer, cl_int, cl_int, cl::Buffer, cl::Buffer,
                     cl::Buffer, cl::Buffer, cl::Buffer, cl_int, cl_int, cl_int,
@@ -399,6 +408,13 @@ double conv(const std::pair<cl_int, cl_int> &imgSize, Image &convImg,
   // Transfer convoluted image back to CPU
   clData.queue.enqueueReadBuffer(clData.convImg, CL_TRUE, 0,
                                  sizeof(cl_double) * w * h, &convImg);
+
+  auto p2 = std::chrono::steady_clock::now();
+
+  if(args.verboseTime) {
+    std::cout << "Convolution (without masking) took " << timeDiff(p2, p1)
+              << " ms " << std::endl;
+  }
 
   // Mask after convolve
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double>
