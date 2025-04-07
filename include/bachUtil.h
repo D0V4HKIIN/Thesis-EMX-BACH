@@ -20,6 +20,8 @@ void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
                const int iter, const Arguments& args);
 void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Arguments& args);
 
+int timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
+             std::chrono::time_point<std::chrono::steady_clock> start);
 int ludcmp(std::vector<std::vector<double>>& matrix, const int matrixSize,
            std::vector<int>& index, double& rowInter, const Arguments& args);
 void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,

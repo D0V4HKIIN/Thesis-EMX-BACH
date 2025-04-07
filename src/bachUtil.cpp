@@ -367,6 +367,12 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
   median = lowerBinVal + binSize * (median - 1.0);
 }
 
+int timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
+             std::chrono::time_point<std::chrono::steady_clock> start) {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+      .count();
+}
+
 int ludcmp(std::vector<std::vector<double>>& matrix, int matrixSize,
            std::vector<int>& index, double& d, const Arguments& args) {
   std::vector<double> vv(matrixSize + 1, 0.0);

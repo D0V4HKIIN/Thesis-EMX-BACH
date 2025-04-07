@@ -160,6 +160,8 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
   std::vector<cl_double> convKernels{};
   int xSteps = std::ceil((templateImg.axis.first) / double(args.fKernelWidth));
   int ySteps = std::ceil((templateImg.axis.second) / double(args.fKernelWidth));
+
+  auto start = std::chrono::steady_clock::now();
   for(int yStep = 0; yStep < ySteps; yStep++) {
     for(int xStep = 0; xStep < xSteps; xStep++) {
       makeKernel(
@@ -178,6 +180,12 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
       makeKernel(convolutionKernel, templateImg.axis,
                  templateImg.axis.first / 2, templateImg.axis.second / 2, args);
   cl_double invKernSum = 1.0 / kernSum;
+
+  auto end = std::chrono::steady_clock::now();
+  if(args.verboseTime) {
+    std::cout << "Kernel creation took " << timeDiff(end, start) << " ms"
+              << std::endl;
+  }
 
   if(args.verbose) {
     std::cout << "Sum of kernel at (" << templateImg.axis.first / 2 << ","
@@ -205,6 +213,7 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
     }
   }
 
+  auto p1 = std::chrono::steady_clock::now();
   // Declare all the buffers which will be need in opencl operations.
   cl::Buffer tImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
   
@@ -240,6 +249,13 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
   err = queue.enqueueReadBuffer(outMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h,
                                  &mask);
   checkError(err);
+
+  auto p2 = std::chrono::steady_clock::now();
+
+  if(args.verboseTime) {
+    std::cout << "Convolution (without masking) took " << timeDiff(p2, p1)
+              << " ms " << std::endl;
+  }
 
   // Add background and scale by kernel sum for output of convoluted image.
   for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
