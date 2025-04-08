@@ -7,14 +7,23 @@ import statistics
 import sys
 
 SOFTWARE = {
+    "emxbach": "EMX-BACH",
     "xbach": "X-BACH",
     "bach": "BACH",
     "hotpants": "HOTPANTS"
 }
 
+SOFTWARES = [
+    "emxbach",
+    "xbach",
+    "bach",
+    "hotpants",
+]
+
 COMPUTER = {
-    "gpu": "A",
-    "igpu": "B"
+    "dev": "dev",
+    # "gpu": "A",
+    # "igpu": "B"
 }
 
 BAR_COLORS = [
@@ -24,18 +33,22 @@ BAR_COLORS = [
 ]
 
 COMPUTERS = [
-    "gpu",
-    "igpu"
+    "dev",
+    # "gpu",
+    # "igpu"
 ]
+
+NUM_COMPUTERS = len(COMPUTERS)
+NUM_TESTS = 2 + 1
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
 
 def load_db(res_path):
     db = []
 
-    for gpu in ["gpu", "igpu"]:
-        for software in ["xbach", "bach", "hotpants"]:
-            for test_id in range(1, 13):
+    for gpu in COMPUTERS:
+        for software in SOFTWARES:
+            for test_id in range(1, NUM_TESTS):
                 test = f"t{test_id}"
                 file_name = f"{gpu}-{software}-{test}.txt"
 
@@ -58,30 +71,36 @@ def load_db(res_path):
     return db
 
 def make_time_ax(db, ax, computer, part, big_font, small_font):
-    LABELS = [f"T{i}" for i in range(1, 13)]
+    LABELS = [f"T{i}" for i in range(1, NUM_TESTS)]
     label_locations = np.arange(len(LABELS))
     PADDING = 0
 
     fig_db = list(filter(lambda x: x[0] == computer, db))
 
-    data = [
-        ("xbach", []),
-        ("bach", []),
-        ("hotpants", []),
-        ]
+    data = [[] for i in range(len(SOFTWARE))]
+        # ("xbach", []),
+        # ("bach", []),
+        # ("hotpants", []),
+        # ]
     
     j = 0
 
-    for software in ["xbach", "bach", "hotpants"]:
+    for software in SOFTWARES:
         for d in filter(lambda x: x[1] == software, fig_db):
-            data[j][1].append(d[4])
+            data[j].append(d[4])
 
-        if len(data[j][1]) > 0:
+        if len(data[j]) > 0:
             j += 1
         else:
+            print(software)
+            print(data[j])
+            print("idk what is going on but this is probably wrong")
             del data[j]
+    
+    print(data)
 
-    bar_width = 0.29
+    bar_width = 1/len(data) - 0.01
+    print(bar_width)
 
     if len(data) == 2:
         bar_width = 0.4
@@ -89,7 +108,7 @@ def make_time_ax(db, ax, computer, part, big_font, small_font):
     max_time = 0
 
     for d in data:
-        for m in d[1]:
+        for m in d:
             measurement = statistics.median(m)
 
             if measurement > max_time:
@@ -98,7 +117,7 @@ def make_time_ax(db, ax, computer, part, big_font, small_font):
     base_offset = 0 if len(data) % 2 != 0 else bar_width / 2
     multiplier = 0
 
-    for (attribute, measurements) in data:
+    for i, measurements in enumerate(data):
         measurement = []
 
         for m in measurements:
@@ -106,7 +125,7 @@ def make_time_ax(db, ax, computer, part, big_font, small_font):
 
         # Bar
         offset = base_offset + (bar_width + PADDING) * multiplier
-        rects = ax.bar(label_locations + offset, measurement, bar_width, label=SOFTWARE[attribute], edgecolor="0.2", linewidth=0.5)
+        rects = ax.bar(label_locations + offset, measurement, bar_width, label=SOFTWARES[i], edgecolor="0.2", linewidth=0.5)
         #ax.bar_label(rects, padding=3)
 
         # Variation
@@ -115,6 +134,9 @@ def make_time_ax(db, ax, computer, part, big_font, small_font):
 
             CI_BOUND = 1 * 1e-2
 
+            if (max_time == 0):
+                print("max_time == 0")
+                continue
             if (ci_upper - ci_lower) / max_time < CI_BOUND:
                 continue
 
@@ -127,9 +149,9 @@ def make_time_ax(db, ax, computer, part, big_font, small_font):
             CI_LINE_WIDTH = 1
             CI_COLOR = "0"
 
-            ax.plot([var_start, var_end], [ci_lower, ci_lower], color=CI_COLOR, linewidth=CI_LINE_WIDTH)
-            ax.plot([var_start, var_end], [ci_upper, ci_upper], color=CI_COLOR, linewidth=CI_LINE_WIDTH)
-            ax.plot([var_mid, var_mid], [ci_lower, ci_upper], color=CI_COLOR, linewidth=CI_LINE_WIDTH)
+            # ax.plot([var_start, var_end], [ci_lower, ci_lower], color=CI_COLOR, linewidth=CI_LINE_WIDTH)
+            # ax.plot([var_start, var_end], [ci_upper, ci_upper], color=CI_COLOR, linewidth=CI_LINE_WIDTH)
+            # ax.plot([var_mid, var_mid], [ci_lower, ci_upper], color=CI_COLOR, linewidth=CI_LINE_WIDTH)
             #ax.fill_between([var_start, var_end], ci_lower, ci_upper, color="b", alpha=0.2)
 
         multiplier += 1
@@ -152,7 +174,9 @@ def make_time(db, part, out_path):
     BIG_FONT = 16
     SMALL_FONT = 12
 
-    fig, axes = plt.subplots(nrows=2)
+    fig, axes = plt.subplots(nrows=NUM_COMPUTERS)
+    if type(axes) != list:
+        axes = [axes]
     plt.rc("font", size=BIG_FONT)
     plt.subplots_adjust(left=0.14, bottom=0.04, right=0.96, top=0.94, hspace=0.26)
     fig.set_size_inches(8, 9, forward=True)
@@ -189,7 +213,7 @@ def make_time_separate(db, part, out_path):
         fig.savefig(out_path / f"presentation_exec_{part.lower()}_{computer.lower()}.svg")
 
 def make_relative_speed(db, part, out_path):
-    LABELS = [f"T{i}" for i in range(1, 13)]
+    LABELS = [f"T{i}" for i in range(1, NUM_TESTS)]
 
     db = list(filter(lambda x: x[3] == part, db))
 
@@ -200,7 +224,9 @@ def make_relative_speed(db, part, out_path):
     BIG_FONT = 16
     SMALL_FONT = 12
 
-    fig, axes = plt.subplots(nrows=2)
+    fig, axes = plt.subplots(nrows=NUM_COMPUTERS)
+    if type(axes) != list:
+        axes = [axes]
     plt.rc("font", size=BIG_FONT)
     plt.subplots_adjust(left=0.14, bottom=0.04, right=0.96, top=0.94, hspace=0.26)
     fig.set_size_inches(8, 9, forward=True)
@@ -217,31 +243,30 @@ def make_relative_speed(db, part, out_path):
 
         fig_db = list(filter(lambda x: x[0] == computer, db))
 
-        data = [
-            ("xbach", []),
-            ("bach", []),
-            ("hotpants", []),
-            ]
+        data = [[] for i in range(len(SOFTWARES))]
         
         j = 0
 
-        for software in ["xbach", "bach", "hotpants"]:
+        for software in SOFTWARES:
             for d in filter(lambda x: x[1] == software, fig_db):
-                data[j][1].append(statistics.median(d[4]))
+                data[j].append(statistics.median(d[4]))
 
-            if len(data[j][1]) > 0:
+            if len(data[j]) > 0:
                 j += 1
             else:
+                print(software)
+                print(data[j])
+                print("idk what is going on but this is probably wrong")
                 del data[j]
 
         for j in range(1, len(data)):
-            for k in range(len(data[j][1])):
+            for k in range(len(data[j])):
                 speed_up = 0
 
-                if min(data[0][1][k], data[j][1][k]) > 5:
-                    speed_up = data[j][1][k] / data[0][1][k]
+                if min(data[0][k], data[j][k]) > 5:
+                    speed_up = data[j][k] / data[0][k]
             
-                data[j][1][k] = speed_up
+                data[j][k] = speed_up
 
         if len(data) > 0:
             del data[0]
@@ -256,13 +281,13 @@ def make_relative_speed(db, part, out_path):
         base_offset = bar_width if len(data) % 2 != 0 else bar_width / 2
         multiplier = 0
 
-        for (attribute, measurement) in data:
+        for i, measurement in enumerate(data):
             # Base line, no speed-up
             ax.axhline(1, linestyle="--", linewidth=0.8, color="0.2")
 
             # Bar
             offset = base_offset + (bar_width + PADDING) * multiplier
-            rects = ax.bar(label_locations + offset, measurement, bar_width, label=SOFTWARE[attribute], edgecolor="0.2", linewidth=0.5)
+            rects = ax.bar(label_locations + offset, measurement, bar_width, label=SOFTWARES[i], edgecolor="0.2", linewidth=0.5)
             #ax.bar_label(rects, padding=3)
 
             multiplier += 1
@@ -286,13 +311,15 @@ def make_breakdown(db, out_path):
     BIG_FONT = 16
     SMALL_FONT = 12
 
-    fig, axes = plt.subplots(nrows=2)
+    fig, axes = plt.subplots(nrows=NUM_COMPUTERS)
+    if type(axes) != list:
+        axes = [axes]
     plt.rc("font", size=BIG_FONT)
     plt.subplots_adjust(left=0.12, bottom=0.04, right=0.80, top=0.94, hspace=0.26)
     fig.set_size_inches(8, 9, forward=True)
 
     BAR_WIDTH = 0.75
-    LABELS = [f"T{i}" for i in range(1, 13)]
+    LABELS = [f"T{i}" for i in range(1, NUM_TESTS)]
     PARTS = ["Ini", "SSS", "CMV", "CD", "KSC", "Conv", "Sub", "Fin"]
     label_locations = np.arange(len(LABELS))
     
@@ -304,7 +331,7 @@ def make_breakdown(db, out_path):
 
         test_sums = dict()
 
-        for tid in range(1, 13):
+        for tid in range(1, NUM_TESTS):
             tstr = f"t{tid}"
             sum = 0
 

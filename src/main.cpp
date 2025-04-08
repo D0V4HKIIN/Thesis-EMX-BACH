@@ -15,8 +15,10 @@
 
 int main(int argc, const char *argv[]) {
   /* ===== INI ===== */
+  std::cout << "resolution of clock is: "
+            << std::chrono::high_resolution_clock::period::num << "/"
+            << std::chrono::high_resolution_clock::period::den << std::endl;
   auto p1 = std::chrono::steady_clock::now();
-  double start = omp_get_wtime();
 
   CCfits::FITS::setVerboseMode(true);
 
@@ -231,13 +233,9 @@ int main(int argc, const char *argv[]) {
     sssCl(templateImg.axis, templateStampsCl, sciStampsCl, args, clData);
 
     auto mp = std::chrono::steady_clock::now();
-    double start = omp_get_wtime();
-    // omp_set_num_threads(1);
     sssMp(templateStampsMp, templateImg, sciStampsMp, scienceImg, mask, args);
 
     auto end_chrono = std::chrono::steady_clock::now();
-    double end = omp_get_wtime();
-    std::cout << end - start << " seconds for sssMp" << std::endl;
     std::cout << timeDiff(mp, cl) << "ms for sssCl" << std::endl;
     std::cout << timeDiff(end_chrono, mp) << "ms for sssMp" << std::endl;
 
@@ -416,9 +414,6 @@ int main(int argc, const char *argv[]) {
   if(args.verboseTime) {
     std::cout << "Fin took " << timeDiff(p16, p15) << " ms" << std::endl;
   }
-
-  double end = omp_get_wtime();
-  std::cout << "omp time " << end - start << std::endl;
 
   std::cout << "\nBACH finished." << std::endl;
 

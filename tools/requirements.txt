@@ -1,0 +1,6 @@
+astropy
+colorama
+numpy
+scipy
+matplotlib
+PyQt6

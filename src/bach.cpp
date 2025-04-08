@@ -345,7 +345,7 @@ double conv(const std::pair<cl_int, cl_int> &imgSize,
   int ySteps = std::ceil(imgSize.second / double(args.fKernelWidth));
   std::vector<cl_double> convKernels(kernelSize * xSteps * ySteps);
 
-  double start = omp_get_wtime();
+  auto start = std::chrono::steady_clock::now();
 #pragma omp parallel for collapse(2) default(none)                       \
     shared(args, xSteps, ySteps, imgSize, convolutionKernel, kernelSize, \
                convKernels)
@@ -369,9 +369,10 @@ double conv(const std::pair<cl_int, cl_int> &imgSize,
                               imgSize.first / 2, imgSize.second / 2, args);
   double invKernSum = 1.0 / kernSum;
 
-  double end = omp_get_wtime();
+  auto end = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << end - start << "s for kernel creation" << std::endl;
+    std::cout << "Kernel creation took " << timeDiff(end, start) << " ms"
+              << std::endl;
   }
 
   if(args.verbose) {

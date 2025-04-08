@@ -3,10 +3,11 @@
 #include <omp.h>
 
 #include <algorithm>
+#include <cassert>
+#include <chrono>
 #include <numeric>
 
 #include "mathUtil.h"
-#include <cassert>
 
 void maskInput(const std::pair<cl_int, cl_int>& axis, const ClData& clData,
                const Arguments& args) {
@@ -1080,7 +1081,7 @@ void convSplit(const int w, const int h,
   createMaskEvent.wait();
 
   // Convolve
-  double p1 = omp_get_wtime();
+  auto p1 = std::chrono::steady_clock::now();
 
   // gpu convolves the first gpuH lines of the image while the cpu convolves the
   // last cpuH lines
@@ -1118,7 +1119,6 @@ void convSplit(const int w, const int h,
                                  sizeof(cl_ushort) * w * h, &mask.dataMask[0]);
 
   // main gpu convolution
-  double bmain = omp_get_wtime();
   if(args.verbose) {
     std::cout << "starting convolution on main gpu" << std::endl;
   }
@@ -1133,11 +1133,9 @@ void convSplit(const int w, const int h,
       eargs, kernBuf, args.fKernelWidth, xSteps, 0, clData.tImgBuf,
       clData.convImg, convMaskBuf, clData.maskBuf, clData.kernel.solution, w, h,
       args.backgroundOrder, nBgComp, scaleConv ? invKernSum : 1.0);
-  double pmain = omp_get_wtime();
-  std::cout << pmain - bmain << "s for starting main" << std::endl;
 
   // accelerator convolution
-  double bacc = omp_get_wtime();
+  auto bacc = std::chrono::steady_clock::now();
   if(args.verbose) {
     std::cout << "starting convolution on " << clData.accelerators.size()
               << " accelerators" << std::endl;
@@ -1201,11 +1199,10 @@ void convSplit(const int w, const int h,
         args.backgroundOrder, nBgComp, scaleConv ? invKernSum : 1.0);
     acceleratorEvents.push_back(accEvent);
 
-
     offset += accH[i];
   }
-  double pacc = omp_get_wtime();
-  std::cout << pacc - bacc << "s for starting acc" << std::endl;
+  auto pacc = std::chrono::steady_clock::now();
+  std::cout << timeDiff(pacc, bacc) << " ms for starting acc" << std::endl;
 
   // cpu convolution
   if(args.verbose) {
@@ -1285,15 +1282,14 @@ void convSplit(const int w, const int h,
     }
   }
 
-  double bwait = omp_get_wtime();
+  auto bwait = std::chrono::steady_clock::now();
   convEvent.wait();
   cl::Event::waitForEvents(acceleratorEvents);
-  double pwait = omp_get_wtime();
-  std::cout << "waited for " << pwait - bwait << std::endl;
+  auto pwait = std::chrono::steady_clock::now();
+  std::cout << "waited for " << timeDiff(pwait, bwait) << " ms" << std::endl;
 
   // Transfer convoluted image back to CPU, needed for saving to file and copy
   // to main gpu
-  std::cout << "reading, offset " << 0 << " size " << gpuH << std::endl;
   clData.queue.enqueueReadBuffer(clData.convImg, CL_TRUE, 0,
                                  sizeof(cl_double) * gpuH * w,
                                  &convImg.data[0]);
@@ -1303,8 +1299,6 @@ void convSplit(const int w, const int h,
   for(size_t i = 0; i < outBuffers.size(); i++) {
     cl::Buffer conv = outBuffers[i].first;
     cl::Buffer maskBuf = outBuffers[i].second;
-
-    std::cout << "reading, offset " << offset << " size " << accH[i] << std::endl;
 
     clData.accelerators[i].queue.enqueueReadBuffer(
         conv, CL_TRUE, sizeof(cl_double) * offset * w,
@@ -1329,12 +1323,11 @@ void convSplit(const int w, const int h,
       clData.convImg, CL_TRUE, sizeof(cl_double) * gpuH * w,
       sizeof(cl_double) * accCpuH * w, &convImg.data[gpuH * w]);
 
-  // Mask after convolve
-  double p2 = omp_get_wtime();
+  auto p2 = std::chrono::steady_clock::now();
 
   if(args.verboseTime) {
-    std::cout << p2 - p1 << "s for convolution, ignoring the masking"
-              << std::endl;
+    std::cout << "Convolution (without masking) took " << timeDiff(p2, p1)
+              << " ms " << std::endl;
   }
   // Mask after convolve
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double>

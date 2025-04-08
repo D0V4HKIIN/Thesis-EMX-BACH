@@ -121,7 +121,7 @@ def run_test(test_index, verbose, build_config, sssMode, cpuPart, cpuPartValue, 
     exe_args += ["-t", f"{template_name}.fits"]
     exe_args += ["-op", str(OUTPUT_PATH / f"test{id}_")]
     exe_args += ["-o", "conv.fits"]
-    exe_args += ["-p", "1"]
+#    exe_args += ["-p", "1"]
     exe_args += ["-vt"]
 
     if sssMode == "mp":
@@ -223,7 +223,7 @@ def print_table(errors, caption):
     print(table)
 
 
-def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, testAgainst, latex, external_path):
+def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, testAgainst, external_path):
     print(f"{color_print.CYAN}Running X-BACH ({build_config}) from \"{BIN_PATH.resolve()}\"")
 
     print()
@@ -280,10 +280,8 @@ def run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, acce
 
     print(f"Tests took {tess_time:.2f} seconds")
 
-    print(latex)
-    if latex:
-        print_table(conv_errors, "Convolution error")
-        print_table(sub_errors, "Subtraction error")
+    print_table(conv_errors, "Convolution error")
+    print_table(sub_errors, "Subtraction error")
 
 
 
@@ -400,8 +398,6 @@ def main(args):
             specificTest = True
         elif arg == "--hotpants":
             testAgainst = "hotpants"
-        elif arg == "--latex":
-            latex = True
 
 
     if cpuPart:
@@ -444,7 +440,7 @@ def main(args):
             for i in tests:
                 generate(testAgainst, external_path, i)
 
-    success = run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, testAgainst, latex, external_path)
+    success = run_tests(verbose, tests, build_config, sssMode, cpuPart, cpuPartValue, accelerators, acceleratorsValue, testAgainst, external_path)
 
     color_print.destroy()
 
