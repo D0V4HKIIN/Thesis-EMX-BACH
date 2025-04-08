@@ -72,7 +72,7 @@ def run(test_string, binary, template_name, science_name, id, in_path, out_path,
     time.sleep(500 / 1000)
 
 # makes 10 measurements
-def measure_n(filename, binary, template_name, science_name, i, in_path, out_path, num_cores=1):
+def measure_n(filename, binary, template_name, science_name, i, in_path, out_path, num_cores=NUM_CORES):
     runs = []
     for _ in range(10): 
         run(filename, binary, template_name, science_name, i+1, in_path, out_path, num_cores)
@@ -124,7 +124,7 @@ def measure_execution_time(binary, out_path, external_path):
 
 
         for cores in range(1, cores_to_test + 1):
-            filename=f"{COMPUTER}-{binary}-{cores + 1}-t{i+1}"
+            filename=f"{COMPUTER}-{binary}-{cores}-t{i+1}"
             print(filename, ".txt")
 
             runs = measure_n(filename, binary, template_name, science_name, i, in_path, out_path, num_cores=cores)
