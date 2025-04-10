@@ -1,0 +1,248 @@
+import matplotlib.pyplot as plt
+import sys
+import pathlib
+from scipy import stats
+import numpy as np
+import itertools
+
+from test_generator import *
+
+CONFIDENCE_INTERVAL = 0.95
+
+
+def label_string(key):
+    core_string = (
+        f"\n{str(key[1])} core{"s" if key[1] != 1 else ""}"
+        if key[0] == "emxbach"
+        else ""
+    )
+    return f"{key[0]}{core_string}"
+
+
+def verify_normality(db):
+    for test in db:
+        # test for normality using shapiro-wilk test
+        shapiro = stats.shapiro(test["times"])
+
+        if shapiro.pvalue < 0.05 or shapiro.statistic < 0.95:
+            print("test not normal", test)
+            print(shapiro)
+
+
+def graph_tests(db):
+    for test in db:
+        plt.title(f"{test}")
+        plt.hist(test["times"], bins=10)
+        plt.show()
+
+
+def graph_cores(db, label, out_path):
+    fdb = list(filter(lambda x: x["software"] == "emxbach" and x["label"] == label, db))
+
+    for t in TEST_INDEXES:
+        tdb = list(filter(lambda x: x["test"] == t, fdb))
+        n = NUM_CORES
+        means = np.zeros(n)
+        low_percentile = np.zeros(n)
+        high_percentile = np.zeros(n)
+
+        for test in tdb:
+            means[test["core"] - 1] = np.mean(test["times"])
+
+            boot = stats.bootstrap(
+                (test["times"],),  # for some reason this needs to be 2d
+                np.mean,  # want to bootstrap the mean
+                confidence_level=CONFIDENCE_INTERVAL,
+                method="percentile",
+            )
+            low_percentile[test["core"] - 1] = boot.confidence_interval.low
+            high_percentile[test["core"] - 1] = boot.confidence_interval.high
+
+        title = (
+            f"Per core execution time of {label} for test {t} on computer {COMPUTER}"
+        )
+        plt.title(title)
+        plt.xlabel("Cores")
+        plt.ylabel("Execution time (ms)")
+        plt.xticks(CORE_INDEXES)
+        plt.plot(CORE_INDEXES, means, marker="o")
+        plt.fill_between(
+            CORE_INDEXES, low_percentile, high_percentile, color="red", alpha=0.2
+        )
+
+        # plt.show()
+
+        plt.savefig(out_path / title)
+        plt.close()
+
+
+def arrayify(dict):
+    labels = dict.keys()
+    values = []
+    for label in labels:
+        values.append(dict[label])
+    return labels, values
+
+
+def graph_diff(db, label, out_path):
+    fdb = list(filter(lambda x: x["label"] == label, db))
+
+    for t in TEST_INDEXES:
+        tdb = list(
+            filter(
+                lambda x: x["test"] == t
+                and x["computer"] == COMPUTER
+                and (x["software"] != "emxbach" or x["core"] == NUM_CORES),
+                fdb,
+            )
+        )
+
+        means = {}
+        low_percentile = {}
+        high_percentile = {}
+
+        for test in tdb:
+            id = (test["software"], test["core"])
+            means[id] = np.mean(test["times"])
+
+            boot = stats.bootstrap(
+                (test["times"],),  # for some reason this needs to be 2d
+                np.mean,  # want to bootstrap the mean
+                confidence_level=CONFIDENCE_INTERVAL,
+                method="percentile",
+            )
+            low_percentile[id] = boot.confidence_interval.low
+            high_percentile[id] = boot.confidence_interval.high
+
+        title = f"Comparison of {label} for test {t} on computer {COMPUTER}"
+        # doesnt show min or max
+        plt.figure(figsize=(5, 6))
+        plt.title(title)
+        plt.ylabel("Execution time (ms)")
+
+        for key in means:
+            plt_label = label_string(key)
+            plt.bar(plt_label, means[key])
+
+        # plt.show()
+
+        plt.savefig(out_path / title)
+        plt.close()
+
+
+def graph_total(db, out_path):
+    label = "Total"
+    fdb = list(filter(lambda x: x["label"] == label, db))
+
+    for software in SOFTWARES:
+        means = {}
+        maxes = {}
+        mins = {}
+
+        for t in TEST_INDEXES:
+            tdb = list(
+                filter(
+                    lambda x: x["test"] == t
+                    and x["computer"] == COMPUTER
+                    and (x["software"] != "emxbach" or x["core"] == NUM_CORES),
+                    fdb,
+                )
+            )
+
+            for test in tdb:
+                id = (test["software"], test["core"])
+                means[id] = means.get(id, []) + [np.mean(test["times"])]
+                maxes[id] = maxes.get(id, []) + [np.max(test["times"])]
+                mins[id] = mins.get(id, []) + [np.min(test["times"])]
+
+    title = f"Comparison of total execution time on computer {COMPUTER} "
+    plt.title(title)
+    plt.xlabel("Pixel Per Image")
+    plt.ylabel("Execution time (ms)")
+
+    for key, marker in zip(means, itertools.cycle("os^d")):
+        plt_label = label_string(key)
+        plt.plot(PIXEL_PER_IMAGE, means[key], label=plt_label, marker=marker)
+        plt.fill_between(PIXEL_PER_IMAGE, mins[key], maxes[key], alpha=0.2)
+
+    plt.legend()
+
+    # plt.show()
+
+    plt.savefig(out_path / title)
+    plt.close()
+
+
+def graph_args(db, out_path):
+    fdb = list(filter(lambda x: x["label"] == "Convolution", db))
+
+    for test in TEST_INDEXES:
+        tdb = list(filter(lambda x: x["test"] == test, fdb))
+        data = np.zeros(shape=(TESTS_PER_ARGUMENT, TESTS_PER_ARGUMENT))
+
+        best_mean = np.inf
+        best_cpu = np.inf
+        best_acc = np.inf
+
+        for m in tdb:
+            mean = np.mean(m["times"])
+            cpu_part = m["cpu"]
+            acc_part = m["accelerator"]
+
+            if mean < best_mean:
+                best_mean = mean
+                best_cpu = cpu_part
+                best_acc = acc_part
+
+            data[
+                round(cpu_part * (TESTS_PER_ARGUMENT - 1) * 1 / (ARG_MAX - ARG_MIN)),
+                round(acc_part * (TESTS_PER_ARGUMENT - 1) * 1 / (ARG_MAX - ARG_MIN)),
+            ] = mean
+
+        title = f"Effect of work distribution for test {test}"
+
+        plt.suptitle(title)
+        plt.title(
+            f"Best execution time ({best_mean} ms) for cpu part = {best_cpu:.2f} and acc part = {best_acc:.2f}"
+        )
+        plt.xlabel("part of convolution done on accelerator")
+        plt.ylabel("part of convolution done on cpu")
+        plt.xticks(ARGS_TO_TEST, rotation=45)
+        plt.yticks(ARGS_TO_TEST)
+
+        plt.pcolormesh(ARGS_TO_TEST, ARGS_TO_TEST, data)
+        plt.colorbar()
+
+        plt.tight_layout()
+
+        # plt.show()
+
+        plt.savefig(out_path / title)
+        plt.close()
+
+
+def main(args):
+    res_path = pathlib.Path(args[0])
+    out_path = pathlib.Path(args[1])
+
+    test_db = get_times(generate_tests(), res_path)
+
+    # verify_normality(db)
+
+    # graph_tests(db)
+
+    graph_cores(test_db, "SSS", out_path)
+    graph_cores(test_db, "MakeKernels", out_path)
+
+    graph_diff(test_db, "SSS", out_path)
+    graph_diff(test_db, "MakeKernels", out_path)
+
+    graph_total(test_db, out_path)
+
+    # arg_db = get_times(generate_arg_tests(), res_path)
+
+    # graph_args(arg_db, out_path)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

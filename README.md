@@ -24,7 +24,7 @@ X-BACH also supports some optional arguments. These arguments are presented belo
 - `-d <int>`: integer to choose which device to use. Devices are listed when in verbose mode. Defaults to `0`.
 - `-sss <mp|cl>` : use openmp or opencl to compute Stamp and SubStamps. Defaults to `mp`.
 - `--cpuPart <float>` : How much of the work is offloaded to the cpu during convolution. Defaults to `0.2`.
-- `--accelerators <[int:int:float]>:`: Takes a comma separated list of three values separated by colons that defines an opencl devices to be used to accelerate convolution. The first value defines the platform id, the second the device id and the last value defines how much work should be attributed to it. Defaults to an empty list.
+- `--accelerators <[int:int:float]>`: Takes a comma separated list of three values separated by colons that defines an opencl devices to be used to accelerate convolution. The first value defines the platform id, the second the device id and the last value defines how much work should be attributed to it. Defaults to an empty list.
 
 For instance, if the input files are stored in `./res`, called `science.fits` and `template.fits`, and the output files would be written to `./out`, the following command would be used:
 
