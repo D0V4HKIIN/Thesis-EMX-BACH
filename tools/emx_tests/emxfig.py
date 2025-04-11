@@ -7,7 +7,7 @@ import itertools
 
 from test_generator import *
 
-CONFIDENCE_INTERVAL = 0.95
+CONFIDENCE_INTERVAL = 0.99
 
 
 def label_string(key):
@@ -122,7 +122,14 @@ def graph_diff(db, label, out_path):
 
         for key in means:
             plt_label = label_string(key)
-            plt.bar(plt_label, means[key])
+            plt.bar(
+                plt_label,
+                means[key],
+                yerr=[
+                    [means[key] - low_percentile[key]],
+                    [high_percentile[key] - means[key]],
+                ],
+            )
 
         # plt.show()
 
@@ -136,8 +143,8 @@ def graph_total(db, out_path):
 
     for software in SOFTWARES:
         means = {}
-        maxes = {}
-        mins = {}
+        low_percentile = {}
+        high_percentile = {}
 
         for t in TEST_INDEXES:
             tdb = list(
@@ -152,8 +159,19 @@ def graph_total(db, out_path):
             for test in tdb:
                 id = (test["software"], test["core"])
                 means[id] = means.get(id, []) + [np.mean(test["times"])]
-                maxes[id] = maxes.get(id, []) + [np.max(test["times"])]
-                mins[id] = mins.get(id, []) + [np.min(test["times"])]
+
+                boot = stats.bootstrap(
+                    (test["times"],),  # for some reason this needs to be 2d
+                    np.mean,  # want to bootstrap the mean
+                    confidence_level=CONFIDENCE_INTERVAL,
+                    method="percentile",
+                )
+                low_percentile[id] = low_percentile.get(id, []) + [
+                    boot.confidence_interval.low
+                ]
+                high_percentile[id] = high_percentile.get(id, []) + [
+                    boot.confidence_interval.high
+                ]
 
     title = f"Comparison of total execution time on computer {COMPUTER} "
     plt.title(title)
@@ -163,7 +181,9 @@ def graph_total(db, out_path):
     for key, marker in zip(means, itertools.cycle("os^d")):
         plt_label = label_string(key)
         plt.plot(PIXEL_PER_IMAGE, means[key], label=plt_label, marker=marker)
-        plt.fill_between(PIXEL_PER_IMAGE, mins[key], maxes[key], alpha=0.2)
+        plt.fill_between(
+            PIXEL_PER_IMAGE, low_percentile[key], high_percentile[key], alpha=0.2
+        )
 
     plt.legend()
 
@@ -225,23 +245,24 @@ def main(args):
     res_path = pathlib.Path(args[0])
     out_path = pathlib.Path(args[1])
 
-    test_db = get_times(generate_tests(), res_path)
-
     # verify_normality(db)
 
     # graph_tests(db)
 
-    graph_cores(test_db, "SSS", out_path)
-    graph_cores(test_db, "MakeKernels", out_path)
+    if "--normal" in args:
+        test_db = get_times(generate_tests(), res_path)
+        graph_cores(test_db, "SSS", out_path)
+        graph_cores(test_db, "MakeKernels", out_path)
 
-    graph_diff(test_db, "SSS", out_path)
-    graph_diff(test_db, "MakeKernels", out_path)
+        graph_diff(test_db, "SSS", out_path)
+        graph_diff(test_db, "MakeKernels", out_path)
 
-    graph_total(test_db, out_path)
+        graph_total(test_db, out_path)
 
-    # arg_db = get_times(generate_arg_tests(), res_path)
+    if "--args" in args:
+        arg_db = get_times(generate_arg_tests(), res_path)
 
-    # graph_args(arg_db, out_path)
+        graph_args(arg_db, out_path)
 
 
 if __name__ == "__main__":

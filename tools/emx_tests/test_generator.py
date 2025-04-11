@@ -1,21 +1,38 @@
 import multiprocessing
 import pathlib
 import numpy as np
+from astropy.io import fits
 
 COMPUTER = "dev"
 NUM_CORES = multiprocessing.cpu_count() // 2
 print("verify that", NUM_CORES, "is the right amount of cores!")
 
+ROOT_PATH = pathlib.Path(__file__).parent.parent.parent.resolve()
+BIN_PATH = ROOT_PATH / "bin"
+RES_PATH = ROOT_PATH / "res"
+TEST_PATH = ROOT_PATH / "tests"
+OUTPUT_PATH = TEST_PATH / "out" / "measurements"
+CONFIG_PATH = ROOT_PATH / "tools" / "test_config.txt"
+
+# read external path
+EXTERNAL_PATH = None
+
+if CONFIG_PATH.exists():
+    with open(CONFIG_PATH, "r") as input:
+        path_str = input.readline().strip()
+        EXTERNAL_PATH = pathlib.Path(path_str)
+
+    print(f"Using external path: {EXTERNAL_PATH}")
 
 # template image, science image
 TEST_CASES = [
     ("test0", "test1"),
-    # ("testScience", "testTemplate"),
+    ("testScience", "testTemplate"),
     ("ptf_m82_s_2k", "ptf_m82_t_2k"),
-    # ("sparse0", "sparse1"),
-    # ("ztf_m1_s_3k",  "ztf_m1_t_3k"),
-    # ("skyM-T-4k", "skyM-S-4k"),
-    # ("skyM-T-5k", "skyM-S-5k"),
+    ("sparse0", "sparse1"),
+    ("ztf_m1_s_3k", "ztf_m1_t_3k"),
+    ("skyM-T-4k", "skyM-S-4k"),
+    ("skyM-T-5k", "skyM-S-5k"),
     # ("skyM-T-6k", "skyM-S-6k"),
     # ("skyM-T-7k", "skyM-S-7k"),
     # ("skyM-T-8k", "skyM-S-8k"),
@@ -26,10 +43,30 @@ TEST_CASES = [
 TEST_INDEXES = [i + 1 for i in range(len(TEST_CASES))]
 CORE_INDEXES = [i + 1 for i in range(NUM_CORES)]
 
-PIXEL_PER_IMAGE = [330**2, 1912 * 2025]
+PIXEL_PER_IMAGE = [
+    img[0] * img[1]
+    for img in [
+        (
+            fits.open(RES_PATH / f"{fits_name[0]}.fits").info(0)[0][5]
+            if (RES_PATH / f"{fits_name[0]}.fits").exists()
+            else fits.open(EXTERNAL_PATH / f"{fits_name[0]}.fits").info(0)[0][5]
+        )
+        for fits_name in TEST_CASES
+    ]
+]
+print(PIXEL_PER_IMAGE)
+# PIXEL_PER_IMAGE = [330**2, 1912 * 2025]
 
 # cpu part, accelerator part
-OPTIMAL_PART = [(0.0, 0.0), (0.09, 0.22)]
+OPTIMAL_PART = [
+    (0.0, 0.0),
+    (0.04, 0.19),
+    (0.16, 0.23),
+    (0.04, 0.23),
+    (0.16, 0.23),
+    (0.16, 0.23),
+    (0.16, 0.23),
+]
 
 TESTS_PER_ARGUMENT = 10
 ARG_MIN = 0.0
@@ -40,13 +77,6 @@ ARGS_TO_TEST = np.linspace(ARG_MIN, ARG_MAX, TESTS_PER_ARGUMENT)
 SOFTWARES = ["bach", "xbach", "emxbach", "hotpants"]
 ACCELERATOR_PLATFORM = 1
 ACCELERATOR_DEVICE = 0
-
-ROOT_PATH = pathlib.Path(__file__).parent.parent.parent.resolve()
-BIN_PATH = ROOT_PATH / "bin"
-RES_PATH = ROOT_PATH / "res"
-TEST_PATH = ROOT_PATH / "tests"
-OUTPUT_PATH = TEST_PATH / "out" / "measurements"
-CONFIG_PATH = ROOT_PATH / "tools" / "test_config.txt"
 
 
 def test_filename(test):
