@@ -80,7 +80,7 @@ ACCELERATOR_DEVICE = 0
 
 
 def test_filename(test):
-    return f"{test["computer"]}-{test["software"]}-cores{test["core"]}-t{test["test"]}-cp{test["cpu"]:.2f}-ac{test["accelerator"]:.2f}"
+    return f'{test["computer"]}-{test["software"]}-cores{test["core"]}-t{test["test"]}-cp{test["cpu"]:.2f}-ac{test["accelerator"]:.2f}'
 
 
 def get_times(tests: list[tuple], res_path):
