@@ -159,7 +159,7 @@ def get_tests_from_args(args):
     tests = []
 
     for arg in args:
-        if arg == "--arg":
+        if arg == "--args":
             tests.extend(generate_arg_tests())
         elif arg == "--normal":
             tests.extend(generate_tests())
