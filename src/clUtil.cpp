@@ -62,6 +62,13 @@ std::vector<cl::Device> getAcceleratorDevices(const Arguments &args) {
   for(size_t i = 0; i < args.accelerators.size(); i++) {
     int platformIndex = std::get<0>(args.accelerators[i]);
     int deviceIndex = std::get<1>(args.accelerators[i]);
+
+    if(platformIndex >= allPlatforms.size()) {
+      std::cout << "platform " << platformIndex << " doesn't exist"
+                << std::endl;
+      exit(-1);
+    }
+
     cl::Platform platform = allPlatforms[platformIndex];
 
     std::vector<cl::Device> allDevices;
