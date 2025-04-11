@@ -219,7 +219,7 @@ def graph_args(db, out_path):
                 round(acc_part * (TESTS_PER_ARGUMENT - 1) * 1 / (ARG_MAX - ARG_MIN)),
             ] = mean
 
-        title = f"Effect of work distribution for test {test}"
+        title = f"Effect of work distribution for test {test} on computer {COMPUTER}"
 
         plt.suptitle(title)
         plt.title(
@@ -244,6 +244,9 @@ def graph_args(db, out_path):
 def main(args):
     res_path = pathlib.Path(args[0])
     out_path = pathlib.Path(args[1])
+
+    print("res path:", res_path)
+    print("out path:", out_path)
 
     # verify_normality(db)
 
