@@ -20,3 +20,4 @@ venv/
 emxbach.prof
 
 /res/skyMaker/*.fits
+/tests/*.fits
