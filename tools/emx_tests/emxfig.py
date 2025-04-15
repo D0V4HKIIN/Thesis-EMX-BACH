@@ -4,6 +4,7 @@ import pathlib
 from scipy import stats
 import numpy as np
 import itertools
+import os
 
 from test_generator import *
 
@@ -39,6 +40,11 @@ def graph_tests(db):
 def graph_cores(db, label, out_path):
     fdb = list(filter(lambda x: x["software"] == "emxbach" and x["label"] == label, db))
 
+    sub_folder = "cores"
+    new_out_path = out_path / sub_folder
+    if not new_out_path.exists():
+        os.mkdir(out_path / sub_folder)
+
     for t in TEST_INDEXES:
         tdb = list(filter(lambda x: x["test"] == t, fdb))
         n = NUM_CORES
@@ -58,9 +64,7 @@ def graph_cores(db, label, out_path):
             low_percentile[test["core"] - 1] = boot.confidence_interval.low
             high_percentile[test["core"] - 1] = boot.confidence_interval.high
 
-        title = (
-            f"Per core execution time of {label} for test {t} on computer {COMPUTER}"
-        )
+        title = f"Execution time of {label} for test {t}"
         plt.title(title)
         plt.xlabel("Cores")
         plt.ylabel("Execution time (ms)")
@@ -72,7 +76,8 @@ def graph_cores(db, label, out_path):
 
         # plt.show()
 
-        plt.savefig(out_path / title)
+        filename = f"core_{label}_test{t}_computer{COMPUTER}"
+        plt.savefig(new_out_path / filename)
         plt.close()
 
 
@@ -86,6 +91,11 @@ def arrayify(dict):
 
 def graph_diff(db, label, out_path):
     fdb = list(filter(lambda x: x["label"] == label, db))
+
+    sub_folder = "diff"
+    new_out_path = out_path / sub_folder
+    if not new_out_path.exists():
+        os.mkdir(out_path / sub_folder)
 
     for t in TEST_INDEXES:
         tdb = list(
@@ -114,7 +124,7 @@ def graph_diff(db, label, out_path):
             low_percentile[id] = boot.confidence_interval.low
             high_percentile[id] = boot.confidence_interval.high
 
-        title = f"Comparison of {label} for test {t} on computer {COMPUTER}"
+        title = f"Comparison of execution time of {label} for test {t}"
         # doesnt show min or max
         plt.figure(figsize=(5, 6))
         plt.title(title)
@@ -133,7 +143,8 @@ def graph_diff(db, label, out_path):
 
         # plt.show()
 
-        plt.savefig(out_path / title)
+        filename = f"diff_{label}_test{t}_computer{COMPUTER}"
+        plt.savefig(new_out_path / filename)
         plt.close()
 
 
@@ -173,7 +184,7 @@ def graph_total(db, out_path):
                     boot.confidence_interval.high
                 ]
 
-    title = f"Comparison of total execution time on computer {COMPUTER} "
+    title = f"Comparison of total execution time"
     plt.title(title)
     plt.xlabel("Pixel Per Image")
     plt.ylabel("Execution time (ms)")
@@ -189,7 +200,8 @@ def graph_total(db, out_path):
 
     # plt.show()
 
-    plt.savefig(out_path / title)
+    filename = f"total_computer{COMPUTER}"
+    plt.savefig(out_path / filename)
     plt.close()
 
 
@@ -219,7 +231,7 @@ def graph_args(db, out_path):
                 round(acc_part * (TESTS_PER_ARGUMENT - 1) * 1 / (ARG_MAX - ARG_MIN)),
             ] = mean
 
-        title = f"Effect of work distribution for test {test} on computer {COMPUTER}"
+        title = f"Effect of work distribution on execution time for test {test}"
 
         plt.suptitle(title)
         plt.title(
@@ -237,7 +249,8 @@ def graph_args(db, out_path):
 
         # plt.show()
 
-        plt.savefig(out_path / title)
+        filename = f"arg_test{test}_computer{COMPUTER}"
+        plt.savefig(out_path / filename)
         plt.close()
 
 
@@ -259,6 +272,7 @@ def main(args):
 
         graph_diff(test_db, "SSS", out_path)
         graph_diff(test_db, "MakeKernels", out_path)
+        graph_diff(test_db, "Convolution", out_path)
 
         graph_total(test_db, out_path)
 
