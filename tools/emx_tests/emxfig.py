@@ -10,6 +10,8 @@ from test_generator import *
 
 CONFIDENCE_INTERVAL = 0.99
 
+DPI = 300
+
 
 def label_string(key):
     core_string = (
@@ -77,7 +79,59 @@ def graph_cores(db, label, out_path):
         # plt.show()
 
         filename = f"core_{label}_test{t}_computer{COMPUTER}"
-        plt.savefig(new_out_path / filename)
+        plt.savefig(new_out_path / filename, dpi=DPI)
+        plt.close()
+
+
+def graph_speedup(db, label, out_path):
+    fdb = list(filter(lambda x: x["software"] == "emxbach" and x["label"] == label, db))
+
+    sub_folder = "cores"
+    new_out_path = out_path / sub_folder
+    if not new_out_path.exists():
+        os.mkdir(out_path / sub_folder)
+
+    for t in TEST_INDEXES:
+        tdb = list(filter(lambda x: x["test"] == t, fdb))
+        n = NUM_CORES
+        means = np.zeros(n)
+        low_percentile = np.zeros(n)
+        high_percentile = np.zeros(n)
+
+        for test in tdb:
+            means[test["core"] - 1] = np.mean(test["times"])
+
+            boot = stats.bootstrap(
+                (test["times"],),  # for some reason this needs to be 2d
+                np.mean,  # want to bootstrap the mean
+                confidence_level=CONFIDENCE_INTERVAL,
+                method="percentile",
+            )
+            low_percentile[test["core"] - 1] = boot.confidence_interval.low
+            high_percentile[test["core"] - 1] = boot.confidence_interval.high
+
+        one_mean = means[0]
+
+        speedup_means = one_mean / means
+        speedup_low = one_mean / low_percentile
+        speedup_high = one_mean / high_percentile
+
+        title = f"Speedup of {label} for test {t}"
+        plt.title(title)
+        plt.xlabel("Cores")
+        plt.ylabel("Speedup")
+        plt.xticks(CORE_INDEXES)
+        ax = plt.gca()
+        ax.set_ylim(1, NUM_CORES)
+        plt.plot(CORE_INDEXES, speedup_means, marker="o")
+        plt.fill_between(
+            CORE_INDEXES, speedup_low, speedup_high, color="red", alpha=0.2
+        )
+
+        # plt.show()
+
+        filename = f"core_speedup_{label}_test{t}_computer{COMPUTER}"
+        plt.savefig(new_out_path / filename, dpi=DPI)
         plt.close()
 
 
@@ -144,12 +198,11 @@ def graph_diff(db, label, out_path):
         # plt.show()
 
         filename = f"diff_{label}_test{t}_computer{COMPUTER}"
-        plt.savefig(new_out_path / filename)
+        plt.savefig(new_out_path / filename, dpi=DPI)
         plt.close()
 
 
-def graph_total(db, out_path):
-    label = "Total"
+def graph_total(db, label, out_path):
     fdb = list(filter(lambda x: x["label"] == label, db))
 
     for software in SOFTWARES:
@@ -184,7 +237,7 @@ def graph_total(db, out_path):
                     boot.confidence_interval.high
                 ]
 
-    title = f"Comparison of total execution time"
+    title = f"Comparison of execution time of {label}"
     plt.title(title)
     plt.xlabel("Pixel Per Image")
     plt.ylabel("Execution time (ms)")
@@ -200,8 +253,8 @@ def graph_total(db, out_path):
 
     # plt.show()
 
-    filename = f"total_computer{COMPUTER}"
-    plt.savefig(out_path / filename)
+    filename = f"line{label}_computer{COMPUTER}"
+    plt.savefig(out_path / filename, dpi=DPI)
     plt.close()
 
 
@@ -243,14 +296,15 @@ def graph_args(db, out_path):
         plt.yticks(ARGS_TO_TEST)
 
         plt.pcolormesh(ARGS_TO_TEST, ARGS_TO_TEST, data)
-        plt.colorbar()
+        clb = plt.colorbar()
+        clb.ax.set_ylabel("execution time in ms")
 
         plt.tight_layout()
 
         # plt.show()
 
         filename = f"arg_test{test}_computer{COMPUTER}"
-        plt.savefig(out_path / filename)
+        plt.savefig(out_path / filename, dpi=DPI)
         plt.close()
 
 
@@ -270,11 +324,19 @@ def main(args):
         graph_cores(test_db, "SSS", out_path)
         graph_cores(test_db, "MakeKernels", out_path)
 
+        graph_speedup(test_db, "SSS", out_path)
+        graph_speedup(test_db, "MakeKernels", out_path)
+
         graph_diff(test_db, "SSS", out_path)
         graph_diff(test_db, "MakeKernels", out_path)
         graph_diff(test_db, "Convolution", out_path)
+        graph_diff(test_db, "Conv", out_path)
 
-        graph_total(test_db, out_path)
+        graph_total(test_db, "Total", out_path)
+        graph_total(test_db, "SSS", out_path)
+        graph_total(test_db, "MakeKernels", out_path)
+        graph_total(test_db, "Convolution", out_path)
+        graph_total(test_db, "Conv", out_path)
 
     if "--args" in args:
         arg_db = get_times(generate_arg_tests(), res_path)
