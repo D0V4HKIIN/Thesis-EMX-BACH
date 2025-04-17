@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib
 import sys
 import pathlib
 from scipy import stats
@@ -125,8 +126,6 @@ def graph_efficiency(db, label, out_path):
         plt.xlabel("Cores")
         plt.ylabel("Efficiency")
         plt.xticks(CORE_INDEXES)
-        # ax = plt.gca()
-        # ax.set_ylim(0, 1)
         plt.plot(CORE_INDEXES, efficiency_means, marker="o")
         plt.fill_between(
             CORE_INDEXES, efficiency_low, efficiency_high, color="red", alpha=0.2
@@ -137,6 +136,59 @@ def graph_efficiency(db, label, out_path):
         filename = f"core_efficiency_{label}_test{t}_computer{COMPUTER}"
         plt.savefig(new_out_path / filename, dpi=DPI)
         plt.close()
+
+
+def graph_together_efficiency(db, label, out_path):
+    fdb = list(filter(lambda x: x["software"] == "emxbach" and x["label"] == label, db))
+
+    sub_folder = "cores"
+    new_out_path = out_path / sub_folder
+    if not new_out_path.exists():
+        os.mkdir(out_path / sub_folder)
+
+    for t in TEST_INDEXES:
+        tdb = list(filter(lambda x: x["test"] == t, fdb))
+        n = NUM_CORES
+        means = np.zeros(n)
+        low_percentile = np.zeros(n)
+        high_percentile = np.zeros(n)
+
+        for test in tdb:
+            means[test["core"] - 1] = np.mean(test["times"])
+
+            boot = stats.bootstrap(
+                (test["times"],),  # for some reason this needs to be 2d
+                np.mean,  # want to bootstrap the mean
+                confidence_level=CONFIDENCE_INTERVAL,
+                method="percentile",
+            )
+            low_percentile[test["core"] - 1] = boot.confidence_interval.low
+            high_percentile[test["core"] - 1] = boot.confidence_interval.high
+
+        one_mean = means[0]
+
+        speedup_means = one_mean / means
+        speedup_low = one_mean / low_percentile
+        speedup_high = one_mean / high_percentile
+
+        efficiency_means = speedup_means / CORE_INDEXES
+        efficiency_low = speedup_low / CORE_INDEXES
+        efficiency_high = speedup_high / CORE_INDEXES
+
+        plt.plot(CORE_INDEXES, efficiency_means, label=f"test {t}", marker="o")
+        plt.fill_between(CORE_INDEXES, efficiency_low, efficiency_high, alpha=0.2)
+
+    title = f"Efficiency of {label}"
+    plt.title(title)
+    plt.xlabel("Cores")
+    plt.ylabel("Efficiency")
+    plt.xticks(CORE_INDEXES)
+    plt.legend(bbox_to_anchor=(1, 1))
+    plt.subplots_adjust(left=0.12, bottom=0.14, right=0.80, top=0.94, hspace=0.26)
+
+    filename = f"core_togetherefficiency_{label}_computer{COMPUTER}"
+    plt.savefig(new_out_path / filename, dpi=DPI)
+    plt.close()
 
 
 def graph_speedup(db, label, out_path):
@@ -409,7 +461,18 @@ def graph_args(db, out_path):
         plt.xticks(ARGS_TO_TEST, rotation=45)
         plt.yticks(ARGS_TO_TEST)
 
-        plt.pcolormesh(ARGS_TO_TEST, ARGS_TO_TEST, data)
+        # log_intensity = -1
+        # logseq = np.logspace(log_intensity, 0)
+        # cmap = plt.cm.rainbow(logseq)
+        # cmap = plt.colormaps["viridis_r"]
+        plt.pcolormesh(
+            ARGS_TO_TEST,
+            ARGS_TO_TEST,
+            data,
+            # this is bad
+            # norm=matplotlib.colors.PowerNorm(0.5),
+            cmap="viridis_r",
+        )
         clb = plt.colorbar()
         clb.ax.set_ylabel("execution time in ms")
 
@@ -429,6 +492,8 @@ def main(args):
     print("res path:", res_path)
     print("out path:", out_path)
 
+    plt.rcParams["figure.figsize"] = [6.8, 4]
+
     # verify_normality(db)
 
     # graph_tests(db)
@@ -441,6 +506,9 @@ def main(args):
 
         graph_efficiency(test_db, "SSS", out_path)
         graph_efficiency(test_db, "MakeKernels", out_path)
+
+        graph_together_efficiency(test_db, "SSS", out_path)
+        graph_together_efficiency(test_db, "MakeKernels", out_path)
 
         graph_speedup(test_db, "SSS", out_path)
         graph_speedup(test_db, "MakeKernels", out_path)
