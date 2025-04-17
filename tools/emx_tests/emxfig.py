@@ -83,6 +83,62 @@ def graph_cores(db, label, out_path):
         plt.close()
 
 
+def graph_efficiency(db, label, out_path):
+    fdb = list(filter(lambda x: x["software"] == "emxbach" and x["label"] == label, db))
+
+    sub_folder = "cores"
+    new_out_path = out_path / sub_folder
+    if not new_out_path.exists():
+        os.mkdir(out_path / sub_folder)
+
+    for t in TEST_INDEXES:
+        tdb = list(filter(lambda x: x["test"] == t, fdb))
+        n = NUM_CORES
+        means = np.zeros(n)
+        low_percentile = np.zeros(n)
+        high_percentile = np.zeros(n)
+
+        for test in tdb:
+            means[test["core"] - 1] = np.mean(test["times"])
+
+            boot = stats.bootstrap(
+                (test["times"],),  # for some reason this needs to be 2d
+                np.mean,  # want to bootstrap the mean
+                confidence_level=CONFIDENCE_INTERVAL,
+                method="percentile",
+            )
+            low_percentile[test["core"] - 1] = boot.confidence_interval.low
+            high_percentile[test["core"] - 1] = boot.confidence_interval.high
+
+        one_mean = means[0]
+
+        speedup_means = one_mean / means
+        speedup_low = one_mean / low_percentile
+        speedup_high = one_mean / high_percentile
+
+        efficiency_means = speedup_means / CORE_INDEXES
+        efficiency_low = speedup_low / CORE_INDEXES
+        efficiency_high = speedup_high / CORE_INDEXES
+
+        title = f"Efficiency of {label} for test {t}"
+        plt.title(title)
+        plt.xlabel("Cores")
+        plt.ylabel("Efficiency")
+        plt.xticks(CORE_INDEXES)
+        # ax = plt.gca()
+        # ax.set_ylim(0, 1)
+        plt.plot(CORE_INDEXES, efficiency_means, marker="o")
+        plt.fill_between(
+            CORE_INDEXES, efficiency_low, efficiency_high, color="red", alpha=0.2
+        )
+
+        # plt.show()
+
+        filename = f"core_efficiency_{label}_test{t}_computer{COMPUTER}"
+        plt.savefig(new_out_path / filename, dpi=DPI)
+        plt.close()
+
+
 def graph_speedup(db, label, out_path):
     fdb = list(filter(lambda x: x["software"] == "emxbach" and x["label"] == label, db))
 
@@ -133,6 +189,64 @@ def graph_speedup(db, label, out_path):
         filename = f"core_speedup_{label}_test{t}_computer{COMPUTER}"
         plt.savefig(new_out_path / filename, dpi=DPI)
         plt.close()
+
+
+STEPS = [
+    "Ini",
+    "SSS",
+    "CMV",
+    "CD",
+    "KSC",
+    "Conv",
+    "Sub",
+    "Fin",
+    "Total",
+]
+
+
+def graph_breakdown(db, out_path):
+    fdb = list(
+        filter(
+            lambda x: x["software"] == "emxbach" and x["core"] == NUM_CORES,
+            db,
+        )
+    )
+
+    labels = [f"test {t}" for t in TEST_INDEXES]
+    all_fractions = np.zeros((len(TEST_INDEXES), len(STEPS) - 1))
+
+    for t in TEST_INDEXES:
+        tdb = list(filter(lambda x: x["test"] == t, fdb))
+
+        times = np.zeros(len(STEPS))
+
+        for i, label in enumerate(STEPS):
+            ldb = list(filter(lambda x: x["label"] == label, tdb))
+
+            times[i] = np.sum(ldb[0]["times"])
+
+        fractions = times[0:-1] / times[-1]  # last is total
+        all_fractions[t - 1] = fractions
+
+    bottoms = np.zeros(len(TEST_INDEXES))
+
+    all_fractions *= 100  # in percentage
+
+    for i in range(len(STEPS) - 1):
+        fractions = all_fractions[:, i]
+        plt.bar(labels, fractions, label=STEPS[i], bottom=bottoms)
+        bottoms += fractions
+
+    plt.title(f"Execution time breakdown")
+    plt.ylabel("Percentage of total execution time")
+    plt.subplots_adjust(left=0.12, bottom=0.08, right=0.80, top=0.94, hspace=0.26)
+    plt.legend(bbox_to_anchor=(1, 1))
+
+    # plt.show()
+
+    filename = f"breakdown_computer{COMPUTER}"
+    plt.savefig(out_path / filename, dpi=DPI)
+    plt.close()
 
 
 def arrayify(dict):
@@ -321,8 +435,12 @@ def main(args):
 
     if "--normal" in args:
         test_db = get_times(generate_tests(), res_path)
+
         graph_cores(test_db, "SSS", out_path)
         graph_cores(test_db, "MakeKernels", out_path)
+
+        graph_efficiency(test_db, "SSS", out_path)
+        graph_efficiency(test_db, "MakeKernels", out_path)
 
         graph_speedup(test_db, "SSS", out_path)
         graph_speedup(test_db, "MakeKernels", out_path)
@@ -337,6 +455,8 @@ def main(args):
         graph_total(test_db, "MakeKernels", out_path)
         graph_total(test_db, "Convolution", out_path)
         graph_total(test_db, "Conv", out_path)
+
+        graph_breakdown(test_db, out_path)
 
     if "--args" in args:
         arg_db = get_times(generate_arg_tests(), res_path)

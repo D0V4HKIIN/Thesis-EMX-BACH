@@ -212,25 +212,12 @@ def measure_execution_time(tests, out_path, external_path):
                 "Fin": [],
                 "Total": [],
             }
-            steps = [
-                "Ini",
-                "SSS",
-                "CMV",
-                "CD",
-                "KSC",
-                "MakeKernels",
-                "Convolution",
-                "Conv",
-                "Sub",
-                "Fin",
-                "Total",
-            ]
             for run_ in runs:
                 for j, t in enumerate(run_):
-                    step_times[steps[j]].append(t)
+                    step_times[LABELS[j]].append(t)
 
             with open(out_path / f"{filename}.txt", "w") as time_log:
-                for step in steps:
+                for step in LABELS:
                     time_log.write(f"{step}:")
                     for time in step_times[step]:
                         time_log.write(f" {time}")

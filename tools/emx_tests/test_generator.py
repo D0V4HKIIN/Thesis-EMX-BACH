@@ -78,6 +78,20 @@ SOFTWARES = ["bach", "xbach", "emxbach", "hotpants"]
 ACCELERATOR_PLATFORM = 1
 ACCELERATOR_DEVICE = 0
 
+LABELS = [
+    "Ini",
+    "SSS",
+    "CMV",
+    "CD",
+    "KSC",
+    "MakeKernels",
+    "Convolution",
+    "Conv",
+    "Sub",
+    "Fin",
+    "Total",
+]
+
 
 def test_filename(test):
     return f'{test["computer"]}-{test["software"]}-cores{test["core"]}-t{test["test"]}-cp{test["cpu"]:.2f}-ac{test["accelerator"]:.2f}'
