@@ -256,10 +256,11 @@ STEPS = [
 ]
 
 
-def graph_breakdown(db, out_path):
+def graph_breakdown(db, software, out_path):
+    num_cores = NUM_CORES if software == "emxbach" else 1
     fdb = list(
         filter(
-            lambda x: x["software"] == "emxbach" and x["core"] == NUM_CORES,
+            lambda x: x["software"] == software and x["core"] == num_cores,
             db,
         )
     )
@@ -289,14 +290,14 @@ def graph_breakdown(db, out_path):
         plt.bar(labels, fractions, label=STEPS[i], bottom=bottoms)
         bottoms += fractions
 
-    plt.title(f"Execution time breakdown")
+    plt.title(f"Execution time breakdown of {software}")
     plt.ylabel("Percentage of total execution time")
     plt.subplots_adjust(left=0.12, bottom=0.08, right=0.80, top=0.94, hspace=0.26)
     plt.legend(bbox_to_anchor=(1, 1))
 
     # plt.show()
 
-    filename = f"breakdown_computer{COMPUTER}"
+    filename = f"breakdown_{software}_computer{COMPUTER}"
     plt.savefig(out_path / filename, dpi=DPI)
     plt.close()
 
@@ -524,7 +525,9 @@ def main(args):
         graph_total(test_db, "Convolution", out_path)
         graph_total(test_db, "Conv", out_path)
 
-        graph_breakdown(test_db, out_path)
+        graph_breakdown(test_db, "bach", out_path)
+        graph_breakdown(test_db, "xbach", out_path)
+        graph_breakdown(test_db, "emxbach", out_path)
 
     if "--args" in args:
         arg_db = get_times(generate_arg_tests(), res_path)
