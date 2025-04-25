@@ -6,9 +6,9 @@ mkdir bin/bach
 mkdir bin/xbach
 mkdir bin/emxbach
 
-ln -s ../../../BACH/cl_kern bin/bach/cl_kern
-ln -s ../../../XBACH/cl_kern bin/xbach/cl_kern
-ln -s ../../cl_kern bin/emxbach/cl_kern
+ln -sf ../../../BACH/cl_kern bin/bach/cl_kern
+ln -sf ../../../XBACH/cl_kern bin/xbach/cl_kern
+ln -sf ../../cl_kern bin/emxbach/cl_kern
 
 cd ../hotpants
 echo "building hotpants"

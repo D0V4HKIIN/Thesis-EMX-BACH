@@ -22,8 +22,8 @@ void sigmaClip(const cl::Buffer& data, int dataOffset, int dataCount,
 void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
                const cl::Buffer& imgBuf, const ClStampsData& stampsData,
                const ClData& clData);
-int timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
-             std::chrono::time_point<std::chrono::steady_clock> start);
+long long timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
+                   std::chrono::time_point<std::chrono::steady_clock> start);
 
 void ludcmp(const cl::Buffer& matrix, int matrixSize, int stampCount,
             const cl::Buffer& index, const cl::Buffer& vv,

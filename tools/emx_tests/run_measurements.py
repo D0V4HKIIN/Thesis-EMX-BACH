@@ -39,7 +39,6 @@ def run(
                     f"{science_name}.fits",
                     "-op",
                     f"{out_path / test_string}_",
-                    "-v",
                     "-vt",
                     "--cpuPart",
                     str(cpu_part),
@@ -132,7 +131,7 @@ def measure_n(
     return runs
 
 
-time_matcher = re.compile(r".*took (?:(\d+) ?s )?(\d+) ?ms")
+time_matcher = re.compile(r".*took (?:(\d+) ?s )?(\d+) ?ns")
 
 
 def measure_execution_time(tests, out_path, external_path):
@@ -205,8 +204,8 @@ def measure_execution_time(tests, out_path, external_path):
                 "CMV": [],
                 "CD": [],
                 "KSC": [],
-                "MakeKernels": [],
-                "Convolution": [],
+                "kernel creation": [],
+                "convolution": [],
                 "Conv": [],
                 "Sub": [],
                 "Fin": [],

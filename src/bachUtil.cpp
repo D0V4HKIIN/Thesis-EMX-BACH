@@ -573,8 +573,8 @@ void calcStatsMp(Stamp& stamp, const Image& image, ImageMask& mask,
   stamp.stats.fwhm = binSize * (upper - lower) / args.iqRange;
 }
 
-int timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
-             std::chrono::time_point<std::chrono::steady_clock> start) {
+long long timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
+                   std::chrono::time_point<std::chrono::steady_clock> start) {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
       .count();
 }
