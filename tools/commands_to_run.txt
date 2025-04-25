@@ -1,7 +1,7 @@
 . enable_fp64.sh
 
-python run_test.py --generate --accelerators 2:0:0.33
-python run_test.py --generate --hotpants --accelerators 2:0:0.33
+python run_test.py --generate --accelerators 2:0:0.33 --cpuPart 0.33
+python run_test.py --generate --hotpants --accelerators 2:0:0.33 --cpuPart 0.33
 
 cd emxfig
 

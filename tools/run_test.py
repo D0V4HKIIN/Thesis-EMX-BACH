@@ -148,7 +148,8 @@ ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
 BIN_PATH = ROOT_PATH / "bin"
 RES_PATH = ROOT_PATH / "res"
 TEST_PATH = ROOT_PATH / "tests"
-OUTPUT_PATH = TEST_PATH / "out"
+# OUTPUT_PATH = TEST_PATH / "out"
+OUTPUT_PATH = pathlib.Path("/var/tmp/exjobb/out")
 CONFIG_PATH = ROOT_PATH / "tools" / "test_config.txt"
 
 
