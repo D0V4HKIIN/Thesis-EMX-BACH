@@ -11,7 +11,7 @@ ROOT_PATH = pathlib.Path(__file__).parent.parent.parent.resolve()
 BIN_PATH = ROOT_PATH / "bin"
 RES_PATH = ROOT_PATH / "res"
 TEST_PATH = ROOT_PATH / "tests"
-OUTPUT_PATH = TEST_PATH / "out" / "measurements"
+OUTPUT_PATH = TEST_PATH / "measurements"
 CONFIG_PATH = ROOT_PATH / "tools" / "test_config.txt"
 
 # read external path
@@ -84,8 +84,8 @@ LABELS = [
     "CMV",
     "CD",
     "KSC",
-    "MakeKernels",
-    "Convolution",
+    "kernel creation",
+    "convolution",
     "Conv",
     "Sub",
     "Fin",

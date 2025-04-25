@@ -177,13 +177,15 @@ def diff_fits(h_path, b_path):
                 abs_coords = (x, y)
 
             # Relative
-            if h > 0:
-                error_rel = error_abs / h
+            # can't measure relative error if h == 0
+            error_rel = 0
+            if h != 0:
+                error_rel = abs(error_abs / h)
 
-                mean_error_rel += error_rel
+            mean_error_rel += error_rel
 
-                if error_rel > max_error_rel:
-                    max_error_rel = error_rel
+            if error_rel > max_error_rel:
+                max_error_rel = error_rel
 
             count += 1
 
@@ -214,6 +216,7 @@ def run_test(
     acceleratorsValue,
     testAgainst,
     external_path,
+    diff_only,
 ):
     (
         id,
@@ -254,10 +257,11 @@ def run_test(
 
     start_time = time.time()
 
-    with open(OUTPUT_PATH / f"test{id}_out.txt", "w") as out_stream:
-        if not subprocess.run(args=exe_args, stdout=out_stream, stderr=out_stream):
-            print(f"{color_print.RED}X-BACH exited with an error code!")
-            return False
+    if not diff_only:
+        with open(OUTPUT_PATH / f"test{id}_out.txt", "w") as out_stream:
+            if not subprocess.run(args=exe_args, stdout=out_stream, stderr=out_stream):
+                print(f"{color_print.RED}X-BACH exited with an error code!")
+                return False
 
     end_time = time.time()
     test_time = end_time - start_time
@@ -331,10 +335,14 @@ def run_test(
 
     return (
         conv_max_abs_err,
+        conv_mean_abs_err,
         conv_max_rel_err,
+        conv_mean_rel_err,
         conv_wrong_nans,
         sub_max_abs_err,
+        sub_mean_abs_err,
         sub_max_rel_err,
+        sub_mean_rel_err,
         sub_wrong_nans,
         conv_max_abs_err < max_abs_error[0]
         and conv_max_rel_err < max_rel_error[0]
@@ -360,6 +368,27 @@ def print_help():
     print(
         f"{color_print.YELLOW}--generate: Generates the conv and sub files in the test folder"
     )
+
+
+def print_mean_table(errors, caption):
+    table = """
+\\begin{table}
+    \\centering
+    \\begin{tabular}{rll}
+        \\textbf{Test case} & \\textbf{Mean absolute error} & \\textbf{Mean relative error}\\\\
+"""
+    for i, row in enumerate(errors):
+        row_string = f"        {i + 1} & "
+        for error in row:
+            row_string += f"{error:.2e} & "
+        row_string = row_string[:-2]
+        row_string += "\\\\"
+        table += row_string + "\n"
+    table += f"""        \\end{{tabular}}
+    \\caption{{{caption}}}
+    \\label{{tab:my_label}}
+\\end{{table}}"""
+    print(table)
 
 
 def print_table(errors, caption):
@@ -394,6 +423,7 @@ def run_tests(
     acceleratorsValue,
     testAgainst,
     external_path,
+    diff_only,
 ):
     print(
         f'{color_print.CYAN}Running X-BACH ({build_config}) from "{BIN_PATH.resolve()}"'
@@ -410,41 +440,58 @@ def run_tests(
 
     os.makedirs(OUTPUT_PATH, exist_ok=True)
 
-    # Clear out the output directory before running any tests
-    for root, dirs, files in os.walk(OUTPUT_PATH):
-        for f in files:
-            os.unlink(os.path.join(root, f))
+    # only clear if tests are actually run
+    if not diff_only:
+        # Clear out the output directory before running any tests
+        for root, dirs, files in os.walk(OUTPUT_PATH):
+            for f in files:
+                os.unlink(os.path.join(root, f))
 
-        for d in dirs:
-            shutil.rmtree(os.path.join(root, d))
+            for d in dirs:
+                shutil.rmtree(os.path.join(root, d))
 
     failed_tests = 0
     total_tests = 0
 
     start_time = time.time()
 
-    sub_errors = []
-    conv_errors = []
+    max_sub_errors = []
+    max_conv_errors = []
+    mean_sub_errors = []
+    mean_conv_errors = []
 
     for i in tests:
         test_id = TEST_TABLE[i][0]
-        conv_abs, conv_rel, conv_nan, sub_abs, sub_rel, sub_nan, test_success = (
-            run_test(
-                i,
-                verbose,
-                build_config,
-                sssMode,
-                cpuPart,
-                cpuPartValue,
-                accelerators,
-                acceleratorsValue,
-                testAgainst,
-                external_path,
-            )
+        (
+            max_conv_abs,
+            mean_conv_abs,
+            max_conv_rel,
+            mean_conv_rel,
+            conv_nan,
+            max_sub_abs,
+            mean_sub_abs,
+            max_sub_rel,
+            mean_sub_rel,
+            sub_nan,
+            test_success,
+        ) = run_test(
+            i,
+            verbose,
+            build_config,
+            sssMode,
+            cpuPart,
+            cpuPartValue,
+            accelerators,
+            acceleratorsValue,
+            testAgainst,
+            external_path,
+            diff_only,
         )
 
-        sub_errors.append([sub_abs, sub_rel, sub_nan])
-        conv_errors.append([conv_abs, conv_rel, conv_nan])
+        max_sub_errors.append([max_sub_abs, max_sub_rel, sub_nan])
+        max_conv_errors.append([max_conv_abs, max_conv_rel, conv_nan])
+        mean_sub_errors.append([mean_sub_abs, mean_sub_rel])
+        mean_conv_errors.append([mean_conv_abs, mean_conv_rel])
 
         if test_success:
             print(f"{color_print.GREEN}Test {test_id} succeeded!")
@@ -465,8 +512,10 @@ def run_tests(
 
     print(f"Tests took {tess_time:.2f} seconds")
 
-    print_table(conv_errors, "Convolution error")
-    print_table(sub_errors, "Subtraction error")
+    print_table(max_conv_errors, "Convolution error")
+    print_table(max_sub_errors, "Subtraction error")
+    print_mean_table(mean_conv_errors, "Mean convolution error")
+    print_mean_table(mean_sub_errors, "Mean subtraction error")
 
 
 def run(binary, template_name, science_name, conv_name, sub_name, in_path, out_path):
@@ -577,6 +626,7 @@ def main(args):
     specificTest = False
     testNum = -1
     testAgainst = "xbach"
+    diff_only = False
 
     for arg in args:
         if arg == "-h":
@@ -607,6 +657,8 @@ def main(args):
             specificTest = True
         elif arg == "--hotpants":
             testAgainst = "hotpants"
+        elif arg == "--diff-only":
+            diff_only = True
 
     if cpuPart:
         cpuPartValue = args[args.index("--cpuPart") + 1]
@@ -659,6 +711,7 @@ def main(args):
         acceleratorsValue,
         testAgainst,
         external_path,
+        diff_only,
     )
 
     color_print.destroy()

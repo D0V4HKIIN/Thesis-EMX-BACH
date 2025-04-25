@@ -369,7 +369,7 @@ def graph_diff(db, label, out_path):
         plt.close()
 
 
-def graph_total(db, label, out_path):
+def graph_total(db, label, out_path, title=None):
     fdb = list(filter(lambda x: x["label"] == label, db))
 
     for software in SOFTWARES:
@@ -404,7 +404,8 @@ def graph_total(db, label, out_path):
                     boot.confidence_interval.high
                 ]
 
-    title = f"Comparison of execution time of {label}"
+    if title is None:
+        title = f"Comparison of execution time of {label}"
     plt.title(title)
     plt.xlabel("Pixel Per Image")
     plt.ylabel("Execution time (ms)")
@@ -503,26 +504,28 @@ def main(args):
         test_db = get_times(generate_tests(), res_path)
 
         graph_cores(test_db, "SSS", out_path)
-        graph_cores(test_db, "MakeKernels", out_path)
+        graph_cores(test_db, "kernel creation", out_path)
 
         graph_efficiency(test_db, "SSS", out_path)
-        graph_efficiency(test_db, "MakeKernels", out_path)
+        graph_efficiency(test_db, "kernel creation", out_path)
 
         graph_together_efficiency(test_db, "SSS", out_path)
-        graph_together_efficiency(test_db, "MakeKernels", out_path)
+        graph_together_efficiency(test_db, "kernel creation", out_path)
 
         graph_speedup(test_db, "SSS", out_path)
-        graph_speedup(test_db, "MakeKernels", out_path)
+        graph_speedup(test_db, "kernel creation", out_path)
 
         graph_diff(test_db, "SSS", out_path)
-        graph_diff(test_db, "MakeKernels", out_path)
-        graph_diff(test_db, "Convolution", out_path)
+        graph_diff(test_db, "kernel creation", out_path)
+        graph_diff(test_db, "convolution", out_path)
         graph_diff(test_db, "Conv", out_path)
 
-        graph_total(test_db, "Total", out_path)
+        graph_total(
+            test_db, "Total", out_path, title="Comparison of total execution time"
+        )
         graph_total(test_db, "SSS", out_path)
-        graph_total(test_db, "MakeKernels", out_path)
-        graph_total(test_db, "Convolution", out_path)
+        graph_total(test_db, "kernel creation", out_path)
+        graph_total(test_db, "convolution", out_path)
         graph_total(test_db, "Conv", out_path)
 
         graph_breakdown(test_db, "bach", out_path)
