@@ -7,56 +7,58 @@ void checkError(const cl_int err) {
   }
 }
 
-void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask, const Arguments& args) {
+void maskInput(const Image& tImg, const Image& sImg, ImageMask& mask,
+               const Arguments& args) {
   int borderSize = args.hSStampWidth + args.hKernelWidth;
 
-  for (int y = 0; y < mask.axis.second; y++) {
-    for (int x = 0; x < mask.axis.first; x++) {
+  for(int y = 0; y < mask.axis.second; y++) {
+    for(int x = 0; x < mask.axis.first; x++) {
       int id = y * mask.axis.first + x;
 
       double t = tImg[id];
       double s = sImg[id];
 
-      if (t == 0.0 || s == 0.0) {
+      if(t == 0.0 || s == 0.0) {
         mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
       }
 
-      if (t >= args.threshHigh || s >= args.threshHigh) {
+      if(t >= args.threshHigh || s >= args.threshHigh) {
         mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
       }
 
-      if (t <= args.threshLow || s <= args.threshLow) {
+      if(t <= args.threshLow || s <= args.threshLow) {
         mask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
       }
 
-      if (x < borderSize || x >= mask.axis.first - borderSize ||
-          y < borderSize || y >= mask.axis.second - borderSize) {
+      if(x < borderSize || x >= mask.axis.first - borderSize ||
+         y < borderSize || y >= mask.axis.second - borderSize) {
         mask.maskPix(x, y, ImageMask::BAD_PIXEL_S | ImageMask::BAD_PIXEL_T);
       }
     }
   }
 
-  spreadMask(mask, static_cast<int>(args.hKernelWidth * args.inSpreadMaskFactor));
+  spreadMask(mask,
+             static_cast<int>(args.hKernelWidth * args.inSpreadMaskFactor));
 }
 
 void spreadMask(ImageMask& mask, int spreadWidth) {
   int w2 = spreadWidth / 2;
-  
-  for (int y = 0; y < mask.axis.second; y++) {
-    for (int x = 0; x < mask.axis.first; x++) {
+
+  for(int y = 0; y < mask.axis.second; y++) {
+    for(int x = 0; x < mask.axis.first; x++) {
       int id = y * mask.axis.first + x;
 
-      if (mask.isMasked(id, ImageMask::BAD_INPUT)) {
+      if(mask.isMasked(id, ImageMask::BAD_INPUT)) {
         int sx = std::max<int>(x - w2, 0);
         int sy = std::max<int>(y - w2, 0);
         int ex = std::min<int>(x + w2, mask.axis.first - 1);
         int ey = std::min<int>(y + w2, mask.axis.second - 1);
 
-        for (int y2 = sy; y2 <= ey; y2++) {
-          for (int x2 = sx; x2 <= ex; x2++) {
+        for(int y2 = sy; y2 <= ey; y2++) {
+          for(int x2 = sx; x2 <= ex; x2++) {
             int id2 = y2 * mask.axis.first + x2;
 
-            if (!mask.isMasked(id2, ImageMask::BAD_INPUT)) {
+            if(!mask.isMasked(id2, ImageMask::BAD_INPUT)) {
               mask.maskPix(x2, y2, ImageMask::OK_CONV);
             }
           }
@@ -125,44 +127,44 @@ void sigmaClip(const std::vector<double>& data, double& mean, double& stdDev,
 #define M1 259200
 #define IA1 7141
 #define IC1 54773
-#define RM1 (1.0/M1)
+#define RM1 (1.0 / M1)
 #define M2 134456
 #define IA2 8121
 #define IC2 28411
-#define RM2 (1.0/M2)
+#define RM2 (1.0 / M2)
 #define M3 243000
 #define IA3 4561
 #define IC3 51349
-double ran1(int *idum) {
-    static long ix1,ix2,ix3;
-    static double r[98];
-    double temp;
-    static int iff=0;
-    int j;
-    /* void nrerror(char *error_text); */
-    
-    if (*idum < 0 || iff == 0) {
-        iff=1;
-        ix1=(IC1-(*idum)) % M1;
-        ix1=(IA1*ix1+IC1) % M1;
-        ix2=ix1 % M2;
-        ix1=(IA1*ix1+IC1) % M1;
-        ix3=ix1 % M3;
-        for (j=1;j<=97;j++) {
-            ix1=(IA1*ix1+IC1) % M1;
-            ix2=(IA2*ix2+IC2) % M2;
-            r[j]=(ix1+ix2*RM2)*RM1;
-        }
-        *idum=1;
+double ran1(int* idum) {
+  static long ix1, ix2, ix3;
+  static double r[98];
+  double temp;
+  static int iff = 0;
+  int j;
+  /* void nrerror(char *error_text); */
+
+  if(*idum < 0 || iff == 0) {
+    iff = 1;
+    ix1 = (IC1 - (*idum)) % M1;
+    ix1 = (IA1 * ix1 + IC1) % M1;
+    ix2 = ix1 % M2;
+    ix1 = (IA1 * ix1 + IC1) % M1;
+    ix3 = ix1 % M3;
+    for(j = 1; j <= 97; j++) {
+      ix1 = (IA1 * ix1 + IC1) % M1;
+      ix2 = (IA2 * ix2 + IC2) % M2;
+      r[j] = (ix1 + ix2 * RM2) * RM1;
     }
-    ix1=(IA1*ix1+IC1) % M1;
-    ix2=(IA2*ix2+IC2) % M2;
-    ix3=(IA3*ix3+IC3) % M3;
-    j=1 + ((97*ix3)/M3);
-    /* if (j > 97 || j < 1) nrerror("RAN1: This cannot happen."); */
-    temp=r[j];
-    r[j]=(ix1+ix2*RM2)*RM1;
-    return temp;
+    *idum = 1;
+  }
+  ix1 = (IA1 * ix1 + IC1) % M1;
+  ix2 = (IA2 * ix2 + IC2) % M2;
+  ix3 = (IA3 * ix3 + IC3) % M3;
+  j = 1 + ((97 * ix3) / M3);
+  /* if (j > 97 || j < 1) nrerror("RAN1: This cannot happen."); */
+  temp = r[j];
+  r[j] = (ix1 + ix2 * RM2) * RM1;
+  return temp;
 }
 #undef M1
 #undef IA1
@@ -176,7 +178,8 @@ double ran1(int *idum) {
 #undef IA3
 #undef IC3
 
-void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Arguments& args) {
+void calcStats(Stamp& stamp, const Image& image, ImageMask& mask,
+               const Arguments& args) {
   /* Heavily taken from HOTPANTS which itself copied it from Gary Bernstein
    * Calculates important values of stamps for futher calculations.
    */
@@ -203,7 +206,7 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
   for(int iter = 0; valuesCount < nValues && iter < numPix; iter++) {
     int randX = std::floor(ran1(&idum) * stamp.size.first);
     int randY = std::floor(ran1(&idum) * stamp.size.second);
-    
+
     // Random pixel in stamp in stamp coords.
     cl_int indexS = randX + randY * stamp.size.first;
 
@@ -227,8 +230,7 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
                    (double)nValues;
 
   // Value of lowest bin.
-  double lowerBinVal =
-      values[(int)(midProc * valuesCount)] - (128.0 * binSize);
+  double lowerBinVal = values[(int)(midProc * valuesCount)] - (128.0 * binSize);
 
   // Contains all good Pixels in the stamp, aka not masked.
   std::vector<double> maskedStamp{};
@@ -246,7 +248,7 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
         continue;
       }
 
-      if (std::isnan(image[indexI])) {
+      if(std::isnan(image[indexI])) {
         mask.maskPix(xI, yI, ImageMask::NAN_PIXEL | ImageMask::BAD_INPUT);
         continue;
       }
@@ -293,9 +295,10 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
         if((std::abs(stamp[indexS] - mean) * invStdDev) > args.sigClipAlpha) {
           continue;
         }
-        
+
         int index = std::clamp(
-            (int)std::floor((stamp[indexS] - lowerBinVal) / binSize) + 1, 0, 255);
+            (int)std::floor((stamp[indexS] - lowerBinVal) / binSize) + 1, 0,
+            255);
 
         bins[index]++;
         sum += abs(stamp[indexS]);
@@ -335,11 +338,9 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
     upper = okCount * 0.75;
     sumBins = 0.0;
     int i = 0;
-    for(; sumBins < lower; sumBins += bins[i++])
-      ;
+    for(; sumBins < lower; sumBins += bins[i++]);
     lower = i - (sumBins - lower) / bins[i - 1];
-    for(; sumBins < upper; sumBins += bins[i++])
-      ;
+    for(; sumBins < upper; sumBins += bins[i++]);
     upper = i - (sumBins - upper) / bins[i - 1];
 
     if(lower < 1.0 || upper > 255.0) {
@@ -361,15 +362,14 @@ void calcStats(Stamp& stamp, const Image& image, ImageMask& mask, const Argument
   }
   stamp.stats.fwhm = binSize * (upper - lower) / args.iqRange;
   int i = 0;
-  for(i = 0, sumBins = 0; sumBins < okCount / 2.0; sumBins += bins[i++])
-    ;
+  for(i = 0, sumBins = 0; sumBins < okCount / 2.0; sumBins += bins[i++]);
   median = i - (sumBins - okCount / 2.0) / bins[i - 1];
   median = lowerBinVal + binSize * (median - 1.0);
 }
 
-int timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
-             std::chrono::time_point<std::chrono::steady_clock> start) {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+long long timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
+                   std::chrono::time_point<std::chrono::steady_clock> start) {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
       .count();
 }
 
@@ -467,8 +467,8 @@ void lubksb(std::vector<std::vector<double>>& matrix, const int matrixSize,
   }
 }
 
-double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> imgSize, const int x,
-                  const int y, const Arguments& args) {
+double makeKernel(Kernel& kern, const std::pair<cl_long, cl_long> imgSize,
+                  const int x, const int y, const Arguments& args) {
   /*
    * Calculates the kernel for a certain pixel, need finished kernelSol.
    */

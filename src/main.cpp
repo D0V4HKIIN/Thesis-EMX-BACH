@@ -2,21 +2,21 @@
 
 #include <CL/opencl.hpp>
 #include <filesystem>
+#include <iostream>
 #include <iterator>
 #include <vector>
-#include <iostream>
 
-#include "clUtil.h"
-#include "fitsUtil.h"
-#include "bachUtil.h"
-#include "datatypeUtil.h"
 #include "bach.h"
+#include "bachUtil.h"
+#include "clUtil.h"
+#include "datatypeUtil.h"
+#include "fitsUtil.h"
 
 int main(int argc, const char* argv[]) {
-  clock_t p1 = clock();
+  auto p1 = std::chrono::steady_clock::now();
 
   CCfits::FITS::setVerboseMode(true);
-  
+
   Arguments args{};
   try {
     std::cout << "Reading in arguments..." << std::endl;
@@ -25,13 +25,12 @@ int main(int argc, const char* argv[]) {
     std::cout << err.what() << '\n';
     return 1;
   }
-  
+
   std::cout << "\nReading in images..." << std::endl;
   Image templateImg{args.templateName};
   Image scienceImg{args.scienceName};
   templateImg.path = scienceImg.path = args.inputPath + "/";
-  
-  
+
   if(args.verbose)
     std::cout << "template image name: " << args.templateName
               << ", science image name: " << args.scienceName << std::endl;
@@ -41,117 +40,113 @@ int main(int argc, const char* argv[]) {
   std::cout << "\nSetting up openCL..." << std::endl;
   cl::Device device{getDefaultDevice()};
   cl::Context context{device};
-  cl::Program program =
-      loadBuildPrograms(context, device, std::filesystem::path(argv[0]).parent_path(),
-      "conv.cl", "sub.cl");
+  cl::Program program = loadBuildPrograms(
+      context, device, std::filesystem::path(argv[0]).parent_path(), "conv.cl",
+      "sub.cl");
   cl::CommandQueue queue(context, device);
 
-  ClData clData { device, context, program, queue };
+  ClData clData{device, context, program, queue};
 
   init(templateImg, scienceImg, mask, clData, args);
   const auto [w, h] = templateImg.axis;
 
-  clock_t p2 = clock();
+  auto p2 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    printf("Initiation took %lds %ldms\n", (p2 - p1) / CLOCKS_PER_SEC,
-           ((p2 - p1) * 1000 / CLOCKS_PER_SEC) % 1000);
+    std::cout << "Ini took " << timeDiff(p2, p1) << " ns" << std::endl;
   }
 
   /* ===== SSS ===== */
 
-  clock_t p3 = clock();
+  auto p3 = std::chrono::steady_clock::now();
   std::vector<Stamp> templateStamps{};
   std::vector<Stamp> sciStamps{};
   sss(templateImg, scienceImg, mask, templateStamps, sciStamps, args);
 
-  clock_t p4 = clock();
+  auto p4 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    printf("SSS took %lds %ldms\n", (p4 - p3) / CLOCKS_PER_SEC,
-           ((p4 - p3) * 1000 / CLOCKS_PER_SEC) % 1000);
+    std::cout << "SSS took " << timeDiff(p4, p3) << " ns" << std::endl;
   }
 
   std::cout << std::endl;
 
   /* ===== CMV ===== */
 
-  clock_t p5 = clock();
+  auto p5 = std::chrono::steady_clock::now();
 
   Kernel convolutionKernel{args};
-  cmv(templateImg, scienceImg, mask, templateStamps, sciStamps, convolutionKernel, args);
-  
-  clock_t p6 = clock();
+  cmv(templateImg, scienceImg, mask, templateStamps, sciStamps,
+      convolutionKernel, args);
+
+  auto p6 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    printf("CMV took %lds %ldms\n", (p6 - p5) / CLOCKS_PER_SEC,
-           ((p6 - p5) * 1000 / CLOCKS_PER_SEC) % 1000);
+    std::cout << "CMV took " << timeDiff(p6, p5) << " ns" << std::endl;
   }
 
   /* ===== CD ===== */
 
-  clock_t p7 = clock();
+  auto p7 = std::chrono::steady_clock::now();
 
-  bool convTemplate = cd(templateImg, scienceImg, mask, templateStamps, sciStamps, args);
+  bool convTemplate =
+      cd(templateImg, scienceImg, mask, templateStamps, sciStamps, args);
 
-  clock_t p8 = clock();
+  auto p8 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    printf("CD took %lds %ldms\n", (p8 - p7) / CLOCKS_PER_SEC,
-           ((p8 - p7) * 1000 / CLOCKS_PER_SEC) % 1000);
+    std::cout << "CD took " << timeDiff(p8, p7) << " ns" << std::endl;
   }
 
   /* ===== KSC ===== */
 
-  clock_t p9 = clock();
+  auto p9 = std::chrono::steady_clock::now();
 
   ksc(templateImg, scienceImg, mask, templateStamps, convolutionKernel, args);
 
-  clock_t p10 = clock();
+  auto p10 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    printf("KSC took %lds %ldms\n", (p10 - p9) / CLOCKS_PER_SEC,
-           ((p10 - p9) * 1000 / CLOCKS_PER_SEC) % 1000);
+    std::cout << "KSC took " << timeDiff(p10, p9) << " ns" << std::endl;
   }
 
   /* ===== Conv ===== */
 
-  clock_t p11 = clock();
+  auto p11 = std::chrono::steady_clock::now();
 
   Image convImg{args.outName, templateImg.axis, args.outPath};
-  double kernSum = conv(templateImg, scienceImg, mask, convImg, convolutionKernel, convTemplate, context, program, queue, args);
+  double kernSum =
+      conv(templateImg, scienceImg, mask, convImg, convolutionKernel,
+           convTemplate, context, program, queue, args);
 
-  clock_t p12 = clock();
+  auto p12 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    printf("Conv took %lds %ldms\n", (p12 - p11) / CLOCKS_PER_SEC,
-           ((p12 - p11) * 1000 / CLOCKS_PER_SEC) % 1000);
+    std::cout << "Conv took " << timeDiff(p12, p11) << " ns" << std::endl;
   }
 
   /* ===== Sub ===== */
 
-  clock_t p13 = clock();
+  auto p13 = std::chrono::steady_clock::now();
 
   Image diffImg{"sub.fits", templateImg.axis, args.outPath};
-  sub(convImg, scienceImg, mask, diffImg, convTemplate, kernSum, context, program, queue, args);
+  sub(convImg, scienceImg, mask, diffImg, convTemplate, kernSum, context,
+      program, queue, args);
 
-  clock_t p14 = clock();
+  auto p14 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    printf("Sub took %lds %ldms\n", (p14 - p13) / CLOCKS_PER_SEC,
-           ((p14 - p13) * 1000 / CLOCKS_PER_SEC) % 1000);
+    std::cout << "Sub took " << timeDiff(p14, p13) << " ns" << std::endl;
   }
 
   /* ===== Fin ===== */
 
-  clock_t p15 = clock();
+  auto p15 = std::chrono::steady_clock::now();
 
   fin(convImg, diffImg, args);
 
-  clock_t p16 = clock();
+  auto p16 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    printf("Fin took %lds %ldms\n", (p16 - p15) / CLOCKS_PER_SEC,
-           ((p16 - p15) * 1000 / CLOCKS_PER_SEC) % 1000);
+    std::cout << "Fin took " << timeDiff(p16, p15) << " ns" << std::endl;
   }
 
   std::cout << "\nBACH finished." << std::endl;
 
   if(args.verboseTime) {
-    printf("BACH took %lds %ldms\n", (p16 - p1) / CLOCKS_PER_SEC,
-           ((p16 - p1) * 1000 / CLOCKS_PER_SEC) % 1000);
+    std::cout << "BACH took " << timeDiff(p16, p1) << " ns" << std::endl;
   }
 
   return 0;

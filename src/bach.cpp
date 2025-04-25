@@ -1,18 +1,17 @@
-#include <CL/opencl.hpp>
-
-#include <iterator>
-#include <iostream>
-#include <vector>
-
-#include "fitsUtil.h"
-#include "clUtil.h"
-#include "argsUtil.h"
-#include "bachUtil.h"
-
 #include "bach.h"
 
-void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData, const Arguments& args) {
+#include <CL/opencl.hpp>
+#include <iostream>
+#include <iterator>
+#include <vector>
 
+#include "argsUtil.h"
+#include "bachUtil.h"
+#include "clUtil.h"
+#include "fitsUtil.h"
+
+void init(Image &templateImg, Image &scienceImg, ImageMask &mask,
+          ClData &clData, const Arguments &args) {
   cl_int err{};
 
   // Read input images
@@ -26,27 +25,34 @@ void init(Image &templateImg, Image &scienceImg, ImageMask &mask, ClData& clData
               << std::endl;
     exit(1);
   }
-  
+
   mask = ImageMask(templateImg.axis);
 
   int pixelCount = templateImg.axis.first * templateImg.axis.second;
 
   // Upload buffers
-  clData.tImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
-  clData.sImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_double) * pixelCount);
-  clData.maskBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE, sizeof(cl_ushort) * pixelCount);
+  clData.tImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                              sizeof(cl_double) * pixelCount);
+  clData.sImgBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                              sizeof(cl_double) * pixelCount);
+  clData.maskBuf = cl::Buffer(clData.context, CL_MEM_READ_WRITE,
+                              sizeof(cl_ushort) * pixelCount);
 
-  err = clData.queue.enqueueWriteBuffer(clData.tImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &templateImg);
+  err = clData.queue.enqueueWriteBuffer(
+      clData.tImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &templateImg);
   checkError(err);
-  err = clData.queue.enqueueWriteBuffer(clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &scienceImg);
+  err = clData.queue.enqueueWriteBuffer(
+      clData.sImgBuf, CL_TRUE, 0, sizeof(cl_double) * pixelCount, &scienceImg);
   checkError(err);
 
   maskInput(templateImg, scienceImg, mask, args);
 }
 
-void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, Arguments& args) {
+void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask,
+         std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
+         Arguments &args) {
   std::cout << "\nCreating stamps..." << std::endl;
-    
+
   const auto [w, h] = templateImg.axis;
   args.fStampWidth = std::min(int(templateImg.axis.first / args.stampsx),
                               int(templateImg.axis.second / args.stampsy));
@@ -60,7 +66,7 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
     args.stampsx = int(templateImg.axis.first / args.fStampWidth);
     args.stampsy = int(templateImg.axis.second / args.fStampWidth);
 
-  if(args.verbose)
+    if(args.verbose)
       std::cout << "Too many stamps requested, using " << args.stampsx << "x"
                 << args.stampsy << " stamps instead." << std::endl;
   }
@@ -78,18 +84,19 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   /* == Check Template Stamps  ==*/
   double filledTempl{};
   double filledScience{};
-  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args);
+  identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask,
+                  &filledTempl, &filledScience, args);
   if(filledTempl < 0.1 || filledScience < 0.1) {
     if(args.verbose)
       std::cout << "Not enough substamps found in " << templateImg.name
                 << " trying again with lower thresholds..." << std::endl;
     args.threshLow *= 0.5;
-    
+
     templateStamps.clear();
     sciStamps.clear();
 
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
+    for(int y = 0; y < h; y++) {
+      for(int x = 0; x < w; x++) {
         int index = y * w + x;
         mask.unmask(index, ImageMask::SKIP_S | ImageMask::SKIP_T);
       }
@@ -99,7 +106,8 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
 
     createStamps(scienceImg, sciStamps, w, h, args);
 
-    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask, &filledTempl, &filledScience, args);
+    identifySStamps(templateStamps, templateImg, sciStamps, scienceImg, mask,
+                    &filledTempl, &filledScience, args);
     args.threshLow /= 0.5;
   }
 
@@ -109,22 +117,28 @@ void sss(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std
   }
 }
 
-void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Kernel &convolutionKernel, const Arguments& args) {
+void cmv(const Image &templateImg, const Image &scienceImg, ImageMask &mask,
+         std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
+         const Kernel &convolutionKernel, const Arguments &args) {
   std::cout << "\nCalculating matrix variables..." << std::endl;
 
-  for(auto& s : templateStamps) {
+  for(auto &s : templateStamps) {
     fillStamp(s, templateImg, scienceImg, mask, convolutionKernel, args);
   }
-  for(auto& s : sciStamps) {
+  for(auto &s : sciStamps) {
     fillStamp(s, scienceImg, templateImg, mask, convolutionKernel, args);
   }
 }
 
-bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps, const Arguments& args) {
+bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask,
+        std::vector<Stamp> &templateStamps, std::vector<Stamp> &sciStamps,
+        const Arguments &args) {
   std::cout << "\nChoosing convolution direction..." << std::endl;
 
-  const double templateMerit = testFit(templateStamps, templateImg, scienceImg, mask, args);
-  const double scienceMerit = testFit(sciStamps, scienceImg, templateImg, mask, args);
+  const double templateMerit =
+      testFit(templateStamps, templateImg, scienceImg, mask, args);
+  const double scienceMerit =
+      testFit(sciStamps, scienceImg, templateImg, mask, args);
   if(args.verbose)
     std::cout << "template merit value = " << templateMerit
               << ", science merit value = " << scienceMerit << std::endl;
@@ -141,16 +155,21 @@ bool cd(Image &templateImg, Image &scienceImg, ImageMask &mask, std::vector<Stam
   return convTemplate;
 }
 
-void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask, std::vector<Stamp> &templateStamps, Kernel &convolutionKernel, const Arguments& args) {
+void ksc(const Image &templateImg, const Image &scienceImg, ImageMask &mask,
+         std::vector<Stamp> &templateStamps, Kernel &convolutionKernel,
+         const Arguments &args) {
   std::cout << "\nFitting kernel..." << std::endl;
 
-  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask, args);
+  fitKernel(convolutionKernel, templateStamps, templateImg, scienceImg, mask,
+            args);
 }
 
-double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, Image &convImg, Kernel &convolutionKernel, bool convTemplate,
-          const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue, const Arguments& args) {
+double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask,
+            Image &convImg, Kernel &convolutionKernel, bool convTemplate,
+            const cl::Context &context, const cl::Program &program,
+            cl::CommandQueue &queue, const Arguments &args) {
   std::cout << "\nConvolving..." << std::endl;
-  
+
   const auto [w, h] = templateImg.axis;
   bool scaleConv = args.normalizeTemplate && convTemplate ||
                    !args.normalizeTemplate && !convTemplate;
@@ -183,7 +202,7 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
 
   auto end = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << "Kernel creation took " << timeDiff(end, start) << " ms"
+    std::cout << "Kernel creation took " << timeDiff(end, start) << " ns"
               << std::endl;
   }
 
@@ -194,20 +213,20 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
 
   mask.clear();
   ImageMask convMask(scienceImg.axis);
-  
-  for (int y = 0; y < convMask.axis.second; y++) {
-    for (int x = 0; x < convMask.axis.first; x++) {
+
+  for(int y = 0; y < convMask.axis.second; y++) {
+    for(int x = 0; x < convMask.axis.first; x++) {
       int index = y * convMask.axis.first + x;
 
-      if (templateImg[index] == 0.0) {
+      if(templateImg[index] == 0.0) {
         convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
       }
 
-      if (templateImg[index] >= args.threshHigh) {
+      if(templateImg[index] >= args.threshHigh) {
         convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
       }
 
-      if (templateImg[index] <= args.threshLow) {
+      if(templateImg[index] <= args.threshLow) {
         convMask.maskPix(x, y, ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
       }
     }
@@ -216,7 +235,7 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
   auto p1 = std::chrono::steady_clock::now();
   // Declare all the buffers which will be need in opencl operations.
   cl::Buffer tImgBuf(context, CL_MEM_READ_ONLY, sizeof(cl_double) * w * h);
-  
+
   cl::Buffer convMaskBuf(context, CL_MEM_READ_ONLY, sizeof(cl_ushort) * w * h);
   cl::Buffer kernBuf(context, CL_MEM_READ_ONLY,
                      sizeof(cl_double) * convKernels.size());
@@ -232,58 +251,67 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
   err = queue.enqueueWriteBuffer(tImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h,
                                  &templateImg);
   checkError(err);
-  err = queue.enqueueWriteBuffer(convMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h,
-                                 &convMask);
+  err = queue.enqueueWriteBuffer(convMaskBuf, CL_TRUE, 0,
+                                 sizeof(cl_ushort) * w * h, &convMask);
   checkError(err);
 
-  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl_long,
-                    cl_long>
+  cl::KernelFunctor<cl::Buffer, cl_long, cl_long, cl::Buffer, cl::Buffer,
+                    cl::Buffer, cl::Buffer, cl_long, cl_long>
       convFunc{program, "conv"};
-  cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange};
-  cl::Event convEvent = convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, convImgBuf, convMaskBuf, outMaskBuf, w, h);
+  cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h),
+                        cl::NullRange};
+  cl::Event convEvent =
+      convFunc(eargs, kernBuf, args.fKernelWidth, xSteps, tImgBuf, convImgBuf,
+               convMaskBuf, outMaskBuf, w, h);
   convEvent.wait();
 
   err = queue.enqueueReadBuffer(convImgBuf, CL_TRUE, 0,
                                 sizeof(cl_double) * w * h, &convImg);
   checkError(err);
-  err = queue.enqueueReadBuffer(outMaskBuf, CL_TRUE, 0, sizeof(cl_ushort) * w * h,
-                                 &mask);
+  err = queue.enqueueReadBuffer(outMaskBuf, CL_TRUE, 0,
+                                sizeof(cl_ushort) * w * h, &mask);
   checkError(err);
 
   auto p2 = std::chrono::steady_clock::now();
 
   if(args.verboseTime) {
     std::cout << "Convolution (without masking) took " << timeDiff(p2, p1)
-              << " ms " << std::endl;
+              << " ns " << std::endl;
   }
 
   // Add background and scale by kernel sum for output of convoluted image.
   for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
     for(int x = args.hKernelWidth; x < w - args.hKernelWidth; x++) {
-      convImg.data[x + y * w] +=
-          getBackground(x, y, convolutionKernel.solution, templateImg.axis, args);
+      convImg.data[x + y * w] += getBackground(x, y, convolutionKernel.solution,
+                                               templateImg.axis, args);
     }
   }
 
-  for (int y = 0; y < convMask.axis.second; y++) {
-    for (int x = 0; x < convMask.axis.first; x++) {
+  for(int y = 0; y < convMask.axis.second; y++) {
+    for(int x = 0; x < convMask.axis.first; x++) {
       int index = y * convMask.axis.first + x;
 
-      if (scienceImg[index] == 0.0) {
-        mask.maskPix(x, y, ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::BAD_PIX_VAL);
+      if(scienceImg[index] == 0.0) {
+        mask.maskPix(x, y,
+                     ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT |
+                         ImageMask::BAD_PIX_VAL);
       }
 
-      if (scienceImg[index] >= args.threshHigh) {
-        mask.maskPix(x, y, ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::SAT_PIXEL);
+      if(scienceImg[index] >= args.threshHigh) {
+        mask.maskPix(x, y,
+                     ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT |
+                         ImageMask::SAT_PIXEL);
       }
 
-      if (scienceImg[index] <= args.threshLow) {
-        mask.maskPix(x, y, ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT | ImageMask::LOW_PIXEL);
+      if(scienceImg[index] <= args.threshLow) {
+        mask.maskPix(x, y,
+                     ImageMask::BAD_OUTPUT | ImageMask::BAD_INPUT |
+                         ImageMask::LOW_PIXEL);
       }
     }
   }
 
-  if (scaleConv) {
+  if(scaleConv) {
     for(int y = args.hKernelWidth; y < h - args.hKernelWidth; y++) {
       for(int x = args.hKernelWidth; x < w - args.hKernelWidth; x++) {
         convImg.data[x + y * w] *= invKernSum;
@@ -294,8 +322,10 @@ double conv(const Image &templateImg, const Image &scienceImg, ImageMask &mask, 
   return kernSum;
 }
 
-void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, Image &diffImg, bool convTemplate, double kernSum,
-         const cl::Context &context, const cl::Program &program, cl::CommandQueue &queue, const Arguments& args) {
+void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask,
+         Image &diffImg, bool convTemplate, double kernSum,
+         const cl::Context &context, const cl::Program &program,
+         cl::CommandQueue &queue, const Arguments &args) {
   std::cout << "\nSubtracting images..." << std::endl;
 
   const auto [w, h] = scienceImg.axis;
@@ -313,12 +343,15 @@ void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, I
   err = queue.enqueueWriteBuffer(sImgBuf, CL_TRUE, 0, sizeof(cl_double) * w * h,
                                  &scienceImg);
   checkError(err);
-  
-  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long, cl_long, cl_double, cl_double> subFunc(program,
-                                                                       "sub");
-  cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h), cl::NullRange};
-  cl::Event subEvent = subFunc(eargs, sImgBuf, convImgBuf, diffImgBuf, args.fKernelWidth, w, h,
-                               scaleConv ? kernSum : 1.0, scaleConv ? -(1.0 / kernSum) : 1.0);
+
+  cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_long, cl_long,
+                    cl_long, cl_double, cl_double>
+      subFunc(program, "sub");
+  cl::EnqueueArgs eargs{queue, cl::NullRange, cl::NDRange(w * h),
+                        cl::NullRange};
+  cl::Event subEvent =
+      subFunc(eargs, sImgBuf, convImgBuf, diffImgBuf, args.fKernelWidth, w, h,
+              scaleConv ? kernSum : 1.0, scaleConv ? -(1.0 / kernSum) : 1.0);
   subEvent.wait();
 
   // Read data from subtraction
@@ -326,24 +359,26 @@ void sub(const Image &convImg, const Image &scienceImg, const ImageMask &mask, I
                                 sizeof(cl_double) * w * h, &diffImg);
   checkError(err);
 
-  for (int y = args.hKernelWidth; y < diffImg.axis.second - args.hKernelWidth; y++) {
-    for (int x = args.hKernelWidth; x < diffImg.axis.first - args.hKernelWidth; x++) {
+  for(int y = args.hKernelWidth; y < diffImg.axis.second - args.hKernelWidth;
+      y++) {
+    for(int x = args.hKernelWidth; x < diffImg.axis.first - args.hKernelWidth;
+        x++) {
       int index = y * diffImg.axis.first + x;
 
-      if (mask.isMasked(index, ImageMask::BAD_OUTPUT)) {
+      if(mask.isMasked(index, ImageMask::BAD_OUTPUT)) {
         diffImg.data[index] = 1e-30f;
       }
     }
   }
-} 
+}
 
-void fin(const Image &convImg, const Image &diffImg, const Arguments& args) {
+void fin(const Image &convImg, const Image &diffImg, const Arguments &args) {
   std::cout << "\nWriting output..." << std::endl;
 
   cl_int err{};
   err = writeImage(convImg, args);
   checkError(err);
-  
+
   err = writeImage(diffImg, args);
   checkError(err);
 }
