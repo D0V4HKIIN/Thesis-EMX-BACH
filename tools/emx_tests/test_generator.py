@@ -3,7 +3,7 @@ import pathlib
 import numpy as np
 from astropy.io import fits
 
-COMPUTER = "dev"
+COMPUTER = "lab"
 NUM_CORES = multiprocessing.cpu_count() // 2
 print("verify that", NUM_CORES, "is the right amount of cores!")
 
