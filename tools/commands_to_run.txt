@@ -1,0 +1,15 @@
+python run_test.py --generate --accelerators 2:0:0.33
+python run_test.py --generate --hotpants --accelerators 2:0:0.33
+
+cd emxfig
+
+python run_measurements.py --arg
+# modify test_generator with the right values
+python run_measurements.py --normal
+
+# make a copy of both runs to all_normal_lab and all_arg_lab
+python emxfig.py ../../tests/measurements/all_normal_lab ../../tests/figs/normal --normal
+python emxfig.py ../../tests/measurements/all_arg_lab ../../tests/figs/arg --arg
+
+
+# done
