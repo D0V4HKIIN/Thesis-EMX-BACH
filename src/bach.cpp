@@ -371,7 +371,7 @@ double conv(const std::pair<cl_int, cl_int> &imgSize,
 
   auto end = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << "Kernel creation took " << timeDiff(end, start) << " ms"
+    std::cout << "Kernel creation took " << timeDiff(end, start) << " ns"
               << std::endl;
   }
 

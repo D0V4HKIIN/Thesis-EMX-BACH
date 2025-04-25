@@ -575,7 +575,7 @@ void calcStatsMp(Stamp& stamp, const Image& image, ImageMask& mask,
 
 int timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
              std::chrono::time_point<std::chrono::steady_clock> start) {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
       .count();
 }
 
@@ -1202,7 +1202,7 @@ void convSplit(const int w, const int h,
     offset += accH[i];
   }
   auto pacc = std::chrono::steady_clock::now();
-  std::cout << timeDiff(pacc, bacc) << " ms for starting acc" << std::endl;
+  std::cout << timeDiff(pacc, bacc) << " ns for starting acc" << std::endl;
 
   // cpu convolution
   if(args.verbose) {
@@ -1286,7 +1286,7 @@ void convSplit(const int w, const int h,
   convEvent.wait();
   cl::Event::waitForEvents(acceleratorEvents);
   auto pwait = std::chrono::steady_clock::now();
-  std::cout << "waited for " << timeDiff(pwait, bwait) << " ms" << std::endl;
+  std::cout << "waited for " << timeDiff(pwait, bwait) << " ns" << std::endl;
 
   // Transfer convoluted image back to CPU, needed for saving to file and copy
   // to main gpu
@@ -1327,7 +1327,7 @@ void convSplit(const int w, const int h,
 
   if(args.verboseTime) {
     std::cout << "Convolution (without masking) took " << timeDiff(p2, p1)
-              << " ms " << std::endl;
+              << " ns " << std::endl;
   }
   // Mask after convolve
   cl::KernelFunctor<cl::Buffer, cl::Buffer, cl_int, cl_double, cl_double>
