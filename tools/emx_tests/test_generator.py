@@ -11,7 +11,7 @@ ROOT_PATH = pathlib.Path(__file__).parent.parent.parent.resolve()
 BIN_PATH = ROOT_PATH / "bin"
 RES_PATH = ROOT_PATH / "res"
 TEST_PATH = ROOT_PATH / "tests"
-OUTPUT_PATH = TEST_PATH / "measurements"
+OUTPUT_PATH = pathlib.Path("/var/tmp/exjobb/measurements")
 CONFIG_PATH = ROOT_PATH / "tools" / "test_config.txt"
 
 # read external path
@@ -28,16 +28,16 @@ if CONFIG_PATH.exists():
 TEST_CASES = [
     ("test0", "test1"),
     ("testScience", "testTemplate"),
-    # ("ptf_m82_s_2k", "ptf_m82_t_2k"),
-    # ("sparse0", "sparse1"),
-    # ("ztf_m1_s_3k", "ztf_m1_t_3k"),
-    # ("skyM-T-4k", "skyM-S-4k"),
-    # ("skyM-T-5k", "skyM-S-5k"),
-    # ("skyM-T-6k", "skyM-S-6k"),
-    # ("skyM-T-7k", "skyM-S-7k"),
-    # ("skyM-T-8k", "skyM-S-8k"),
-    # ("skyM-T-9k", "skyM-S-9k"),
-    # ("skyM-T-10k", "skyM-S-10k")
+    ("ptf_m82_s_2k", "ptf_m82_t_2k"),
+    ("sparse0", "sparse1"),
+    ("ztf_m1_s_3k", "ztf_m1_t_3k"),
+    ("skyM-T-4k", "skyM-S-4k"),
+    ("skyM-T-5k", "skyM-S-5k"),
+    ("skyM-T-6k", "skyM-S-6k"),
+    ("skyM-T-7k", "skyM-S-7k"),
+    ("skyM-T-8k", "skyM-S-8k"),
+    ("skyM-T-9k", "skyM-S-9k"),
+    ("skyM-T-10k", "skyM-S-10k"),
 ]
 
 TEST_INDEXES = [i + 1 for i in range(len(TEST_CASES))]
@@ -74,6 +74,7 @@ ARG_MAX = 0.35
 ARGS_TO_TEST = np.linspace(ARG_MIN, ARG_MAX, TESTS_PER_ARGUMENT)
 
 # SOFTWARES = ["emxbach"]
+# SOFTWARES = ["hotpants"]
 SOFTWARES = ["bach", "xbach", "emxbach", "hotpants"]
 ACCELERATOR_PLATFORM = 1
 ACCELERATOR_DEVICE = 0

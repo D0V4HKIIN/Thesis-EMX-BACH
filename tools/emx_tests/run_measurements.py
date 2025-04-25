@@ -112,7 +112,12 @@ def measure_n(
                     case (s_str, ms_str) if s_str == "":
                         times.append(int(ms_str))
             # print log if run failed
-            if binary in {"emxbach", "xbach", "bach"} and len(times) != 11:
+            if (
+                binary in {"emxbach", "xbach", "bach"}
+                and len(times) != 11
+                or binary == "hotpants"
+                and len(times) != 1
+            ):
                 run_log.seek(0)
                 print(run_log.read())
 
