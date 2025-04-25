@@ -76,7 +76,7 @@ ARGS_TO_TEST = np.linspace(ARG_MIN, ARG_MAX, TESTS_PER_ARGUMENT)
 # SOFTWARES = ["emxbach"]
 # SOFTWARES = ["hotpants"]
 SOFTWARES = ["bach", "xbach", "emxbach", "hotpants"]
-ACCELERATOR_PLATFORM = 1
+ACCELERATOR_PLATFORM = 2
 ACCELERATOR_DEVICE = 0
 
 LABELS = [
