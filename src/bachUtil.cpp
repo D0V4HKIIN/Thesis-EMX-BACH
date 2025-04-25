@@ -279,9 +279,9 @@ void calcStats(const std::pair<cl_int, cl_int>& axis, const Arguments& args,
   histogramEvent.wait();
 }
 
-int timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
-             std::chrono::time_point<std::chrono::steady_clock> start) {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+long long timeDiff(std::chrono::time_point<std::chrono::steady_clock> end,
+                   std::chrono::time_point<std::chrono::steady_clock> start) {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
       .count();
 }
 

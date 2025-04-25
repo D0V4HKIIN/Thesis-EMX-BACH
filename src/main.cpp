@@ -55,7 +55,7 @@ int main(int argc, const char* argv[]) {
 
   auto p2 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << "Ini took " << timeDiff(p2, p1) << " ms" << std::endl;
+    std::cout << "Ini took " << timeDiff(p2, p1) << " ns" << std::endl;
   }
 
   /* ===== SSS ===== */
@@ -67,7 +67,7 @@ int main(int argc, const char* argv[]) {
 
   auto p4 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << "SSS took " << timeDiff(p4, p3) << " ms" << std::endl;
+    std::cout << "SSS took " << timeDiff(p4, p3) << " ns" << std::endl;
   }
 
   std::cout << std::endl;
@@ -82,7 +82,7 @@ int main(int argc, const char* argv[]) {
 
   auto p6 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << "CMV took " << timeDiff(p6, p5) << " ms" << std::endl;
+    std::cout << "CMV took " << timeDiff(p6, p5) << " ns" << std::endl;
   }
 
   /* ===== CD ===== */
@@ -94,7 +94,7 @@ int main(int argc, const char* argv[]) {
 
   auto p8 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << "CD took " << timeDiff(p8, p7) << " ms" << std::endl;
+    std::cout << "CD took " << timeDiff(p8, p7) << " ns" << std::endl;
   }
 
   /* ===== KSC ===== */
@@ -106,7 +106,7 @@ int main(int argc, const char* argv[]) {
 
   auto p10 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << "KSC took " << timeDiff(p10, p9) << " ms" << std::endl;
+    std::cout << "KSC took " << timeDiff(p10, p9) << " ns" << std::endl;
   }
 
   /* ===== Conv ===== */
@@ -119,7 +119,7 @@ int main(int argc, const char* argv[]) {
 
   auto p12 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << "Conv took " << timeDiff(p12, p11) << " ms" << std::endl;
+    std::cout << "Conv took " << timeDiff(p12, p11) << " ns" << std::endl;
   }
 
   /* ===== Sub ===== */
@@ -131,7 +131,7 @@ int main(int argc, const char* argv[]) {
 
   auto p14 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << "Sub took " << timeDiff(p14, p13) << " ms" << std::endl;
+    std::cout << "Sub took " << timeDiff(p14, p13) << " ns" << std::endl;
   }
 
   /* ===== Fin ===== */
@@ -142,13 +142,13 @@ int main(int argc, const char* argv[]) {
 
   auto p16 = std::chrono::steady_clock::now();
   if(args.verboseTime) {
-    std::cout << "Fin took " << timeDiff(p16, p15) << " ms" << std::endl;
+    std::cout << "Fin took " << timeDiff(p16, p15) << " ns" << std::endl;
   }
 
   std::cout << "\nBACH finished." << std::endl;
 
   if(args.verboseTime) {
-    std::cout << "BACH took " << timeDiff(p16, p1) << " ms" << std::endl;
+    std::cout << "BACH took " << timeDiff(p16, p1) << " ns" << std::endl;
   }
 
   return 0;
