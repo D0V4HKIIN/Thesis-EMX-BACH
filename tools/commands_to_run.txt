@@ -1,3 +1,6 @@
+./clone_all_https.sh
+./make_all.sh
+
 . enable_fp64.sh
 
 python run_test.py --generate --accelerators 2:0:0.33 --cpuPart 0.33
