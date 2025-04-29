@@ -1,0 +1,37 @@
+Reading in arguments...
+
+Reading in images...
+
+Setting up openCL...
+Using platform: NVIDIA CUDA
+Using device: NVIDIA GeForce GTX 1050
+Ini took 758907156 ns
+
+Creating stamps...
+Identifying sub-stamps...
+SSS took 1497540052 ns
+
+
+Calculating matrix variables...
+CMV took 234054575 ns
+
+Choosing convolution direction...
+template merit value = -36.4667, science merit value = -42.9596
+CD took 313297871 ns
+
+Fitting kernel...
+KSC took 646559034 ns
+
+Convolving...
+Kernel creation took 484997525 ns
+Convolution (without masking) took 481806431 ns 
+Conv took 1022007248 ns
+
+Subtracting images...
+Sub took 47555384 ns
+
+Writing output...
+Fin took 221726753 ns
+
+BACH finished.
+BACH took 4741742181 ns

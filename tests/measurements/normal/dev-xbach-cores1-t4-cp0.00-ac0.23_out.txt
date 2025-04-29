@@ -1,0 +1,122 @@
+Reading in arguments...
+
+Reading in images...
+
+Setting up openCL...
+Using platform: NVIDIA CUDA
+Using device: NVIDIA GeForce GTX 1050
+
+Fits Error: Keyword not found: COMMENT
+
+Fits Error: Keyword not found: COMMENT
+Ini took 323989711 ns
+
+Creating stamps...
+Identifying sub-stamps...
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+prevNPoints is: 1Needs to be greater than 1
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+prevNPoints is: 1Needs to be greater than 1
+Identifying sub-stamps...
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+prevNPoints is: 1Needs to be greater than 1
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+prevNPoints is: 1Needs to be greater than 1
+prevNPoints is: 1Needs to be greater than 1
+SSS took 8517133364 ns
+
+
+Calculating matrix variables...
+CMV took 4171097 ns
+
+Choosing convolution direction...
+template merit value = 7.67571, science merit value = 2.56232
+CD took 34482514 ns
+
+Fitting kernel...
+KSC took 9380717 ns
+
+Convolving...
+Kernel creation took 426143542 ns
+Convolution (without masking) took 363345847 ns 
+Conv took 838783221 ns
+
+Subtracting images...
+Sub took 41334004 ns
+
+Writing output...
+Fin took 179470723 ns
+
+BACH finished.
+BACH took 9948850185 ns

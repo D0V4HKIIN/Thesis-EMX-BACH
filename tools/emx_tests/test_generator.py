@@ -2,16 +2,19 @@ import multiprocessing
 import pathlib
 import numpy as np
 from astropy.io import fits
+import os
 
-COMPUTER = "lab"
+COMPUTER = "dev"
 NUM_CORES = multiprocessing.cpu_count() // 2
+# NUM_CORES = 14
 print("verify that", NUM_CORES, "is the right amount of cores!")
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.parent.resolve()
 BIN_PATH = ROOT_PATH / "bin"
 RES_PATH = ROOT_PATH / "res"
 TEST_PATH = ROOT_PATH / "tests"
-OUTPUT_PATH = pathlib.Path("/var/tmp/exjobb/measurements")
+# OUTPUT_PATH = pathlib.Path("/var/tmp/exjobb/measurements")
+OUTPUT_PATH = TEST_PATH / "measurements"
 CONFIG_PATH = ROOT_PATH / "tools" / "test_config.txt"
 
 # read external path
@@ -33,11 +36,11 @@ TEST_CASES = [
     ("ztf_m1_s_3k", "ztf_m1_t_3k"),
     ("skyM-T-4k", "skyM-S-4k"),
     ("skyM-T-5k", "skyM-S-5k"),
-    ("skyM-T-6k", "skyM-S-6k"),
-    ("skyM-T-7k", "skyM-S-7k"),
-    ("skyM-T-8k", "skyM-S-8k"),
-    ("skyM-T-9k", "skyM-S-9k"),
-    ("skyM-T-10k", "skyM-S-10k"),
+    # ("skyM-T-6k", "skyM-S-6k"),
+    # ("skyM-T-7k", "skyM-S-7k"),
+    # ("skyM-T-8k", "skyM-S-8k"),
+    # ("skyM-T-9k", "skyM-S-9k"),
+    # ("skyM-T-10k", "skyM-S-10k"),
 ]
 
 TEST_INDEXES = [i + 1 for i in range(len(TEST_CASES))]
@@ -103,6 +106,10 @@ def get_times(tests: list[tuple], res_path):
 
     for test in tests:
         filename = test_filename(test) + ".txt"
+        if not os.path.exists(res_path / filename):
+            print(f"{filename} is missing!!!!")
+            continue
+
         with open(res_path / filename, "r") as input:
             for line in input:
                 if not line:
@@ -116,6 +123,8 @@ def get_times(tests: list[tuple], res_path):
 
                 time_split = times_str.split(" ")
                 times = list(map(int, time_split))
+
+                times = [t / 1_000_000_000 for t in times]
 
                 db.append(dict(test, label=label, times=times))
 

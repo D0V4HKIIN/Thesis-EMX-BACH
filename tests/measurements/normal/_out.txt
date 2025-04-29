@@ -1,0 +1,1101 @@
+Doing : /home/jonas/Documents/Thesis-EMX-BACH/res/skyMaker/skyM-T-5k.fits -
+        /home/jonas/Documents/Thesis-EMX-BACH/res/skyMaker/skyM-S-5k.fits =
+        /home/jonas/Documents/Thesis-EMX-BACH/tests/measurements/2025-04-28/3_out.fits
+   Good templ data : 0.0 -> 25000.0
+   Good image data : 0.0 -> 25000.0
+Mallocing massive amounts of memory...
+Region 0 pixels            : 1:5120,1:5120
+ Vector Indices (buffered) : 0:5119,0:5119
+ Vector Indices (good data): 0:5119,0:5119
+Build stamp  : t    0 i    0 (grid coord  0  0)
+    Stamp in region : 0:490,0:490
+    Tmpl  xs :  245 ys :  245  (sky,dsky = 1.7,15.1)
+    Image xs :  245 ys :  245  (sky,dsky = 1.7,13.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t    1 i    1 (grid coord  1  0)
+    Stamp in region : 512:1002,0:490
+    Tmpl  xs :  757 ys :  245  (sky,dsky = 9.9,19.9)
+    Image xs :  757 ys :  245  (sky,dsky = 9.9,17.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t    2 i    2 (grid coord  2  0)
+    Stamp in region : 1024:1514,0:490
+    Tmpl  xs : 1269 ys :  245  (sky,dsky = 13.1,29.4)
+    Image xs : 1269 ys :  245  (sky,dsky = 13.2,26.0)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t    3 i    3 (grid coord  3  0)
+    Stamp in region : 1536:2026,0:490
+    Tmpl  xs : 1781 ys :  245  (sky,dsky = 4.7,17.5)
+    Image xs : 1781 ys :  245  (sky,dsky = 4.7,14.8)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t    4 i    4 (grid coord  4  0)
+    Stamp in region : 2048:2538,0:490
+    Tmpl  xs : 2293 ys :  245  (sky,dsky = 9.2,23.8)
+    Image xs : 2293 ys :  245  (sky,dsky = 9.2,19.8)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t    5 i    5 (grid coord  5  0)
+    Stamp in region : 2560:3050,0:490
+    Tmpl  xs : 2805 ys :  245  (sky,dsky = 7.6,16.0)
+    Image xs : 2805 ys :  245  (sky,dsky = 7.5,13.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t    6 i    6 (grid coord  6  0)
+    Stamp in region : 3072:3562,0:490
+    Tmpl  xs : 3317 ys :  245  (sky,dsky = 7.0,15.2)
+    Image xs : 3317 ys :  245  (sky,dsky = 6.9,13.2)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t    7 i    7 (grid coord  7  0)
+    Stamp in region : 3584:4074,0:490
+    Tmpl  xs : 3829 ys :  245  (sky,dsky = 5.8,20.0)
+    Image xs : 3829 ys :  245  (sky,dsky = 5.8,17.9)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t    8 i    8 (grid coord  8  0)
+    Stamp in region : 4096:4586,0:490
+    Tmpl  xs : 4341 ys :  245  (sky,dsky = 4.0,16.3)
+    Image xs : 4341 ys :  245  (sky,dsky = 5.0,14.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t    9 i    9 (grid coord  9  0)
+    Stamp in region : 4608:5098,0:490
+    Tmpl  xs : 4853 ys :  245  (sky,dsky = 12.8,22.3)
+    Image xs : 4853 ys :  245  (sky,dsky = 13.0,19.0)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   10 i   10 (grid coord  0  1)
+    Stamp in region : 0:490,512:1002
+    Tmpl  xs :  245 ys :  757  (sky,dsky = 14.9,22.7)
+    Image xs :  245 ys :  757  (sky,dsky = 14.7,19.9)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   11 i   11 (grid coord  1  1)
+    Stamp in region : 512:1002,512:1002
+    Tmpl  xs :  757 ys :  757  (sky,dsky = 8.4,19.5)
+    Image xs :  757 ys :  757  (sky,dsky = 8.5,17.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   12 i   12 (grid coord  2  1)
+    Stamp in region : 1024:1514,512:1002
+    Tmpl  xs : 1269 ys :  757  (sky,dsky = 10.9,19.3)
+    Image xs : 1269 ys :  757  (sky,dsky = 11.5,16.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   13 i   13 (grid coord  3  1)
+    Stamp in region : 1536:2026,512:1002
+    Tmpl  xs : 1781 ys :  757  (sky,dsky = 7.6,18.6)
+    Image xs : 1781 ys :  757  (sky,dsky = 7.6,15.9)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   14 i   14 (grid coord  4  1)
+    Stamp in region : 2048:2538,512:1002
+    Tmpl  xs : 2293 ys :  757  (sky,dsky = 6.7,16.1)
+    Image xs : 2293 ys :  757  (sky,dsky = 6.8,13.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   15 i   15 (grid coord  5  1)
+    Stamp in region : 2560:3050,512:1002
+    Tmpl  xs : 2805 ys :  757  (sky,dsky = 9.6,15.0)
+    Image xs : 2805 ys :  757  (sky,dsky = 9.6,12.8)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   16 i   16 (grid coord  6  1)
+    Stamp in region : 3072:3562,512:1002
+    Tmpl  xs : 3317 ys :  757  (sky,dsky = 12.8,24.2)
+    Image xs : 3317 ys :  757  (sky,dsky = 12.8,20.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   17 i   17 (grid coord  7  1)
+    Stamp in region : 3584:4074,512:1002
+    Tmpl  xs : 3829 ys :  757  (sky,dsky = 9.2,15.9)
+    Image xs : 3829 ys :  757  (sky,dsky = 9.4,14.0)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   18 i   18 (grid coord  8  1)
+    Stamp in region : 4096:4586,512:1002
+    Tmpl  xs : 4341 ys :  757  (sky,dsky = 6.1,17.1)
+    Image xs : 4341 ys :  757  (sky,dsky = 5.8,14.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   19 i   19 (grid coord  9  1)
+    Stamp in region : 4608:5098,512:1002
+    Tmpl  xs : 4853 ys :  757  (sky,dsky = 7.6,16.2)
+    Image xs : 4853 ys :  757  (sky,dsky = 7.6,14.0)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   20 i   20 (grid coord  0  2)
+    Stamp in region : 0:490,1024:1514
+    Tmpl  xs :  245 ys : 1269  (sky,dsky = 11.7,23.5)
+    Image xs :  245 ys : 1269  (sky,dsky = 12.0,20.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   21 i   21 (grid coord  1  2)
+    Stamp in region : 512:1002,1024:1514
+    Tmpl  xs :  757 ys : 1269  (sky,dsky = 5.3,17.3)
+    Image xs :  757 ys : 1269  (sky,dsky = 5.8,14.8)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   22 i   22 (grid coord  2  2)
+    Stamp in region : 1024:1514,1024:1514
+    Tmpl  xs : 1269 ys : 1269  (sky,dsky = 6.1,17.5)
+    Image xs : 1269 ys : 1269  (sky,dsky = 8.1,15.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   23 i   23 (grid coord  3  2)
+    Stamp in region : 1536:2026,1024:1514
+    Tmpl  xs : 1781 ys : 1269  (sky,dsky = 7.5,15.7)
+    Image xs : 1781 ys : 1269  (sky,dsky = 7.4,13.2)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   24 i   24 (grid coord  4  2)
+    Stamp in region : 2048:2538,1024:1514
+    Tmpl  xs : 2293 ys : 1269  (sky,dsky = 8.9,18.9)
+    Image xs : 2293 ys : 1269  (sky,dsky = 8.5,15.8)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   25 i   25 (grid coord  5  2)
+    Stamp in region : 2560:3050,1024:1514
+    Tmpl  xs : 2805 ys : 1269  (sky,dsky = 10.2,19.6)
+    Image xs : 2805 ys : 1269  (sky,dsky = 10.3,16.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   26 i   26 (grid coord  6  2)
+    Stamp in region : 3072:3562,1024:1514
+    Tmpl  xs : 3317 ys : 1269  (sky,dsky = 6.9,20.1)
+    Image xs : 3317 ys : 1269  (sky,dsky = 7.1,17.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   27 i   27 (grid coord  7  2)
+    Stamp in region : 3584:4074,1024:1514
+    Tmpl  xs : 3829 ys : 1269  (sky,dsky = 11.0,21.0)
+    Image xs : 3829 ys : 1269  (sky,dsky = 11.7,18.2)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   28 i   28 (grid coord  8  2)
+    Stamp in region : 4096:4586,1024:1514
+    Tmpl  xs : 4341 ys : 1269  (sky,dsky = 7.8,15.7)
+    Image xs : 4341 ys : 1269  (sky,dsky = 8.7,13.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   29 i   29 (grid coord  9  2)
+    Stamp in region : 4608:5098,1024:1514
+    Tmpl  xs : 4853 ys : 1269  (sky,dsky = 12.3,27.7)
+    Image xs : 4853 ys : 1269  (sky,dsky = 11.9,23.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   30 i   30 (grid coord  0  3)
+    Stamp in region : 0:490,1536:2026
+    Tmpl  xs :  245 ys : 1781  (sky,dsky = 12.3,18.4)
+    Image xs :  245 ys : 1781  (sky,dsky = 12.2,15.5)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   31 i   31 (grid coord  1  3)
+    Stamp in region : 512:1002,1536:2026
+    Tmpl  xs :  757 ys : 1781  (sky,dsky = 8.2,20.6)
+    Image xs :  757 ys : 1781  (sky,dsky = 8.0,17.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   32 i   32 (grid coord  2  3)
+    Stamp in region : 1024:1514,1536:2026
+    Tmpl  xs : 1269 ys : 1781  (sky,dsky = 17.0,24.6)
+    Image xs : 1269 ys : 1781  (sky,dsky = 17.0,20.9)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   33 i   33 (grid coord  3  3)
+    Stamp in region : 1536:2026,1536:2026
+    Tmpl  xs : 1781 ys : 1781  (sky,dsky = 8.9,23.8)
+    Image xs : 1781 ys : 1781  (sky,dsky = 8.8,20.5)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   34 i   34 (grid coord  4  3)
+    Stamp in region : 2048:2538,1536:2026
+    Tmpl  xs : 2293 ys : 1781  (sky,dsky = 9.3,23.6)
+    Image xs : 2293 ys : 1781  (sky,dsky = 9.0,20.5)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   35 i   35 (grid coord  5  3)
+    Stamp in region : 2560:3050,1536:2026
+    Tmpl  xs : 2805 ys : 1781  (sky,dsky = 9.2,15.5)
+    Image xs : 2805 ys : 1781  (sky,dsky = 9.0,13.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   36 i   36 (grid coord  6  3)
+    Stamp in region : 3072:3562,1536:2026
+    Tmpl  xs : 3317 ys : 1781  (sky,dsky = 7.0,17.3)
+    Image xs : 3317 ys : 1781  (sky,dsky = 6.8,15.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   37 i   37 (grid coord  7  3)
+    Stamp in region : 3584:4074,1536:2026
+    Tmpl  xs : 3829 ys : 1781  (sky,dsky = 4.6,15.5)
+    Image xs : 3829 ys : 1781  (sky,dsky = 4.5,13.8)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   38 i   38 (grid coord  8  3)
+    Stamp in region : 4096:4586,1536:2026
+    Tmpl  xs : 4341 ys : 1781  (sky,dsky = 10.2,21.2)
+    Image xs : 4341 ys : 1781  (sky,dsky = 10.1,18.4)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   39 i   39 (grid coord  9  3)
+    Stamp in region : 4608:5098,1536:2026
+    Tmpl  xs : 4853 ys : 1781  (sky,dsky = 3.5,17.4)
+    Image xs : 4853 ys : 1781  (sky,dsky = 3.6,14.9)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   40 i   40 (grid coord  0  4)
+    Stamp in region : 0:490,2048:2538
+    Tmpl  xs :  245 ys : 2293  (sky,dsky = 6.0,20.3)
+    Image xs :  245 ys : 2293  (sky,dsky = 6.0,17.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   41 i   41 (grid coord  1  4)
+    Stamp in region : 512:1002,2048:2538
+    Tmpl  xs :  757 ys : 2293  (sky,dsky = 4.1,21.9)
+    Image xs :  757 ys : 2293  (sky,dsky = 3.8,18.9)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   42 i   42 (grid coord  2  4)
+    Stamp in region : 1024:1514,2048:2538
+    Tmpl  xs : 1269 ys : 2293  (sky,dsky = 8.6,18.0)
+    Image xs : 1269 ys : 2293  (sky,dsky = 8.3,15.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   43 i   43 (grid coord  3  4)
+    Stamp in region : 1536:2026,2048:2538
+    Tmpl  xs : 1781 ys : 2293  (sky,dsky = 12.8,20.5)
+    Image xs : 1781 ys : 2293  (sky,dsky = 13.1,17.4)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   44 i   44 (grid coord  4  4)
+    Stamp in region : 2048:2538,2048:2538
+    Tmpl  xs : 2293 ys : 2293  (sky,dsky = 7.9,13.4)
+    Image xs : 2293 ys : 2293  (sky,dsky = 8.0,11.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   45 i   45 (grid coord  5  4)
+    Stamp in region : 2560:3050,2048:2538
+    Tmpl  xs : 2805 ys : 2293  (sky,dsky = 3.9,12.1)
+    Image xs : 2805 ys : 2293  (sky,dsky = 3.7,10.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   46 i   46 (grid coord  6  4)
+    Stamp in region : 3072:3562,2048:2538
+    Tmpl  xs : 3317 ys : 2293  (sky,dsky = 6.4,15.5)
+    Image xs : 3317 ys : 2293  (sky,dsky = 6.3,13.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   47 i   47 (grid coord  7  4)
+    Stamp in region : 3584:4074,2048:2538
+    Tmpl  xs : 3829 ys : 2293  (sky,dsky = 4.4,14.2)
+    Image xs : 3829 ys : 2293  (sky,dsky = 4.2,12.4)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   48 i   48 (grid coord  8  4)
+    Stamp in region : 4096:4586,2048:2538
+    Tmpl  xs : 4341 ys : 2293  (sky,dsky = 6.6,14.2)
+    Image xs : 4341 ys : 2293  (sky,dsky = 6.4,11.9)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   49 i   49 (grid coord  9  4)
+    Stamp in region : 4608:5098,2048:2538
+    Tmpl  xs : 4853 ys : 2293  (sky,dsky = 3.9,14.7)
+    Image xs : 4853 ys : 2293  (sky,dsky = 3.7,12.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   50 i   50 (grid coord  0  5)
+    Stamp in region : 0:490,2560:3050
+    Tmpl  xs :  245 ys : 2805  (sky,dsky = 11.1,18.4)
+    Image xs :  245 ys : 2805  (sky,dsky = 11.1,16.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   51 i   51 (grid coord  1  5)
+    Stamp in region : 512:1002,2560:3050
+    Tmpl  xs :  757 ys : 2805  (sky,dsky = 7.5,14.1)
+    Image xs :  757 ys : 2805  (sky,dsky = 7.4,12.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   52 i   52 (grid coord  2  5)
+    Stamp in region : 1024:1514,2560:3050
+    Tmpl  xs : 1269 ys : 2805  (sky,dsky = 7.3,18.7)
+    Image xs : 1269 ys : 2805  (sky,dsky = 7.4,15.8)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   53 i   53 (grid coord  3  5)
+    Stamp in region : 1536:2026,2560:3050
+    Tmpl  xs : 1781 ys : 2805  (sky,dsky = 6.6,14.9)
+    Image xs : 1781 ys : 2805  (sky,dsky = 6.6,12.4)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   54 i   54 (grid coord  4  5)
+    Stamp in region : 2048:2538,2560:3050
+    Tmpl  xs : 2293 ys : 2805  (sky,dsky = 13.1,19.2)
+    Image xs : 2293 ys : 2805  (sky,dsky = 12.8,16.8)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   55 i   55 (grid coord  5  5)
+    Stamp in region : 2560:3050,2560:3050
+    Tmpl  xs : 2805 ys : 2805  (sky,dsky = 3.4,11.6)
+    Image xs : 2805 ys : 2805  (sky,dsky = 3.3,10.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   56 i   56 (grid coord  6  5)
+    Stamp in region : 3072:3562,2560:3050
+    Tmpl  xs : 3317 ys : 2805  (sky,dsky = 7.9,13.3)
+    Image xs : 3317 ys : 2805  (sky,dsky = 7.6,11.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   57 i   57 (grid coord  7  5)
+    Stamp in region : 3584:4074,2560:3050
+    Tmpl  xs : 3829 ys : 2805  (sky,dsky = 10.5,28.2)
+    Image xs : 3829 ys : 2805  (sky,dsky = 10.1,24.5)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   58 i   58 (grid coord  8  5)
+    Stamp in region : 4096:4586,2560:3050
+    Tmpl  xs : 4341 ys : 2805  (sky,dsky = 9.2,20.8)
+    Image xs : 4341 ys : 2805  (sky,dsky = 9.4,17.8)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   59 i   59 (grid coord  9  5)
+    Stamp in region : 4608:5098,2560:3050
+    Tmpl  xs : 4853 ys : 2805  (sky,dsky = 5.1,13.9)
+    Image xs : 4853 ys : 2805  (sky,dsky = 5.2,11.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   60 i   60 (grid coord  0  6)
+    Stamp in region : 0:490,3072:3562
+    Tmpl  xs :  245 ys : 3317  (sky,dsky = 4.9,11.2)
+    Image xs :  245 ys : 3317  (sky,dsky = 4.8,10.0)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   61 i   61 (grid coord  1  6)
+    Stamp in region : 512:1002,3072:3562
+    Tmpl  xs :  757 ys : 3317  (sky,dsky = 9.3,14.2)
+    Image xs :  757 ys : 3317  (sky,dsky = 8.9,12.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   62 i   62 (grid coord  2  6)
+    Stamp in region : 1024:1514,3072:3562
+    Tmpl  xs : 1269 ys : 3317  (sky,dsky = 10.2,22.7)
+    Image xs : 1269 ys : 3317  (sky,dsky = 9.7,19.5)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   63 i   63 (grid coord  3  6)
+    Stamp in region : 1536:2026,3072:3562
+    Tmpl  xs : 1781 ys : 3317  (sky,dsky = 5.8,16.8)
+    Image xs : 1781 ys : 3317  (sky,dsky = 5.6,14.4)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   64 i   64 (grid coord  4  6)
+    Stamp in region : 2048:2538,3072:3562
+    Tmpl  xs : 2293 ys : 3317  (sky,dsky = 6.2,21.7)
+    Image xs : 2293 ys : 3317  (sky,dsky = 5.9,18.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   65 i   65 (grid coord  5  6)
+    Stamp in region : 2560:3050,3072:3562
+    Tmpl  xs : 2805 ys : 3317  (sky,dsky = 9.4,13.5)
+    Image xs : 2805 ys : 3317  (sky,dsky = 9.4,12.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   66 i   66 (grid coord  6  6)
+    Stamp in region : 3072:3562,3072:3562
+    Tmpl  xs : 3317 ys : 3317  (sky,dsky = 7.3,13.3)
+    Image xs : 3317 ys : 3317  (sky,dsky = 7.4,11.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   67 i   67 (grid coord  7  6)
+    Stamp in region : 3584:4074,3072:3562
+    Tmpl  xs : 3829 ys : 3317  (sky,dsky = 13.5,27.4)
+    Image xs : 3829 ys : 3317  (sky,dsky = 13.9,23.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   68 i   68 (grid coord  8  6)
+    Stamp in region : 4096:4586,3072:3562
+    Tmpl  xs : 4341 ys : 3317  (sky,dsky = 7.7,24.8)
+    Image xs : 4341 ys : 3317  (sky,dsky = 7.2,20.5)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   69 i   69 (grid coord  9  6)
+    Stamp in region : 4608:5098,3072:3562
+    Tmpl  xs : 4853 ys : 3317  (sky,dsky = 7.5,17.3)
+    Image xs : 4853 ys : 3317  (sky,dsky = 7.5,14.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   70 i   70 (grid coord  0  7)
+    Stamp in region : 0:490,3584:4074
+    Tmpl  xs :  245 ys : 3829  (sky,dsky = 13.0,22.1)
+    Image xs :  245 ys : 3829  (sky,dsky = 13.3,18.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   71 i   71 (grid coord  1  7)
+    Stamp in region : 512:1002,3584:4074
+    Tmpl  xs :  757 ys : 3829  (sky,dsky = 5.7,17.7)
+    Image xs :  757 ys : 3829  (sky,dsky = 5.6,15.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   72 i   72 (grid coord  2  7)
+    Stamp in region : 1024:1514,3584:4074
+    Tmpl  xs : 1269 ys : 3829  (sky,dsky = 7.8,17.3)
+    Image xs : 1269 ys : 3829  (sky,dsky = 7.7,15.2)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   73 i   73 (grid coord  3  7)
+    Stamp in region : 1536:2026,3584:4074
+    Tmpl  xs : 1781 ys : 3829  (sky,dsky = 8.1,27.8)
+    Image xs : 1781 ys : 3829  (sky,dsky = 7.6,24.5)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   74 i   74 (grid coord  4  7)
+    Stamp in region : 2048:2538,3584:4074
+    Tmpl  xs : 2293 ys : 3829  (sky,dsky = 7.1,23.6)
+    Image xs : 2293 ys : 3829  (sky,dsky = 7.3,20.9)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   75 i   75 (grid coord  5  7)
+    Stamp in region : 2560:3050,3584:4074
+    Tmpl  xs : 2805 ys : 3829  (sky,dsky = 9.6,20.6)
+    Image xs : 2805 ys : 3829  (sky,dsky = 9.4,17.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   76 i   76 (grid coord  6  7)
+    Stamp in region : 3072:3562,3584:4074
+    Tmpl  xs : 3317 ys : 3829  (sky,dsky = 4.8,12.2)
+    Image xs : 3317 ys : 3829  (sky,dsky = 5.1,10.5)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   77 i   77 (grid coord  7  7)
+    Stamp in region : 3584:4074,3584:4074
+    Tmpl  xs : 3829 ys : 3829  (sky,dsky = 5.9,18.1)
+    Image xs : 3829 ys : 3829  (sky,dsky = 5.9,15.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   78 i   78 (grid coord  8  7)
+    Stamp in region : 4096:4586,3584:4074
+    Tmpl  xs : 4341 ys : 3829  (sky,dsky = 7.4,19.8)
+    Image xs : 4341 ys : 3829  (sky,dsky = 7.3,17.0)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   79 i   79 (grid coord  9  7)
+    Stamp in region : 4608:5098,3584:4074
+    Tmpl  xs : 4853 ys : 3829  (sky,dsky = 6.2,18.9)
+    Image xs : 4853 ys : 3829  (sky,dsky = 6.3,16.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   80 i   80 (grid coord  0  8)
+    Stamp in region : 0:490,4096:4586
+    Tmpl  xs :  245 ys : 4341  (sky,dsky = 7.7,18.1)
+    Image xs :  245 ys : 4341  (sky,dsky = 7.9,15.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   81 i   81 (grid coord  1  8)
+    Stamp in region : 512:1002,4096:4586
+    Tmpl  xs :  757 ys : 4341  (sky,dsky = 4.1,8.9)
+    Image xs :  757 ys : 4341  (sky,dsky = 5.6,6.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   82 i   82 (grid coord  2  8)
+    Stamp in region : 1024:1514,4096:4586
+    Tmpl  xs : 1269 ys : 4341  (sky,dsky = 6.7,20.3)
+    Image xs : 1269 ys : 4341  (sky,dsky = 6.6,18.2)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   83 i   83 (grid coord  3  8)
+    Stamp in region : 1536:2026,4096:4586
+    Tmpl  xs : 1781 ys : 4341  (sky,dsky = 7.3,15.0)
+    Image xs : 1781 ys : 4341  (sky,dsky = 7.3,13.2)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   84 i   84 (grid coord  4  8)
+    Stamp in region : 2048:2538,4096:4586
+    Tmpl  xs : 2293 ys : 4341  (sky,dsky = 1.7,10.5)
+    Image xs : 2293 ys : 4341  (sky,dsky = 1.8,9.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   85 i   85 (grid coord  5  8)
+    Stamp in region : 2560:3050,4096:4586
+    Tmpl  xs : 2805 ys : 4341  (sky,dsky = 12.8,21.4)
+    Image xs : 2805 ys : 4341  (sky,dsky = 12.9,18.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   86 i   86 (grid coord  6  8)
+    Stamp in region : 3072:3562,4096:4586
+    Tmpl  xs : 3317 ys : 4341  (sky,dsky = 8.5,16.7)
+    Image xs : 3317 ys : 4341  (sky,dsky = 8.3,14.2)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   87 i   87 (grid coord  7  8)
+    Stamp in region : 3584:4074,4096:4586
+    Tmpl  xs : 3829 ys : 4341  (sky,dsky = 9.0,13.6)
+    Image xs : 3829 ys : 4341  (sky,dsky = 8.8,12.0)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   88 i   88 (grid coord  8  8)
+    Stamp in region : 4096:4586,4096:4586
+    Tmpl  xs : 4341 ys : 4341  (sky,dsky = 11.1,18.0)
+    Image xs : 4341 ys : 4341  (sky,dsky = 11.5,15.4)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   89 i   89 (grid coord  9  8)
+    Stamp in region : 4608:5098,4096:4586
+    Tmpl  xs : 4853 ys : 4341  (sky,dsky = 7.9,16.5)
+    Image xs : 4853 ys : 4341  (sky,dsky = 7.7,14.0)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   90 i   90 (grid coord  0  9)
+    Stamp in region : 0:490,4608:5098
+    Tmpl  xs :  245 ys : 4853  (sky,dsky = 9.3,17.4)
+    Image xs :  245 ys : 4853  (sky,dsky = 9.1,14.9)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   91 i   91 (grid coord  1  9)
+    Stamp in region : 512:1002,4608:5098
+    Tmpl  xs :  757 ys : 4853  (sky,dsky = 9.1,15.9)
+    Image xs :  757 ys : 4853  (sky,dsky = 6.5,14.3)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   92 i   92 (grid coord  2  9)
+    Stamp in region : 1024:1514,4608:5098
+    Tmpl  xs : 1269 ys : 4853  (sky,dsky = 5.1,14.6)
+    Image xs : 1269 ys : 4853  (sky,dsky = 5.1,12.5)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   93 i   93 (grid coord  3  9)
+    Stamp in region : 1536:2026,4608:5098
+    Tmpl  xs : 1781 ys : 4853  (sky,dsky = 8.0,18.1)
+    Image xs : 1781 ys : 4853  (sky,dsky = 7.9,15.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   94 i   94 (grid coord  4  9)
+    Stamp in region : 2048:2538,4608:5098
+    Tmpl  xs : 2293 ys : 4853  (sky,dsky = 4.4,12.0)
+    Image xs : 2293 ys : 4853  (sky,dsky = 4.3,10.5)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   95 i   95 (grid coord  5  9)
+    Stamp in region : 2560:3050,4608:5098
+    Tmpl  xs : 2805 ys : 4853  (sky,dsky = 9.6,20.0)
+    Image xs : 2805 ys : 4853  (sky,dsky = 9.2,17.2)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   96 i   96 (grid coord  6  9)
+    Stamp in region : 3072:3562,4608:5098
+    Tmpl  xs : 3317 ys : 4853  (sky,dsky = 9.1,21.7)
+    Image xs : 3317 ys : 4853  (sky,dsky = 9.0,18.6)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   97 i   97 (grid coord  7  9)
+    Stamp in region : 3584:4074,4608:5098
+    Tmpl  xs : 3829 ys : 4853  (sky,dsky = 5.4,15.2)
+    Image xs : 3829 ys : 4853  (sky,dsky = 5.2,13.1)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   98 i   98 (grid coord  8  9)
+    Stamp in region : 4096:4586,4608:5098
+    Tmpl  xs : 4341 ys : 4853  (sky,dsky = 11.8,20.9)
+    Image xs : 4341 ys : 4853  (sky,dsky = 11.7,18.4)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+Build stamp  : t   99 i   99 (grid coord  9  9)
+    Stamp in region : 4608:5098,4608:5098
+    Tmpl  xs : 4853 ys : 4853  (sky,dsky = 8.3,27.2)
+    Image xs : 4853 ys : 4853  (sky,dsky = 8.1,22.7)
+    Tmpl     : scnt =  0 nss =  3
+    Image    : scnt =  0 nss =  3
+100 and 100 stamps built (1.00%, 1.00%)
+
+Filling Template sub-stamps
+    xs  :  245 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  390 yss :  107
+    xs  :  757 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  752 yss :  373
+    xs  : 1269 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1340 yss :  490
+    xs  : 1781 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1742 yss :  254
+    xs  : 2293 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2130 yss :  140
+    xs  : 2805 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3016 yss :  457
+    xs  : 3317 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3473 yss :  337
+    xs  : 3829 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4019 yss :  208
+    xs  : 4341 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4286 yss :  434
+    xs  : 4853 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4652 yss :  147
+    xs  :  245 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  143 yss :  849
+    xs  :  757 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  642 yss :  585
+    xs  : 1269 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1180 yss :  860
+    xs  : 1781 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1876 yss :  551
+    xs  : 2293 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2493 yss :  973
+    xs  : 2805 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2890 yss :  646
+    xs  : 3317 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3408 yss :  626
+    xs  : 3829 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3889 yss :  768
+    xs  : 4341 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4275 yss :  562
+    xs  : 4853 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4991 yss :  817
+    xs  :  245 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  106 yss : 1455
+    xs  :  757 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  777 yss : 1278
+    xs  : 1269 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1089 yss : 1363
+    xs  : 1781 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1864 yss : 1171
+    xs  : 2293 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2455 yss : 1070
+    xs  : 2805 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2872 yss : 1265
+    xs  : 3317 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3324 yss : 1295
+    xs  : 3829 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3702 yss : 1110
+    xs  : 4341 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4472 yss : 1179
+    xs  : 4853 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 5052 yss : 1501
+    xs  :  245 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss :   71 yss : 1826
+    xs  :  757 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  997 yss : 1848
+    xs  : 1269 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1159 yss : 1536
+    xs  : 1781 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1985 yss : 1898
+    xs  : 2293 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2247 yss : 1536
+    xs  : 2805 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2628 yss : 1700
+    xs  : 3317 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3553 yss : 1628
+    xs  : 3829 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3864 yss : 1755
+    xs  : 4341 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4427 yss : 1973
+    xs  : 4853 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4928 yss : 1817
+    xs  :  245 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  403 yss : 2474
+    xs  :  757 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  832 yss : 2330
+    xs  : 1269 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1071 yss : 2217
+    xs  : 1781 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1793 yss : 2156
+    xs  : 2293 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2497 yss : 2210
+    xs  : 2805 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2616 yss : 2224
+    xs  : 3317 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3265 yss : 2167
+    xs  : 3829 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3911 yss : 2314
+    xs  : 4341 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4543 yss : 2525
+    xs  : 4853 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 5032 yss : 2126
+    xs  :  245 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  340 yss : 2805
+    xs  :  757 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  528 yss : 2967
+    xs  : 1269 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1239 yss : 3017
+    xs  : 1781 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1738 yss : 2742
+    xs  : 2293 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2049 yss : 2776
+    xs  : 2805 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2859 yss : 3007
+    xs  : 3317 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3390 yss : 2897
+    xs  : 3829 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3643 yss : 2671
+    xs  : 4341 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4128 yss : 2778
+    xs  : 4853 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4998 yss : 2985
+    xs  :  245 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  219 yss : 3441
+    xs  :  757 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  579 yss : 3456
+    xs  : 1269 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1208 yss : 3520
+    xs  : 1781 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1814 yss : 3191
+    xs  : 2293 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2252 yss : 3248
+    xs  : 2805 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3021 yss : 3332
+    xs  : 3317 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3155 yss : 3302
+    xs  : 3829 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3962 yss : 3245
+    xs  : 4341 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4469 yss : 3385
+    xs  : 4853 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4808 yss : 3122
+    xs  :  245 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  438 yss : 3867
+    xs  :  757 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  864 yss : 3923
+    xs  : 1269 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1353 yss : 3803
+    xs  : 1781 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1949 yss : 3678
+    xs  : 2293 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2339 yss : 3599
+    xs  : 2805 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2942 yss : 3599
+    xs  : 3317 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3108 yss : 3666
+    xs  : 3829 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3773 yss : 4063
+    xs  : 4341 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4197 yss : 3939
+    xs  : 4853 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4985 yss : 3819
+    xs  :  245 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss :   48 yss : 4379
+    xs  :  757 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  843 yss : 4308
+    xs  : 1269 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1380 yss : 4116
+    xs  : 1781 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1721 yss : 4096
+    xs  : 2293 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2316 yss : 4151
+    xs  : 2805 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2823 yss : 4514
+    xs  : 3317 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3462 yss : 4422
+    xs  : 3829 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3727 yss : 4354
+    xs  : 4341 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4359 yss : 4234
+    xs  : 4853 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4702 yss : 4136
+    xs  :  245 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  463 yss : 4632
+    xs  :  757 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  758 yss : 4938
+    xs  : 1269 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1274 yss : 4840
+    xs  : 1781 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1828 yss : 4682
+    xs  : 2293 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2204 yss : 4747
+    xs  : 2805 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2610 yss : 4825
+    xs  : 3317 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3445 yss : 5065
+    xs  : 3829 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3978 yss : 4817
+    xs  : 4341 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4420 yss : 5069
+    xs  : 4853 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4896 yss : 5006
+
+
+Trying to convolve the TEMPLATE to fit IMAGE
+    2.0 sigma clipped mean ksum : 0.972, stdev : 0.023, n : 100
+    <var_merit> = 30.000, <sd_merit> = 0.000, <hist_merit> = 0.000
+    Result : merit = 30.000
+Filling Image sub-stamps
+    xs  :  245 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  390 yss :  107
+    xs  :  757 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  752 yss :  373
+    xs  : 1269 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1355 yss :  437
+    xs  : 1781 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1742 yss :  254
+    xs  : 2293 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2130 yss :  140
+    xs  : 2805 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3016 yss :  458
+    xs  : 3317 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3480 yss :  311
+    xs  : 3829 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4019 yss :  208
+    xs  : 4341 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4286 yss :  434
+    xs  : 4853 ys  :  245 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4652 yss :  147
+    xs  :  245 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  143 yss :  849
+    xs  :  757 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  642 yss :  585
+    xs  : 1269 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1180 yss :  860
+    xs  : 1781 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1876 yss :  551
+    xs  : 2293 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2093 yss :  950
+    xs  : 2805 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2890 yss :  646
+    xs  : 3317 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3408 yss :  626
+    xs  : 3829 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4008 yss :  605
+    xs  : 4341 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4275 yss :  562
+    xs  : 4853 ys  :  757 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4814 yss :  929
+    xs  :  245 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  106 yss : 1455
+    xs  :  757 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  727 yss : 1252
+    xs  : 1269 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1089 yss : 1363
+    xs  : 1781 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1864 yss : 1171
+    xs  : 2293 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2077 yss : 1175
+    xs  : 2805 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2872 yss : 1265
+    xs  : 3317 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3395 yss : 1379
+    xs  : 3829 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3702 yss : 1110
+    xs  : 4341 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4472 yss : 1179
+    xs  : 4853 ys  : 1269 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4855 yss : 1165
+    xs  :  245 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  284 yss : 1934
+    xs  :  757 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  997 yss : 1848
+    xs  : 1269 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1061 yss : 1592
+    xs  : 1781 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1985 yss : 1898
+    xs  : 2293 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2139 yss : 1758
+    xs  : 2805 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2655 yss : 2006
+    xs  : 3317 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3553 yss : 1628
+    xs  : 3829 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3864 yss : 1755
+    xs  : 4341 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4243 yss : 1993
+    xs  : 4853 ys  : 1781 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4832 yss : 1911
+    xs  :  245 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss :   76 yss : 2194
+    xs  :  757 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  519 yss : 2423
+    xs  : 1269 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1312 yss : 2524
+    xs  : 1781 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1793 yss : 2156
+    xs  : 2293 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2497 yss : 2210
+    xs  : 2805 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2616 yss : 2224
+    xs  : 3317 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3375 yss : 2050
+    xs  : 3829 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3911 yss : 2314
+    xs  : 4341 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4491 yss : 2404
+    xs  : 4853 ys  : 2293 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4905 yss : 2314
+    xs  :  245 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  451 yss : 2927
+    xs  :  757 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  528 yss : 2967
+    xs  : 1269 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1239 yss : 3017
+    xs  : 1781 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1738 yss : 2742
+    xs  : 2293 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2049 yss : 2777
+    xs  : 2805 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2859 yss : 3007
+    xs  : 3317 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3390 yss : 2897
+    xs  : 3829 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3642 yss : 2671
+    xs  : 4341 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4128 yss : 2778
+    xs  : 4853 ys  : 2805 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4757 yss : 2618
+    xs  :  245 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  219 yss : 3441
+    xs  :  757 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  579 yss : 3456
+    xs  : 1269 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1247 yss : 3409
+    xs  : 1781 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1814 yss : 3191
+    xs  : 2293 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2252 yss : 3248
+    xs  : 2805 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3021 yss : 3332
+    xs  : 3317 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3315 yss : 3163
+    xs  : 3829 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3962 yss : 3245
+    xs  : 4341 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4297 yss : 3257
+    xs  : 4853 ys  : 3317 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4808 yss : 3122
+    xs  :  245 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  438 yss : 3867
+    xs  :  757 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  864 yss : 3923
+    xs  : 1269 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1068 yss : 3756
+    xs  : 1781 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1949 yss : 3677
+    xs  : 2293 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2152 yss : 3953
+    xs  : 2805 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2942 yss : 3598
+    xs  : 3317 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3108 yss : 3666
+    xs  : 3829 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3773 yss : 4063
+    xs  : 4341 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4257 yss : 4002
+    xs  : 4853 ys  : 3829 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4985 yss : 3819
+    xs  :  245 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss :   48 yss : 4379
+    xs  :  757 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  843 yss : 4308
+    xs  : 1269 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1380 yss : 4116
+    xs  : 1781 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1716 yss : 4107
+    xs  : 2293 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2316 yss : 4151
+    xs  : 2805 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3008 yss : 4304
+    xs  : 3317 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3462 yss : 4422
+    xs  : 3829 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3658 yss : 4312
+    xs  : 4341 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4359 yss : 4234
+    xs  : 4853 ys  : 4341 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4702 yss : 4136
+    xs  :  245 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  463 yss : 4632
+    xs  :  757 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss :  536 yss : 4819
+    xs  : 1269 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1274 yss : 4840
+    xs  : 1781 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 1828 yss : 4682
+    xs  : 2293 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2204 yss : 4747
+    xs  : 2805 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 2610 yss : 4825
+    xs  : 3317 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3362 yss : 4636
+    xs  : 3829 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 3978 yss : 4817
+    xs  : 4341 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4488 yss : 4820
+    xs  : 4853 ys  : 4853 sig:  0.000 sscnt:    0 nss:    3 
+    xss : 4896 yss : 5006
+
+
+Trying to convolve the IMAGE to fit TEMPLATE 
+    2.0 sigma clipped mean ksum : 1.000, stdev : 0.000, n : 100
+    <var_merit> = 0.006, <sd_merit> = 0.000, <hist_merit> = 0.000
+    Result : merit = 0.006
+
+
+ Region 0,5119 0,5119 : Convolving IMAGE
+    Mean sig: 57.241 stdev: 25.647
+    Iterating through stamps with sig > 108.536
+    xs  : 4853 ys  : 1781 sig: 111.850 sscnt:    1 nss:    3 
+    xss : 4928 yss : 1817
+    xs  :  757 ys  : 4853 sig: 123.306 sscnt:    1 nss:    3 
+    xss :  960 yss : 4759
+    xs  : 4853 ys  : 4853 sig: 121.647 sscnt:    1 nss:    3 
+    xss : 4710 yss : 4694
+    100 out of 100 stamps remain
+
+ Re-Expanding Matrix
+ Checking again
+    Mean sig: 56.528 stdev: 24.208
+    Iterating through stamps with sig > 104.945
+    xs  : 4341 ys  :  245 sig: 106.428 sscnt:    1 nss:    3 
+    xss : 4417 yss :  395
+    xs  :  757 ys  : 4853 sig: 154.442 sscnt:    2 nss:    3 
+    xss :  567 yss : 4720
+    xs  : 1781 ys  : 4853 sig: 107.445 sscnt:    1 nss:    3 
+    xss : 1905 yss : 5055
+    100 out of 100 stamps remain
+
+ Re-Expanding Matrix
+ Checking again
+    Mean sig: 56.945 stdev: 23.939
+    Iterating through stamps with sig > 104.823
+    xs  : 1781 ys  : 4853 sig: 108.925 sscnt:    2 nss:    3 
+    xss : 1725 yss : 4660
+    100 out of 100 stamps remain
+
+ Re-Expanding Matrix
+ Checking again
+    Mean sig: 57.018 stdev: 23.898
+    Iterating through stamps with sig > 104.814
+    100 out of 100 stamps remain
+ Sigma clipping of bad stamps converged, kernel determined
+
+ Convolving...
+ Sum Kernel at 0,0: 1.153054
+ Sum Kernel at 5119,5119: 1.153054
+ Using Kernel Sum = 1.153054
+
+ Creating and writing output images...
+    FINAL Mean sig: 27.027 stdev: 19.329
+ Getting diffim stats for GOOD pixels : 
+   Mean   : -78.97
+   Median : -80.45
+   Mode   : -80.84
+   Stdev  : 7.27
+ Getting noiseim stats for GOOD pixels : 
+   Mean   : 10.38
+   Median : 8.92
+   Mode   : 6.21
+   Stdev  : 5.51
+ Emperical / Expected Noise for GOOD pixels = 0.70
+ X2NORM = 121.06
+
+ Getting diffim stats for OK pixels : 
+   Mean   : 110.62
+   Median : 77.70
+   Mode   : -56.16
+   Stdev  : 186.86
+ Getting noiseim stats for OK pixels : 
+   Mean   : 41.79
+   Median : 35.20
+   Mode   : 20.84
+   Stdev  : 24.53
+ Emperical / Expected Noise for OK pixels = 4.47
+
+Region 0 finished
+
+SUCCESS
+HOTPANTS took 25511416000 ns

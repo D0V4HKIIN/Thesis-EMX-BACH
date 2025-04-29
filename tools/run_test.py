@@ -120,36 +120,36 @@ TEST_TABLE = [
         (1e-2, 1e-2),
         (1e-1, 1e0),
     ),
-    (
-        11,
-        False,
-        True,
-        "skyM-S-9k",
-        "skyM-T-9k",
-        "skyM-9k_conv",
-        "skyM-9k_sub",
-        (1e-2, 1e-2),
-        (1e-6, 1e0),
-    ),
-    (
-        12,
-        False,
-        True,
-        "skyM-S-10k",
-        "skyM-T-10k",
-        "skyM-10k_conv",
-        "skyM-10k_sub",
-        (1e-2, 1e-2),
-        (1e-6, 1e0),
-    ),
+    # (
+    #     11,
+    #     False,
+    #     True,
+    #     "skyM-S-9k",
+    #     "skyM-T-9k",
+    #     "skyM-9k_conv",
+    #     "skyM-9k_sub",
+    #     (1e-2, 1e-2),
+    #     (1e-6, 1e0),
+    # ),
+    # (
+    #     12,
+    #     False,
+    #     True,
+    #     "skyM-S-10k",
+    #     "skyM-T-10k",
+    #     "skyM-10k_conv",
+    #     "skyM-10k_sub",
+    #     (1e-2, 1e-2),
+    #     (1e-6, 1e0),
+    # ),
 ]
 
 ROOT_PATH = pathlib.Path(__file__).parent.parent.resolve()
 BIN_PATH = ROOT_PATH / "bin"
 RES_PATH = ROOT_PATH / "res"
 TEST_PATH = ROOT_PATH / "tests"
-# OUTPUT_PATH = TEST_PATH / "out"
-OUTPUT_PATH = pathlib.Path("/var/tmp/exjobb/out")
+OUTPUT_PATH = TEST_PATH / "out"
+# OUTPUT_PATH = pathlib.Path("/var/tmp/exjobb/out")
 CONFIG_PATH = ROOT_PATH / "tools" / "test_config.txt"
 
 

@@ -1,0 +1,38 @@
+Reading in arguments...
+
+Reading in images...
+
+Setting up openCL...
+Using platform: NVIDIA CUDA
+Using device: NVIDIA GeForce GTX 1050
+Ini took 155716158 ns
+
+Creating stamps...
+Identifying sub-stamps...
+SSS took 301841986 ns
+
+
+Calculating matrix variables...
+CMV took 155525036 ns
+
+Choosing convolution direction...
+template merit value = 666, science merit value = 666
+CD took 19204734 ns
+
+Fitting kernel...
+Cannot send in empty vector to Sigma Clip
+KSC took 201091729 ns
+
+Convolving...
+Kernel creation took 43218779 ns
+Convolution (without masking) took 42615348 ns 
+Conv took 88068497 ns
+
+Subtracting images...
+Sub took 1805116 ns
+
+Writing output...
+Fin took 16376183 ns
+
+BACH finished.
+BACH took 939708861 ns

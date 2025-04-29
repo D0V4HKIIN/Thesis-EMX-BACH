@@ -427,7 +427,8 @@ def graph_total(db, label, out_path, title=None):
 
 
 def graph_args(db, out_path):
-    fdb = list(filter(lambda x: x["label"] == "Convolution", db))
+    fdb = list(filter(lambda x: x["label"] == "convolution", db))
+    print(fdb)
 
     for test in TEST_INDEXES:
         tdb = list(filter(lambda x: x["test"] == test, fdb))
@@ -491,6 +492,9 @@ def main(args):
     res_path = pathlib.Path(args[0])
     out_path = pathlib.Path(args[1])
 
+    if not os.path.exists(out_path):
+        os.mkdir(out_path)
+
     print("res path:", res_path)
     print("out path:", out_path)
 
@@ -516,6 +520,7 @@ def main(args):
         graph_speedup(test_db, "kernel creation", out_path)
 
         graph_diff(test_db, "SSS", out_path)
+        graph_diff(test_db, "Ini", out_path)
         graph_diff(test_db, "kernel creation", out_path)
         graph_diff(test_db, "convolution", out_path)
         graph_diff(test_db, "Conv", out_path)
@@ -532,8 +537,9 @@ def main(args):
         graph_breakdown(test_db, "xbach", out_path)
         graph_breakdown(test_db, "emxbach", out_path)
 
-    if "--args" in args:
+    if "--arg" in args:
         arg_db = get_times(generate_arg_tests(), res_path)
+        # print(arg_db)
 
         graph_args(arg_db, out_path)
 
