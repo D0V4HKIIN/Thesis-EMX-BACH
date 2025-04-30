@@ -13,6 +13,8 @@ CONFIDENCE_INTERVAL = 0.99
 
 DPI = 300
 
+MARKERS = "os^d"
+
 
 def label_string(key):
     core_string = (
@@ -21,6 +23,12 @@ def label_string(key):
         else ""
     )
     return f"{key[0]}{core_string}"
+
+
+def get_label_title(label):
+    if label == "Total":
+        return "total execution time"
+    return label
 
 
 def verify_normality(db):
@@ -191,7 +199,7 @@ def graph_together_efficiency(db, label, out_path):
     plt.close()
 
 
-def graph_speedup(db, label, out_path):
+def graph_core_speedup(db, label, out_path):
     fdb = list(filter(lambda x: x["software"] == "emxbach" and x["label"] == label, db))
 
     sub_folder = "cores"
@@ -224,7 +232,7 @@ def graph_speedup(db, label, out_path):
         speedup_low = one_mean / low_percentile
         speedup_high = one_mean / high_percentile
 
-        title = f"Speedup of {label} for test {t}"
+        title = f"Speedup of {label} for test {t} compared to 1 core"
         plt.title(title)
         plt.xlabel("Cores")
         plt.ylabel("Speedup")
@@ -241,6 +249,90 @@ def graph_speedup(db, label, out_path):
         filename = f"core_speedup_{label}_test{t}_computer{COMPUTER}"
         plt.savefig(new_out_path / filename, dpi=DPI)
         plt.close()
+
+
+def graph_speedup(db, label, out_path):
+    softwares = ["bach", "xbach"]
+    if label == "Total":
+        softwares.append("hotpants")
+
+    fdb = list(filter(lambda x: x["label"] == label, db))
+    edb = list(filter(lambda x: x["software"] == "emxbach", fdb))
+
+    for software, marker in zip(softwares, itertools.cycle(MARKERS)):
+        soft_means = np.zeros(len(TEST_INDEXES))
+        soft_low_percentile = np.zeros(len(TEST_INDEXES))
+        soft_high_percentile = np.zeros(len(TEST_INDEXES))
+
+        emx_means = np.zeros(len(TEST_INDEXES))
+        emx_low_percentile = np.zeros(len(TEST_INDEXES))
+        emx_high_percentile = np.zeros(len(TEST_INDEXES))
+
+        for t in TEST_INDEXES:
+            # there should only be one element left
+            tdb = list(
+                filter(lambda x: x["software"] == software and x["test"] == t, fdb)
+            )
+            tedb = list(
+                filter(
+                    lambda x: x["software"] == "emxbach"
+                    and x["test"] == t
+                    and x["core"] == NUM_CORES,
+                    edb,
+                )
+            )
+
+            assert len(tdb) == 1
+            assert len(tedb) == 1
+
+            soft_t = tdb[0]
+            te = tedb[0]
+
+            soft_means[t - 1] = np.mean(soft_t["times"])
+            soft_boot = stats.bootstrap(
+                (soft_t["times"],),  # for some reason this needs to be 2d
+                np.mean,  # want to bootstrap the mean
+                confidence_level=CONFIDENCE_INTERVAL,
+                method="percentile",
+            )
+            soft_low_percentile[t - 1] = soft_boot.confidence_interval.low
+            soft_high_percentile[t - 1] = soft_boot.confidence_interval.high
+
+            emx_means[t - 1] = np.mean(te["times"])
+            emx_boot = stats.bootstrap(
+                (te["times"],),  # for some reason this needs to be 2d
+                np.mean,  # want to bootstrap the mean
+                confidence_level=CONFIDENCE_INTERVAL,
+                method="percentile",
+            )
+            emx_low_percentile[t - 1] = emx_boot.confidence_interval.low
+            emx_high_percentile[t - 1] = emx_boot.confidence_interval.high
+
+        # scale with emx mean because soft_low / emx_low might be higher than soft_high / emx_high
+        speedup_means = soft_means / emx_means
+        speedup_low = soft_low_percentile / emx_means
+        speedup_high = soft_high_percentile / emx_means
+
+        if label == "convolution" and software == "bach":
+            print(speedup_low)
+            print(speedup_high)
+
+        plt.plot(TEST_INDEXES, speedup_means, marker=marker, label=software)
+        plt.fill_between(TEST_INDEXES, speedup_low, speedup_high, alpha=0.2)
+
+    title = f"Speedup of {get_label_title(label)}"
+    plt.title(title)
+    plt.xlabel("Test")
+    plt.ylabel("Speedup")
+    plt.legend()
+
+    # plt.xticks(TEST_INDEXES)
+    # ax = plt.gca()
+    # ax.set_ylim(1, TEST_INDEXES)
+
+    filename = f"speedup_{label}_computer{COMPUTER}"
+    plt.savefig(out_path / filename, dpi=DPI)
+    plt.close()
 
 
 STEPS = [
@@ -345,7 +437,7 @@ def graph_diff(db, label, out_path):
             low_percentile[id] = boot.confidence_interval.low
             high_percentile[id] = boot.confidence_interval.high
 
-        title = f"Comparison of execution time of {label} for test {t}"
+        title = f"Comparison of execution time of {get_label_title(label)} for test {t}"
         # doesnt show min or max
         plt.figure(figsize=(5, 6))
         plt.title(title)
@@ -369,7 +461,7 @@ def graph_diff(db, label, out_path):
         plt.close()
 
 
-def graph_total(db, label, out_path, title=None):
+def graph_total(db, label, out_path):
     fdb = list(filter(lambda x: x["label"] == label, db))
 
     for software in SOFTWARES:
@@ -404,13 +496,12 @@ def graph_total(db, label, out_path, title=None):
                     boot.confidence_interval.high
                 ]
 
-    if title is None:
-        title = f"Comparison of execution time of {label}"
+    title = f"Comparison of execution time of {get_label_title(label)}"
     plt.title(title)
     plt.xlabel("Pixel Per Image")
     plt.ylabel("Execution time (ms)")
 
-    for key, marker in zip(means, itertools.cycle("os^d")):
+    for key, marker in zip(means, itertools.cycle(MARKERS)):
         plt_label = label_string(key)
         plt.plot(PIXEL_PER_IMAGE, means[key], label=plt_label, marker=marker)
         plt.fill_between(
@@ -516,18 +607,22 @@ def main(args):
         graph_together_efficiency(test_db, "SSS", out_path)
         graph_together_efficiency(test_db, "kernel creation", out_path)
 
+        graph_core_speedup(test_db, "SSS", out_path)
+        graph_core_speedup(test_db, "kernel creation", out_path)
+
+        graph_speedup(test_db, "Total", out_path)
         graph_speedup(test_db, "SSS", out_path)
         graph_speedup(test_db, "kernel creation", out_path)
+        graph_speedup(test_db, "convolution", out_path)
+        graph_speedup(test_db, "Conv", out_path)
 
         graph_diff(test_db, "SSS", out_path)
-        graph_diff(test_db, "Ini", out_path)
         graph_diff(test_db, "kernel creation", out_path)
         graph_diff(test_db, "convolution", out_path)
         graph_diff(test_db, "Conv", out_path)
+        graph_diff(test_db, "Total", out_path)
 
-        graph_total(
-            test_db, "Total", out_path, title="Comparison of total execution time"
-        )
+        graph_total(test_db, "Total", out_path)
         graph_total(test_db, "SSS", out_path)
         graph_total(test_db, "kernel creation", out_path)
         graph_total(test_db, "convolution", out_path)

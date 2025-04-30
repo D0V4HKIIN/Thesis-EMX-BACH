@@ -124,7 +124,7 @@ def get_times(tests: list[tuple], res_path):
                 time_split = times_str.split(" ")
                 times = list(map(int, time_split))
 
-                times = [t / 1_000_000_000 for t in times]
+                times = [t / 1_000_000 for t in times]
 
                 db.append(dict(test, label=label, times=times))
 
