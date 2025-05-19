@@ -146,6 +146,55 @@ def graph_efficiency(db, label, out_path):
         plt.close()
 
 
+def graph_together_core(db, label, out_path):
+    fdb = list(filter(lambda x: x["software"] == "emxbach" and x["label"] == label, db))
+
+    sub_folder = "cores"
+    new_out_path = out_path / sub_folder
+    if not new_out_path.exists():
+        os.mkdir(out_path / sub_folder)
+
+    for t in TEST_INDEXES:
+        tdb = list(filter(lambda x: x["test"] == t, fdb))
+        n = NUM_CORES
+        means = np.zeros(n)
+        low_percentile = np.zeros(n)
+        high_percentile = np.zeros(n)
+
+        for test in tdb:
+            means[test["core"] - 1] = np.mean(test["times"])
+
+            boot = stats.bootstrap(
+                (test["times"],),  # for some reason this needs to be 2d
+                np.mean,  # want to bootstrap the mean
+                confidence_level=CONFIDENCE_INTERVAL,
+                method="percentile",
+            )
+            low_percentile[test["core"] - 1] = boot.confidence_interval.low
+            high_percentile[test["core"] - 1] = boot.confidence_interval.high
+
+        one_mean = means[0]
+
+        speedup_means = one_mean / means
+        speedup_low = one_mean / low_percentile
+        speedup_high = one_mean / high_percentile
+
+        plt.plot(CORE_INDEXES, speedup_means, label=f"test {t}", marker="o")
+        plt.fill_between(CORE_INDEXES, speedup_low, speedup_high, alpha=0.2)
+
+    title = f"Speedup of {label}"
+    plt.title(title)
+    plt.xlabel("Cores")
+    plt.ylabel("Speedup")
+    plt.xticks(CORE_INDEXES)
+    plt.legend(bbox_to_anchor=(1, 1))
+    plt.subplots_adjust(left=0.12, bottom=0.14, right=0.80, top=0.94, hspace=0.26)
+
+    filename = f"core_togetherspeedup_{label}_computer{COMPUTER}"
+    plt.savefig(new_out_path / filename, dpi=DPI)
+    plt.close()
+
+
 def graph_together_efficiency(db, label, out_path):
     fdb = list(filter(lambda x: x["software"] == "emxbach" and x["label"] == label, db))
 
@@ -517,6 +566,42 @@ def graph_total(db, label, out_path):
     plt.close()
 
 
+def print_avg_time(db, label):
+    fdb = list(filter(lambda x: x["label"] == label, db))
+    print(fdb)
+
+    for test in [4]:
+        tdb = list(filter(lambda x: x["test"] == test, fdb))
+
+        cdb = list(filter(lambda x: x["cpu"] == 1.0, tdb))
+        assert len(cdb) == 1
+        cpu_mean = np.mean(cdb[0]["times"])
+
+        adb = list(filter(lambda x: x["accelerator"] == 1.0, tdb))
+        assert len(adb) == 1
+        acc_mean = np.mean(adb[0]["times"])
+
+        gdb = list(filter(lambda x: x["cpu"] == 0.0 and x["accelerator"] == 0.0, tdb))
+        assert len(gdb) == 1
+        gpu_mean = np.mean(gdb[0]["times"])
+
+        # theoretical best values
+        cpu_best = (1 / cpu_mean) / (1 / cpu_mean + 1 / gpu_mean + 1 / acc_mean)
+        gpu_best = (1 / gpu_mean) / (1 / cpu_mean + 1 / gpu_mean + 1 / acc_mean)
+        acc_best = (1 / acc_mean) / (1 / cpu_mean + 1 / gpu_mean + 1 / acc_mean)
+
+        print(
+            test,
+            cpu_mean,
+            gpu_mean,
+            acc_mean,
+            round(cpu_best, 2),
+            round(gpu_best, 2),
+            round(acc_best, 2),
+            cpu_best + gpu_best + acc_best,
+        )
+
+
 def graph_args(db, out_path):
     fdb = list(filter(lambda x: x["label"] == "convolution", db))
     print(fdb)
@@ -610,6 +695,9 @@ def main(args):
         graph_core_speedup(test_db, "SSS", out_path)
         graph_core_speedup(test_db, "kernel creation", out_path)
 
+        graph_together_core(test_db, "SSS", out_path)
+        graph_together_core(test_db, "kernel creation", out_path)
+
         graph_speedup(test_db, "Total", out_path)
         graph_speedup(test_db, "SSS", out_path)
         graph_speedup(test_db, "kernel creation", out_path)
@@ -637,6 +725,12 @@ def main(args):
         # print(arg_db)
 
         graph_args(arg_db, out_path)
+
+    if "--arg-late" in args:
+        arg_db = get_times(generate_arg_late_tests(), res_path)
+        print(arg_db)
+
+        print_avg_time(arg_db, "convolution")
 
 
 if __name__ == "__main__":

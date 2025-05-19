@@ -1,0 +1,41 @@
+resolution of clock is: 1/1000000000
+Reading in arguments...
+parsed 1:0:0
+
+Setting up openCL...
+Using platform: NVIDIA CUDA
+Using device: NVIDIA GeForce GTX 1050
+Using accelerator Intel(R) HD Graphics 530
+
+Reading in images...
+Ini took 725159963 ns
+
+Creating stamps...
+SSS took 182930205 ns
+
+
+Calculating matrix variables...
+CMV took 210375459 ns
+
+Choosing convolution direction...
+template merit value = -36.4667, science merit value = -42.9596
+CD took 269283292 ns
+
+Fitting kernel...
+KSC took 619036957 ns
+
+Convolving...
+Kernel creation took 105064961 ns
+77502009 ns for starting acc
+waited for 31902 ns
+Convolution (without masking) took 1441748332 ns 
+Conv took 1640343524 ns
+
+Subtracting images...
+Sub took 48148556 ns
+
+Writing output...
+Fin took 219824662 ns
+
+BACH finished.
+BACH took 3915191193 ns

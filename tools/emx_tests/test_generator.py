@@ -79,7 +79,7 @@ ARGS_TO_TEST = np.linspace(ARG_MIN, ARG_MAX, TESTS_PER_ARGUMENT)
 # SOFTWARES = ["emxbach"]
 # SOFTWARES = ["hotpants"]
 SOFTWARES = ["bach", "xbach", "emxbach", "hotpants"]
-ACCELERATOR_PLATFORM = 2
+ACCELERATOR_PLATFORM = 1
 ACCELERATOR_DEVICE = 0
 
 LABELS = [
@@ -152,6 +152,48 @@ def generate_arg_tests():
     return db
 
 
+# tests to find the computation time of convolution only on cpu, gpu and acc
+def generate_arg_late_tests():
+    db = []
+    software = "emxbach"
+    for test_id in TEST_INDEXES:
+        # cpu only
+        db.append(
+            {
+                "computer": COMPUTER,
+                "software": software,
+                "test": test_id,
+                "core": NUM_CORES,
+                "cpu": 1.0,
+                "accelerator": 0.0,
+            }
+        )
+        # gpu only
+        db.append(
+            {
+                "computer": COMPUTER,
+                "software": software,
+                "test": test_id,
+                "core": NUM_CORES,
+                "cpu": 0.0,
+                "accelerator": 0.0,
+            }
+        )
+        # acc only
+        db.append(
+            {
+                "computer": COMPUTER,
+                "software": software,
+                "test": test_id,
+                "core": NUM_CORES,
+                "cpu": 0.0,
+                "accelerator": 1.0,
+            }
+        )
+
+    return db
+
+
 # uses the optimal cpu and accelerator part to test softwares
 def generate_tests():
     db = []
@@ -187,6 +229,8 @@ def get_tests_from_args(args):
             tests.extend(generate_arg_tests())
         elif arg == "--normal":
             tests.extend(generate_tests())
+        elif arg == "--arg-late":  # last minute tests
+            tests.extend(generate_arg_late_tests())
 
     if len(tests) == 0:
         print("use --normal and --arg to generate tests")
