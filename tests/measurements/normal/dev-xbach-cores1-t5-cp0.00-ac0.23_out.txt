@@ -5,33 +5,33 @@ Reading in images...
 Setting up openCL...
 Using platform: NVIDIA CUDA
 Using device: NVIDIA GeForce GTX 1050
-Ini took 758907156 ns
+Ini took 725177456 ns
 
 Creating stamps...
 Identifying sub-stamps...
-SSS took 1497540052 ns
+SSS took 1235373403 ns
 
 
 Calculating matrix variables...
-CMV took 234054575 ns
+CMV took 212432505 ns
 
 Choosing convolution direction...
 template merit value = -36.4667, science merit value = -42.9596
-CD took 313297871 ns
+CD took 269377430 ns
 
 Fitting kernel...
-KSC took 646559034 ns
+KSC took 626614255 ns
 
 Convolving...
-Kernel creation took 484997525 ns
-Convolution (without masking) took 481806431 ns 
-Conv took 1022007248 ns
+Kernel creation took 490802365 ns
+Convolution (without masking) took 388337443 ns 
+Conv took 933128923 ns
 
 Subtracting images...
-Sub took 47555384 ns
+Sub took 48159046 ns
 
 Writing output...
-Fin took 221726753 ns
+Fin took 220866034 ns
 
 BACH finished.
-BACH took 4741742181 ns
+BACH took 4271246676 ns

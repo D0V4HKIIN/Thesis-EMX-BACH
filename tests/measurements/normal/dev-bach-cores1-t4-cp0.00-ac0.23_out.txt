@@ -9,7 +9,7 @@ Using device: NVIDIA GeForce GTX 1050
 Fits Error: Keyword not found: COMMENT
 
 Fits Error: Keyword not found: COMMENT
-Ini took 2591968904 ns
+Ini took 2578440944 ns
 
 Creating stamps...
 Identifying sub-stamps in sparse1.fits and sparse0.fits...
@@ -338,28 +338,28 @@ No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
-SSS took 6973015622 ns
+SSS took 7054347722 ns
 
 
 Calculating matrix variables...
-CMV took 32749332 ns
+CMV took 33187081 ns
 
 Choosing convolution direction...
-CD took 18940699 ns
+CD took 18774258 ns
 
 Fitting kernel...
-KSC took 9614197 ns
+KSC took 8947660 ns
 
 Convolving...
-Kernel creation took 432331664 ns
-Convolution (without masking) took 361445106 ns 
-Conv took 999345012 ns
+Kernel creation took 492925840 ns
+Convolution (without masking) took 361149993 ns 
+Conv took 1063079355 ns
 
 Subtracting images...
-Sub took 66458743 ns
+Sub took 67052780 ns
 
 Writing output...
-Fin took 266074061 ns
+Fin took 260798341 ns
 
 BACH finished.
-BACH took 10958229253 ns
+BACH took 11084699819 ns

@@ -12,34 +12,34 @@ Reading in images...
 Fits Error: Keyword not found: HISTORY
 
 Fits Error: Keyword not found: HISTORY
-Ini took 614428690 ns
+Ini took 518588907 ns
 
 Creating stamps...
-SSS took 600007338 ns
+SSS took 543097074 ns
 
 
 Calculating matrix variables...
-CMV took 215239952 ns
+CMV took 213203746 ns
 
 Choosing convolution direction...
-template merit value = 29.1755, science merit value = 0.0059897
-CD took 268628989 ns
+template merit value = 29.1754, science merit value = 0.0059897
+CD took 320230964 ns
 
 Fitting kernel...
-KSC took 451870298 ns
+KSC took 427200506 ns
 
 Convolving...
-Kernel creation took 218096520 ns
-139808087 ns for starting acc
-waited for 2439785 ns
-Convolution (without masking) took 695124317 ns 
-Conv took 1095091658 ns
+Kernel creation took 189302035 ns
+134602979 ns for starting acc
+waited for 2495039 ns
+Convolution (without masking) took 611762466 ns 
+Conv took 970546060 ns
 
 Subtracting images...
-Sub took 92061233 ns
+Sub took 87776135 ns
 
 Writing output...
-Fin took 487763139 ns
+Fin took 394423274 ns
 
 BACH finished.
-BACH took 3825246731 ns
+BACH took 3475161050 ns

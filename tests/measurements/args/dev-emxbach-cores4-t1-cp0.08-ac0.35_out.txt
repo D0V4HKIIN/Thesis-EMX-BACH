@@ -1,0 +1,49 @@
+resolution of clock is: 1/1000000000
+Reading in arguments...
+parsed 1:0:0.35
+
+Setting up openCL...
+Using platform: NVIDIA CUDA
+Using device: NVIDIA GeForce GTX 1050
+Using accelerator Intel(R) HD Graphics 530
+
+Reading in images...
+
+Fits Error: Keyword not found: HISTORY
+
+Fits Error: Keyword not found: COMMENT
+
+Fits Error: Keyword not found: HISTORY
+
+Fits Error: Keyword not found: COMMENT
+Ini took 100339636 ns
+
+Creating stamps...
+SSS took 5962689 ns
+
+
+Calculating matrix variables...
+CMV took 70423886 ns
+
+Choosing convolution direction...
+template merit value = 1754.41, science merit value = -1106.12
+CD took 130884611 ns
+
+Fitting kernel...
+KSC took 18621437 ns
+
+Convolving...
+Kernel creation took 1359152 ns
+3529579 ns for starting acc
+waited for 2689009 ns
+Convolution (without masking) took 7730019 ns 
+Conv took 9558880 ns
+
+Subtracting images...
+Sub took 283013 ns
+
+Writing output...
+Fin took 1820933 ns
+
+BACH finished.
+BACH took 337953600 ns

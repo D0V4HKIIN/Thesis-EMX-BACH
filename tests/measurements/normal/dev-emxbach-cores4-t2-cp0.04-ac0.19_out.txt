@@ -8,38 +8,38 @@ Using device: NVIDIA GeForce GTX 1050
 Using accelerator Intel(R) HD Graphics 530
 
 Reading in images...
-Ini took 167441594 ns
+Ini took 126587237 ns
 
 Creating stamps...
 non-masked NaN pixel in image
 non-masked NaN pixel in image
 non-masked NaN pixel in image
-SSS took 28409608 ns
+SSS took 19720663 ns
 
 
 Calculating matrix variables...
-CMV took 159356907 ns
+CMV took 157137329 ns
 
 Choosing convolution direction...
 template merit value = 666, science merit value = 666
-CD took 19261976 ns
+CD took 18089631 ns
 
 Fitting kernel...
 Cannot send in empty vector to Sigma Clip
-KSC took 203571124 ns
+KSC took 201447729 ns
 
 Convolving...
-Kernel creation took 12049423 ns
-11695710 ns for starting acc
-waited for 15405975 ns
-Convolution (without masking) took 35197189 ns 
-Conv took 50262519 ns
+Kernel creation took 13657410 ns
+11738353 ns for starting acc
+waited for 10669811 ns
+Convolution (without masking) took 35402217 ns 
+Conv took 51670567 ns
 
 Subtracting images...
-Sub took 2282679 ns
+Sub took 2047444 ns
 
 Writing output...
-Fin took 20961459 ns
+Fin took 16829723 ns
 
 BACH finished.
-BACH took 651672304 ns
+BACH took 593610292 ns

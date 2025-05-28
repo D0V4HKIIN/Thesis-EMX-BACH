@@ -13,32 +13,32 @@ Fits Error: Keyword not found: COMMENT
 Fits Error: Keyword not found: HISTORY
 
 Fits Error: Keyword not found: COMMENT
-Ini took 307300086 ns
+Ini took 255080788 ns
 
 Creating stamps...
 Identifying sub-stamps in ptf_m82_t_2k.fits and ptf_m82_s_2k.fits...
-SSS took 269603047 ns
+SSS took 269734585 ns
 
 
 Calculating matrix variables...
-CMV took 945357205 ns
+CMV took 954894747 ns
 
 Choosing convolution direction...
-CD took 86156614 ns
+CD took 86565045 ns
 
 Fitting kernel...
-KSC took 263535312 ns
+KSC took 265332313 ns
 
 Convolving...
-Kernel creation took 195246302 ns
-Convolution (without masking) took 173410766 ns 
-Conv took 434077836 ns
+Kernel creation took 194191271 ns
+Convolution (without masking) took 172995294 ns 
+Conv took 431355113 ns
 
 Subtracting images...
-Sub took 18846697 ns
+Sub took 19105868 ns
 
 Writing output...
-Fin took 87745719 ns
+Fin took 85947998 ns
 
 BACH finished.
-BACH took 2412735907 ns
+BACH took 2368133168 ns

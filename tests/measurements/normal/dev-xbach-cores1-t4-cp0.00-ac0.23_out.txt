@@ -9,7 +9,7 @@ Using device: NVIDIA GeForce GTX 1050
 Fits Error: Keyword not found: COMMENT
 
 Fits Error: Keyword not found: COMMENT
-Ini took 323989711 ns
+Ini took 295123396 ns
 
 Creating stamps...
 Identifying sub-stamps...
@@ -94,29 +94,29 @@ Cannot send in empty vector to Sigma Clip
 Cannot send in empty vector to Sigma Clip
 prevNPoints is: 1Needs to be greater than 1
 prevNPoints is: 1Needs to be greater than 1
-SSS took 8517133364 ns
+SSS took 8153640964 ns
 
 
 Calculating matrix variables...
-CMV took 4171097 ns
+CMV took 4187681 ns
 
 Choosing convolution direction...
 template merit value = 7.67571, science merit value = 2.56232
-CD took 34482514 ns
+CD took 33467366 ns
 
 Fitting kernel...
-KSC took 9380717 ns
+KSC took 10142347 ns
 
 Convolving...
-Kernel creation took 426143542 ns
-Convolution (without masking) took 363345847 ns 
-Conv took 838783221 ns
+Kernel creation took 422175222 ns
+Convolution (without masking) took 350370293 ns 
+Conv took 820172167 ns
 
 Subtracting images...
-Sub took 41334004 ns
+Sub took 41412267 ns
 
 Writing output...
-Fin took 179470723 ns
+Fin took 174142219 ns
 
 BACH finished.
-BACH took 9948850185 ns
+BACH took 9532369166 ns

@@ -12,13 +12,16 @@ Reading in images...
 Fits Error: Keyword not found: COMMENT
 
 Fits Error: Keyword not found: COMMENT
-Ini took 354008568 ns
+Ini took 295158423 ns
 
 Creating stamps...
 non-masked NaN pixel in image
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
 No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
@@ -26,9 +29,6 @@ No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
@@ -43,8 +43,8 @@ No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
-Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
@@ -104,11 +104,11 @@ Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
 No good pixels or variation in pixels
 non-masked NaN pixel in image
 non-masked NaN pixel in image
@@ -126,166 +126,6 @@ prevNPoints is: 1Needs to be greater than 1
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-prevNPoints is: 1Needs to be greater than 1
-No good pixels or variation in pixels
-prevNPoints is: 1Needs to be greater than 1
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-prevNPoints is: 1Needs to be greater than 1
-No good pixels or variation in pixels
-prevNPoints is: 1Needs to be greater than 1
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-prevNPoints is: 1Needs to be greater than 1
-No good pixels or variation in pixels
-prevNPoints is: 1Needs to be greater than 1
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-prevNPoints is: 1Needs to be greater than 1
-No good pixels or variation in pixels
-prevNPoints is: 1Needs to be greater than 1
-No good pixels or variation in pixels
-No good pixels or variation in pixels
-No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
@@ -310,6 +150,56 @@ prevNPoints is: 1Needs to be greater than 1
 No good pixels or variation in pixels
 prevNPoints is: 1Needs to be greater than 1
 No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
@@ -324,6 +214,54 @@ Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+prevNPoints is: 1Needs to be greater than 1
+No good pixels or variation in pixels
+prevNPoints is: 1Needs to be greater than 1
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
@@ -342,31 +280,93 @@ No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
-SSS took 2177596696 ns
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+prevNPoints is: 1Needs to be greater than 1
+No good pixels or variation in pixels
+prevNPoints is: 1Needs to be greater than 1
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+prevNPoints is: 1Needs to be greater than 1
+No good pixels or variation in pixels
+prevNPoints is: 1Needs to be greater than 1
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+prevNPoints is: 1Needs to be greater than 1
+No good pixels or variation in pixels
+prevNPoints is: 1Needs to be greater than 1
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+No good pixels or variation in pixels
+SSS took 1992935160 ns
 
 
 Calculating matrix variables...
-CMV took 170896941 ns
+CMV took 140612962 ns
 
 Choosing convolution direction...
 template merit value = 666, science merit value = 666
-CD took 24515402 ns
+CD took 21750974 ns
 
 Fitting kernel...
-KSC took 11274499 ns
+KSC took 9488720 ns
 
 Convolving...
-Kernel creation took 108066238 ns
-69997883 ns for starting acc
-waited for 30952524 ns
-Convolution (without masking) took 300714352 ns 
-Conv took 496883983 ns
+Kernel creation took 95075437 ns
+70525000 ns for starting acc
+waited for 39640644 ns
+Convolution (without masking) took 294259731 ns 
+Conv took 471578524 ns
 
 Subtracting images...
-Sub took 47882145 ns
+Sub took 42654370 ns
 
 Writing output...
-Fin took 246903431 ns
+Fin took 194831290 ns
 
 BACH finished.
-BACH took 3530128242 ns
+BACH took 3169100311 ns

@@ -1,6 +1,6 @@
 Doing : /home/jonas/Documents/Thesis-EMX-BACH/res/test0.fits -
         /home/jonas/Documents/Thesis-EMX-BACH/res/test1.fits =
-        /home/jonas/Documents/Thesis-EMX-BACH/tests/measurements/2025-04-28/3/dev-hotpants-cores1-t1-cp0.00-ac0.00_out.fits
+        /home/jonas/Documents/Thesis-EMX-BACH/tests/measurements/2025-05-26/0/dev-hotpants-cores1-t1-cp0.00-ac0.00_out.fits
    Good templ data : 0.0 -> 25000.0
    Good image data : 0.0 -> 25000.0
 WARNING : too many stamps requested
@@ -416,4 +416,4 @@ Trying to convolve the IMAGE to fit TEMPLATE
 Region 0 finished
 
 SUCCESS
-HOTPANTS took 549640000 ns
+HOTPANTS took 559508000 ns

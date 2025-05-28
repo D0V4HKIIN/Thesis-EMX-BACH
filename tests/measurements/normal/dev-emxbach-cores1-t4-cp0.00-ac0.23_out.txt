@@ -12,7 +12,7 @@ Reading in images...
 Fits Error: Keyword not found: COMMENT
 
 Fits Error: Keyword not found: COMMENT
-Ini took 333595743 ns
+Ini took 295004273 ns
 
 Creating stamps...
 non-masked NaN pixel in image
@@ -342,31 +342,31 @@ No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
-SSS took 6584594349 ns
+SSS took 6503490153 ns
 
 
 Calculating matrix variables...
-CMV took 143125652 ns
+CMV took 138615020 ns
 
 Choosing convolution direction...
 template merit value = 666, science merit value = 666
-CD took 21746414 ns
+CD took 21618872 ns
 
 Fitting kernel...
-KSC took 9717896 ns
+KSC took 9511385 ns
 
 Convolving...
-Kernel creation took 370042399 ns
-69421375 ns for starting acc
-waited for 226979249 ns
-Convolution (without masking) took 327555313 ns 
-Conv took 785322992 ns
+Kernel creation took 350430001 ns
+70072725 ns for starting acc
+waited for 226143701 ns
+Convolution (without masking) took 326084187 ns 
+Conv took 759759911 ns
 
 Subtracting images...
-Sub took 47486431 ns
+Sub took 43053026 ns
 
 Writing output...
-Fin took 228247328 ns
+Fin took 196717451 ns
 
 BACH finished.
-BACH took 8153944426 ns
+BACH took 7967842118 ns

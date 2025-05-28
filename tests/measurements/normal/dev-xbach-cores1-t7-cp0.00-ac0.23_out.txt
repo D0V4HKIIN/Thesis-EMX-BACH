@@ -9,33 +9,33 @@ Using device: NVIDIA GeForce GTX 1050
 Fits Error: Keyword not found: HISTORY
 
 Fits Error: Keyword not found: HISTORY
-Ini took 830744211 ns
+Ini took 761327807 ns
 
 Creating stamps...
 Identifying sub-stamps...
-SSS took 7349185228 ns
+SSS took 5986032242 ns
 
 
 Calculating matrix variables...
-CMV took 234042585 ns
+CMV took 210296580 ns
 
 Choosing convolution direction...
 template merit value = 29.9995, science merit value = 0.00597749
-CD took 354933369 ns
+CD took 304962758 ns
 
 Fitting kernel...
-KSC took 165952513 ns
+KSC took 162491643 ns
 
 Convolving...
-Kernel creation took 1399140520 ns
-Convolution (without masking) took 1340458509 ns 
-Conv took 2884722310 ns
+Kernel creation took 1310541333 ns
+Convolution (without masking) took 1079826287 ns 
+Conv took 2537394598 ns
 
 Subtracting images...
-Sub took 130650639 ns
+Sub took 133400075 ns
 
 Writing output...
-Fin took 611764031 ns
+Fin took 625801892 ns
 
 BACH finished.
-BACH took 12562096883 ns
+BACH took 10721811745 ns

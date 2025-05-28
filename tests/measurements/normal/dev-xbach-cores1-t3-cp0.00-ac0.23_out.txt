@@ -13,33 +13,33 @@ Fits Error: Keyword not found: COMMENT
 Fits Error: Keyword not found: HISTORY
 
 Fits Error: Keyword not found: COMMENT
-Ini took 223214947 ns
+Ini took 190413492 ns
 
 Creating stamps...
 Identifying sub-stamps...
-SSS took 1052701977 ns
+SSS took 1051001329 ns
 
 
 Calculating matrix variables...
-CMV took 154254952 ns
+CMV took 153983672 ns
 
 Choosing convolution direction...
 template merit value = -922.42, science merit value = 44.8598
-CD took 227965181 ns
+CD took 195414407 ns
 
 Fitting kernel...
-KSC took 137946849 ns
+KSC took 139948441 ns
 
 Convolving...
-Kernel creation took 205112272 ns
-Convolution (without masking) took 169112595 ns 
-Conv took 396206808 ns
+Kernel creation took 205236183 ns
+Convolution (without masking) took 169810706 ns 
+Conv took 396870550 ns
 
 Subtracting images...
-Sub took 5965042 ns
+Sub took 5948023 ns
 
 Writing output...
-Fin took 64631389 ns
+Fin took 64502301 ns
 
 BACH finished.
-BACH took 2262968686 ns
+BACH took 2198184090 ns

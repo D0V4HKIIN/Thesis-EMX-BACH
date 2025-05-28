@@ -75,6 +75,7 @@ TESTS_PER_ARGUMENT = 10
 ARG_MIN = 0.0
 ARG_MAX = 0.35
 ARGS_TO_TEST = np.linspace(ARG_MIN, ARG_MAX, TESTS_PER_ARGUMENT)
+ARGS_TO_TEST_ROUNDED = np.round(np.linspace(ARG_MIN, ARG_MAX, TESTS_PER_ARGUMENT), 2)
 
 # SOFTWARES = ["emxbach"]
 # SOFTWARES = ["hotpants"]
@@ -148,6 +149,8 @@ def generate_arg_tests():
                         "accelerator": acceleratorPart,
                     }
                 )
+
+    db += generate_arg_late_tests()
 
     return db
 

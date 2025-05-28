@@ -15,6 +15,15 @@ DPI = 300
 
 MARKERS = "os^d"
 
+TITLE = False
+
+
+def set_title(plt, title, alt_title=None):
+    if TITLE:
+        plt.title(title)
+    elif alt_title:
+        plt.title(alt_title)
+
 
 def label_string(key):
     core_string = (
@@ -43,7 +52,7 @@ def verify_normality(db):
 
 def graph_tests(db):
     for test in db:
-        plt.title(f"{test}")
+        set_title(plt, f"{test}")
         plt.hist(test["times"], bins=10)
         plt.show()
 
@@ -76,7 +85,7 @@ def graph_cores(db, label, out_path):
             high_percentile[test["core"] - 1] = boot.confidence_interval.high
 
         title = f"Execution time of {label} for test {t}"
-        plt.title(title)
+        set_title(plt, title)
         plt.xlabel("Cores")
         plt.ylabel("Execution time (ms)")
         plt.xticks(CORE_INDEXES)
@@ -130,7 +139,7 @@ def graph_efficiency(db, label, out_path):
         efficiency_high = speedup_high / CORE_INDEXES
 
         title = f"Efficiency of {label} for test {t}"
-        plt.title(title)
+        set_title(plt, title)
         plt.xlabel("Cores")
         plt.ylabel("Efficiency")
         plt.xticks(CORE_INDEXES)
@@ -183,7 +192,7 @@ def graph_together_core(db, label, out_path):
         plt.fill_between(CORE_INDEXES, speedup_low, speedup_high, alpha=0.2)
 
     title = f"Speedup of {label}"
-    plt.title(title)
+    set_title(plt, title)
     plt.xlabel("Cores")
     plt.ylabel("Speedup")
     plt.xticks(CORE_INDEXES)
@@ -236,7 +245,7 @@ def graph_together_efficiency(db, label, out_path):
         plt.fill_between(CORE_INDEXES, efficiency_low, efficiency_high, alpha=0.2)
 
     title = f"Efficiency of {label}"
-    plt.title(title)
+    set_title(plt, title)
     plt.xlabel("Cores")
     plt.ylabel("Efficiency")
     plt.xticks(CORE_INDEXES)
@@ -282,7 +291,7 @@ def graph_core_speedup(db, label, out_path):
         speedup_high = one_mean / high_percentile
 
         title = f"Speedup of {label} for test {t} compared to 1 core"
-        plt.title(title)
+        set_title(plt, title)
         plt.xlabel("Cores")
         plt.ylabel("Speedup")
         plt.xticks(CORE_INDEXES)
@@ -370,10 +379,11 @@ def graph_speedup(db, label, out_path):
         plt.fill_between(TEST_INDEXES, speedup_low, speedup_high, alpha=0.2)
 
     title = f"Speedup of {get_label_title(label)}"
-    plt.title(title)
+    set_title(plt, title)
     plt.xlabel("Test")
     plt.ylabel("Speedup")
     plt.legend()
+    plt.grid()
 
     # plt.xticks(TEST_INDEXES)
     # ax = plt.gca()
@@ -431,7 +441,7 @@ def graph_breakdown(db, software, out_path):
         plt.bar(labels, fractions, label=STEPS[i], bottom=bottoms)
         bottoms += fractions
 
-    plt.title(f"Execution time breakdown of {software}")
+    set_title(plt, f"Execution time breakdown of {software}")
     plt.ylabel("Percentage of total execution time")
     plt.subplots_adjust(left=0.12, bottom=0.08, right=0.80, top=0.94, hspace=0.26)
     plt.legend(bbox_to_anchor=(1, 1))
@@ -489,7 +499,7 @@ def graph_diff(db, label, out_path):
         title = f"Comparison of execution time of {get_label_title(label)} for test {t}"
         # doesnt show min or max
         plt.figure(figsize=(5, 6))
-        plt.title(title)
+        set_title(plt, title)
         plt.ylabel("Execution time (ms)")
 
         for key in means:
@@ -546,7 +556,7 @@ def graph_total(db, label, out_path):
                 ]
 
     title = f"Comparison of execution time of {get_label_title(label)}"
-    plt.title(title)
+    set_title(plt, title)
     plt.xlabel("Pixel Per Image")
     plt.ylabel("Execution time (ms)")
 
@@ -570,7 +580,7 @@ def print_avg_time(db, label):
     fdb = list(filter(lambda x: x["label"] == label, db))
     print(fdb)
 
-    for test in [4]:
+    for test in TEST_INDEXES:
         tdb = list(filter(lambda x: x["test"] == test, fdb))
 
         cdb = list(filter(lambda x: x["cpu"] == 1.0, tdb))
@@ -614,7 +624,20 @@ def graph_args(db, out_path):
         best_cpu = np.inf
         best_acc = np.inf
 
+        cpu_only = np.inf
+        gpu_only = np.inf
+        acc_only = np.inf
+
         for m in tdb:
+            if m["cpu"] == 1.0:
+                cpu_only = np.mean(m["times"])
+                continue
+            if m["accelerator"] == 1.0:
+                acc_only = np.mean(m["times"])
+                continue
+            if m["accelerator"] == 0.0 and m["cpu"] == 0.0:
+                gpu_only = np.mean(m["times"])
+
             mean = np.mean(m["times"])
             cpu_part = m["cpu"]
             acc_part = m["accelerator"]
@@ -629,24 +652,31 @@ def graph_args(db, out_path):
                 round(acc_part * (TESTS_PER_ARGUMENT - 1) * 1 / (ARG_MAX - ARG_MIN)),
             ] = mean
 
+        cpu_part = (1 / cpu_only) / (1 / cpu_only + 1 / gpu_only + 1 / acc_only)
+        acc_part = (1 / acc_only) / (1 / cpu_only + 1 / gpu_only + 1 / acc_only)
+
         title = f"Effect of work distribution on execution time for test {test}"
 
-        plt.suptitle(title)
+        if TITLE:
+            plt.suptitle(title)
+        # else:
+        #     plt.suptitle(f"Test {test}")
+
         plt.title(
-            f"Best execution time ({best_mean} ms) for cpu part = {best_cpu:.2f} and acc part = {best_acc:.2f}"
+            f"Best execution time ({best_mean:.2f} ms) for cpu part = {best_cpu:.2f} and acc part = {best_acc:.2f}"
         )
         plt.xlabel("part of convolution done on accelerator")
         plt.ylabel("part of convolution done on cpu")
-        plt.xticks(ARGS_TO_TEST, rotation=45)
-        plt.yticks(ARGS_TO_TEST)
+        plt.xticks(ARGS_TO_TEST_ROUNDED, rotation=45)
+        plt.yticks(ARGS_TO_TEST_ROUNDED)
 
         # log_intensity = -1
         # logseq = np.logspace(log_intensity, 0)
         # cmap = plt.cm.rainbow(logseq)
         # cmap = plt.colormaps["viridis_r"]
         plt.pcolormesh(
-            ARGS_TO_TEST,
-            ARGS_TO_TEST,
+            ARGS_TO_TEST_ROUNDED,
+            ARGS_TO_TEST_ROUNDED,
             data,
             # this is bad
             # norm=matplotlib.colors.PowerNorm(0.5),
@@ -654,6 +684,8 @@ def graph_args(db, out_path):
         )
         clb = plt.colorbar()
         clb.ax.set_ylabel("execution time in ms")
+
+        plt.plot(acc_part, cpu_part, "ro")
 
         plt.tight_layout()
 
@@ -728,7 +760,6 @@ def main(args):
 
     if "--arg-late" in args:
         arg_db = get_times(generate_arg_late_tests(), res_path)
-        print(arg_db)
 
         print_avg_time(arg_db, "convolution")
 

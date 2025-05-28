@@ -1,6 +1,6 @@
 Doing : /home/jonas/Documents/Thesis-EMX-BACH/res/ptf_m82_s_2k.fits -
         /home/jonas/Documents/Thesis-EMX-BACH/res/ptf_m82_t_2k.fits =
-        /home/jonas/Documents/Thesis-EMX-BACH/tests/measurements/2025-04-28/3/dev-hotpants-cores1-t3-cp0.00-ac0.23_out.fits
+        /home/jonas/Documents/Thesis-EMX-BACH/tests/measurements/2025-05-26/0/dev-hotpants-cores1-t3-cp0.00-ac0.23_out.fits
    Good templ data : 0.0 -> 25000.0
    Good image data : 0.0 -> 25000.0
 Mallocing massive amounts of memory...
@@ -1064,4 +1064,4 @@ Trying to convolve the IMAGE to fit TEMPLATE
 Region 0 finished
 
 SUCCESS
-HOTPANTS took 4249147000 ns
+HOTPANTS took 4355940000 ns

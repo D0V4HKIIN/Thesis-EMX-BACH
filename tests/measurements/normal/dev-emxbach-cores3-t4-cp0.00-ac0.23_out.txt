@@ -12,7 +12,7 @@ Reading in images...
 Fits Error: Keyword not found: COMMENT
 
 Fits Error: Keyword not found: COMMENT
-Ini took 346872225 ns
+Ini took 295189440 ns
 
 Creating stamps...
 non-masked NaN pixel in image
@@ -50,8 +50,8 @@ Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
-No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
@@ -195,7 +195,6 @@ No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
-No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 No good pixels or variation in pixels
@@ -204,7 +203,6 @@ No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
-Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
@@ -214,8 +212,10 @@ Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
+Cannot send in empty vector to Sigma Clip
 No good pixels or variation in pixels
 Cannot send in empty vector to Sigma Clip
+No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
@@ -342,31 +342,31 @@ No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
 No good pixels or variation in pixels
-SSS took 2578653779 ns
+SSS took 2558540820 ns
 
 
 Calculating matrix variables...
-CMV took 152065354 ns
+CMV took 139223492 ns
 
 Choosing convolution direction...
 template merit value = 666, science merit value = 666
-CD took 24973550 ns
+CD took 21914828 ns
 
 Fitting kernel...
-KSC took 9854811 ns
+KSC took 9713087 ns
 
 Convolving...
-Kernel creation took 149360184 ns
-70003162 ns for starting acc
-waited for 289557259 ns
-Convolution (without masking) took 390364173 ns 
-Conv took 623343008 ns
+Kernel creation took 125395363 ns
+70135777 ns for starting acc
+waited for 226078522 ns
+Convolution (without masking) took 326336238 ns 
+Conv took 534580501 ns
 
 Subtracting images...
-Sub took 47976624 ns
+Sub took 43629961 ns
 
 Writing output...
-Fin took 255784522 ns
+Fin took 199979993 ns
 
 BACH finished.
-BACH took 4039669484 ns
+BACH took 3802842344 ns

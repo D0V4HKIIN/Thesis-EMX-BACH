@@ -8,34 +8,34 @@ Using device: NVIDIA GeForce GTX 1050
 Using accelerator Intel(R) HD Graphics 530
 
 Reading in images...
-Ini took 828392707 ns
+Ini took 731039274 ns
 
 Creating stamps...
-SSS took 622175055 ns
+SSS took 594263394 ns
 
 
 Calculating matrix variables...
-CMV took 229023639 ns
+CMV took 211798847 ns
 
 Choosing convolution direction...
 template merit value = -36.4667, science merit value = -42.9596
-CD took 243992515 ns
+CD took 270214523 ns
 
 Fitting kernel...
-KSC took 657323025 ns
+KSC took 622565790 ns
 
 Convolving...
-Kernel creation took 446293126 ns
-85484512 ns for starting acc
-waited for 218794819 ns
-Convolution (without masking) took 338479568 ns 
-Conv took 882313502 ns
+Kernel creation took 398024618 ns
+78891617 ns for starting acc
+waited for 215673101 ns
+Convolution (without masking) took 327899085 ns 
+Conv took 821448804 ns
 
 Subtracting images...
-Sub took 49966279 ns
+Sub took 49577334 ns
 
 Writing output...
-Fin took 258865753 ns
+Fin took 221002674 ns
 
 BACH finished.
-BACH took 3772204742 ns
+BACH took 3522013285 ns

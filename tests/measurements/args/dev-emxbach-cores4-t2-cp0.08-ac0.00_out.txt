@@ -1,0 +1,45 @@
+resolution of clock is: 1/1000000000
+Reading in arguments...
+parsed 1:0:0
+
+Setting up openCL...
+Using platform: NVIDIA CUDA
+Using device: NVIDIA GeForce GTX 1050
+Using accelerator Intel(R) HD Graphics 530
+
+Reading in images...
+Ini took 131266952 ns
+
+Creating stamps...
+non-masked NaN pixel in image
+non-masked NaN pixel in image
+non-masked NaN pixel in image
+SSS took 19420354 ns
+
+
+Calculating matrix variables...
+CMV took 155897993 ns
+
+Choosing convolution direction...
+template merit value = 666, science merit value = 666
+CD took 18012684 ns
+
+Fitting kernel...
+Cannot send in empty vector to Sigma Clip
+KSC took 199534578 ns
+
+Convolving...
+Kernel creation took 12078428 ns
+9723460 ns for starting acc
+waited for 16526891 ns
+Convolution (without masking) took 40642812 ns 
+Conv took 55270518 ns
+
+Subtracting images...
+Sub took 1913469 ns
+
+Writing output...
+Fin took 16802609 ns
+
+BACH finished.
+BACH took 598208048 ns
