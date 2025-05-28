@@ -917,7 +917,7 @@ void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
   // create conv mask
   ImageMask convMask(w, h);
 
-#pragma omp parallel for collapse(2) default(none) \
+#pragma omp parallel for collapse(2) schedule(static) default(none) \
     shared(w, h, convMask, templateImage, args)
   for(int y = 0; y < h; y++) {
     for(int x = 0; x < w; x++) {
@@ -947,7 +947,7 @@ void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
   int nBgComp = (args.nPSF - 1) * triNum(args.kernelOrder + 1) + 1;
   double invKernMult = scaleConv ? invKernSum : 1.0;
 
-#pragma omp parallel for collapse(2) default(none)                         \
+#pragma omp parallel for collapse(2) schedule(static) default(none)        \
     shared(w, h, halfConvWidth, convImg, kernSolution, mask, args, xSteps, \
                convKernels, templateImage, convMask, nBgComp, invKernMult)
   for(int y = 0; y < h; y++) {
@@ -1019,7 +1019,7 @@ void convMp(const int w, const int h, const std::vector<cl_double>& convKernels,
                                   sizeof(cl_double) * w * h, &convImg.data[0]);
 
 // mask after conv
-#pragma omp parallel for collapse(2) default(none) \
+#pragma omp parallel for collapse(2) schedule(static) default(none) \
     shared(w, h, mask, scienceImage, args)
   for(int y = 0; y < h; y++) {
     for(int x = 0; x < w; x++) {
@@ -1212,7 +1212,7 @@ void convSplit(const int w, const int h,
   double invKernMult = scaleConv ? invKernSum : 1.0;
   int cpuStartH = gpuH + accSum;
 
-#pragma omp parallel for collapse(2) default(none)                            \
+#pragma omp parallel for collapse(2) schedule(static) default(none)           \
     shared(w, h, cpuH, cpuStartH, halfConvWidth, convImg, kernSolution, mask, \
                args, xSteps, convKernels, templateImage, convMask, nBgComp,   \
                invKernMult)

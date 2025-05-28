@@ -129,8 +129,6 @@ void sssMp(std::vector<Stamp> &templateStamps, const Image &templateImg,
               << std::endl;
   }
 
-  // TODO: retry if not enough stamps have a substamp
-  // this is not finished!!
   if(filledTemplate < 0.1 || filledScience < 0.1) {
     if(args.verbose)
       std::cout << "Not enough substamps found in images, "
@@ -157,7 +155,7 @@ void computeStamps(const int w, const int h, const Image &templateImg,
                    const Arguments &args) {
   templateStamps.resize(args.stampsx * args.stampsy, Stamp{});
   scienceStamps.resize(args.stampsx * args.stampsy, Stamp{});
-#pragma omp parallel for collapse(2) default(none)                             \
+#pragma omp parallel for collapse(2) schedule(static) default(none)            \
     shared(w, h, templateImg, templateStamps, scienceImg, scienceStamps, args, \
                mask)
   for(int stampY = 0; stampY < args.stampsy; stampY++) {
@@ -346,7 +344,7 @@ double conv(const std::pair<cl_int, cl_int> &imgSize,
   std::vector<cl_double> convKernels(kernelSize * xSteps * ySteps);
 
   auto start = std::chrono::steady_clock::now();
-#pragma omp parallel for collapse(2) default(none)                       \
+#pragma omp parallel for collapse(2) schedule(static) default(none)      \
     shared(args, xSteps, ySteps, imgSize, convolutionKernel, kernelSize, \
                convKernels)
   for(int yStep = 0; yStep < ySteps; yStep++) {
